@@ -21,6 +21,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation"
 
 /**
  * Type definition for a project row coming from Supabase.
@@ -88,6 +89,8 @@ export default function Home() {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
+
+  const router = useRouter()
 
   /**
    * Fetch all projects when the page first loads.
@@ -331,7 +334,8 @@ export default function Home() {
               {projects.map((project) => (
                 <article
                   key={project.id}
-                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                  onClick={() => router.push(`/projects/${project.id}`)}
+                  className="cursor-pointer rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
                 >
                   <h3 className="text-base font-semibold">{project.name}</h3>
                   <p className="mt-1 text-sm text-slate-600">
@@ -373,14 +377,20 @@ export default function Home() {
                     {/* Action buttons */}
                     <div className="mt-3 flex gap-3">
                       <button
-                        onClick={() => openEditModal(project)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openEditModal(project)
+                        }}
                         className="text-sm font-medium text-indigo-600 hover:underline"
                       >
                         Edit
                       </button>
 
                       <button
-                        onClick={() => openDeleteModal(project)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDeleteModal(project)
+                        }}
                         className="text-sm font-medium text-red-600 hover:underline"
                       >
                         Delete
