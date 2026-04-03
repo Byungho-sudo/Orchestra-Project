@@ -21,7 +21,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/navigation";
 
 /**
  * Type definition for a project row coming from Supabase.
@@ -34,6 +34,8 @@ type Project = {
   due_date: string | null;
   created_at: string;
 };
+
+type SortOption = "due_date" | "created_at" | "name" | "progress";
 
 export default function Home() {
   /**
@@ -90,7 +92,40 @@ export default function Home() {
   const [editDescription, setEditDescription] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
 
-  const router = useRouter()
+  /**
+   * Controls dashboard sorting.
+   */
+  const [sortBy, setSortBy] = useState<SortOption>("due_date");
+
+  const router = useRouter();
+
+  /**
+   * Sort projects based on the selected sort option.
+   */
+  const sortProjects = (projectList: Project[]) => {
+    return [...projectList].sort((a, b) => {
+      switch (sortBy) {
+        case "due_date": {
+          if (!a.due_date && !b.due_date) return 0;
+          if (!a.due_date) return 1;
+          if (!b.due_date) return -1;
+          return a.due_date.localeCompare(b.due_date);
+        }
+
+        case "created_at":
+          return b.created_at.localeCompare(a.created_at);
+
+        case "name":
+          return a.name.localeCompare(b.name);
+
+        case "progress":
+          return b.progress - a.progress;
+
+        default:
+          return 0;
+      }
+    });
+  };
 
   /**
    * Fetch all projects when the page first loads.
@@ -102,7 +137,7 @@ export default function Home() {
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("due_date", { ascending: true });
 
       if (error) {
         console.error("Error fetching projects:", error);
@@ -144,7 +179,7 @@ export default function Home() {
     }
 
     if (data) {
-      setProjects((current) => [...data, ...current]);
+      setProjects((current) => [...current, ...data]);
     }
 
     setName("");
@@ -301,7 +336,23 @@ export default function Home() {
 
         {/* Main content */}
         <main className="space-y-4">
-          <h2 className="text-xl font-semibold">Project Cards</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl font-semibold">Project Cards</h2>
+
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-600">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as SortOption)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="due_date">Due date</option>
+                <option value="created_at">Created date</option>
+                <option value="name">Name</option>
+                <option value="progress">Progress</option>
+              </select>
+            </div>
+          </div>
 
           {/* Error state */}
           {errorMessage && (
@@ -331,7 +382,7 @@ export default function Home() {
           {/* Project grid */}
           {projects.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {projects.map((project) => (
+              {sortProjects(projects).map((project) => (
                 <article
                   key={project.id}
                   onClick={() => router.push(`/projects/${project.id}`)}
@@ -370,15 +421,17 @@ export default function Home() {
                         />
                       </div>
                     </div>
+
                     <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
                       Due {project.due_date ?? "No due date"}
                     </p>
+
                     {/* Action buttons */}
                     <div className="mt-3 flex gap-3">
                       <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          openEditModal(project)
+                          e.stopPropagation();
+                          openEditModal(project);
                         }}
                         className="text-sm font-medium text-indigo-600 hover:underline"
                       >
@@ -387,8 +440,8 @@ export default function Home() {
 
                       <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          openDeleteModal(project)
+                          e.stopPropagation();
+                          openDeleteModal(project);
                         }}
                         className="text-sm font-medium text-red-600 hover:underline"
                       >
