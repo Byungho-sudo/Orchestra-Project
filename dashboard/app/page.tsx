@@ -341,9 +341,6 @@ export default function Home() {
                   <p className="mt-1 text-sm text-slate-600">
                     {project.description}
                   </p>
-                  <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Due {project.due_date ?? "No due date"}
-                  </p>
 
                   <div className="mt-4 space-y-4">
                     {/* Progress bar */}
@@ -373,7 +370,9 @@ export default function Home() {
                         />
                       </div>
                     </div>
-
+                    <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Due {project.due_date ?? "No due date"}
+                    </p>
                     {/* Action buttons */}
                     <div className="mt-3 flex gap-3">
                       <button
