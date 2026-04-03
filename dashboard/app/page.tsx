@@ -1,70 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type Project = {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
   progress: number;
-  deadlineUsed: number;
-  dueDate: string;
+  due_date: string | null;
+  created_at: string;
 };
-
-const initialProjects: Project[] = [
-  {
-    id: 1,
-    name: "Mobile App Redesign",
-    description: "Refresh user flows and improve onboarding conversion.",
-    progress: 72,
-    deadlineUsed: 65,
-    dueDate: "Apr 28, 2026",
-  },
-  {
-    id: 2,
-    name: "Marketing Website",
-    description: "Launch performance-focused landing pages and CMS content.",
-    progress: 46,
-    deadlineUsed: 34,
-    dueDate: "May 12, 2026",
-  },
-  {
-    id: 3,
-    name: "Analytics Dashboard",
-    description: "Expose KPIs by team and automate weekly executive reports.",
-    progress: 87,
-    deadlineUsed: 90,
-    dueDate: "Apr 9, 2026",
-  },
-];
 
 export default function Home() {
   const [isOpen, setIsOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
 
-  const addProject = () => {
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching projects:", error);
+      } else {
+        setProjects(data || []);
+      }
+
+      setLoading(false);
+    };
+
+    fetchProjects();
+  }, []);
+
+  const addProject = async () => {
     if (!name.trim() || !description.trim() || !dueDate.trim()) return;
 
-    setProjects((current) => [
-      ...current,
-      {
-        id: Date.now(),
-        name: name.trim(),
-        description: description.trim(),
-        progress: 0,
-        deadlineUsed: 5,
-        dueDate,
-      },
-    ]);
+    const { data, error } = await supabase
+      .from("projects")
+      .insert([
+        {
+          name: name.trim(),
+          description: description.trim(),
+          due_date: dueDate,
+          progress: 0,
+        },
+      ])
+      .select();
+
+    if (error) {
+      console.error("Error creating project:", error);
+      return;
+    }
+
+    if (data) {
+      setProjects((current) => [...data, ...current]);
+    }
 
     setName("");
     setDescription("");
     setDueDate("");
     setIsOpen(false);
   };
+
+  const deleteProject = async (id: number) => {
+    const { error } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", id);
+  
+    if (error) {
+      console.error("Error deleting project:", error);
+      return;
+    }
+  
+    setProjects((current) =>
+      current.filter((project) => project.id !== id)
+    );
+  };
+
+  if (loading) {
+    return <div className="p-6">Loading projects...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
@@ -111,8 +134,14 @@ export default function Home() {
               >
                 <h3 className="text-base font-semibold">{project.name}</h3>
                 <p className="mt-1 text-sm text-slate-600">{project.description}</p>
+                <button
+                  onClick={() => deleteProject(project.id)}
+                  className="mt-3 text-sm font-medium text-red-600 hover:underline"
+                >
+                  Delete
+                </button>
                 <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Due {project.dueDate}
+                  Due {project.due_date ?? "No due date"}
                 </p>
 
                 <div className="mt-4 space-y-4">
@@ -132,12 +161,12 @@ export default function Home() {
                   <div>
                     <div className="mb-1 flex justify-between text-xs font-medium text-slate-600">
                       <span>Deadline Bar</span>
-                      <span>{project.deadlineUsed}% used</span>
+                      <span>5% used</span>
                     </div>
                     <div className="h-2 rounded-full bg-slate-200">
                       <div
                         className="h-full rounded-full bg-rose-500"
-                        style={{ width: `${project.deadlineUsed}%` }}
+                        style={{ width: "5%" }}
                       />
                     </div>
                   </div>
@@ -155,7 +184,6 @@ export default function Home() {
             <p className="mt-1 text-sm text-slate-600">
               Add a new project card to the dashboard.
             </p>
-
             <div className="mt-4 space-y-3">
               <input
                 value={name}
