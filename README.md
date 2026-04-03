@@ -20,7 +20,7 @@ It is currently deployed and used as a real shared tool across multiple devices.
 **Production URL**
 
 ```
-https://orchestra.vercel.app
+https://orchestra-gray-nine.vercel.app/
 ```
 
 The application is hosted on **Vercel** and connected to a live **Supabase** database.
