@@ -9,6 +9,8 @@
  * - Create new projects
  * - Edit existing projects
  * - Delete existing projects
+ * - Confirm destructive delete actions
+ * - Display loading, empty, and error states
  *
  * CRUD status:
  * - Create: implemented
@@ -44,6 +46,11 @@ export default function Home() {
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   /**
+   * Controls the visibility of the delete confirmation modal.
+   */
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  /**
    * Stores all loaded projects.
    */
   const [projects, setProjects] = useState<Project[]>([]);
@@ -54,9 +61,19 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   /**
+   * Stores a fetch/create/update/delete error message for display.
+   */
+  const [errorMessage, setErrorMessage] = useState("");
+
+  /**
    * Stores the currently selected project for editing.
    */
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  /**
+   * Stores the currently selected project for deletion.
+   */
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   /**
    * Controlled form state for the "New Project" modal.
@@ -77,6 +94,8 @@ export default function Home() {
    */
   useEffect(() => {
     const fetchProjects = async () => {
+      setErrorMessage("");
+
       const { data, error } = await supabase
         .from("projects")
         .select("*")
@@ -84,6 +103,7 @@ export default function Home() {
 
       if (error) {
         console.error("Error fetching projects:", error);
+        setErrorMessage("Failed to load projects. Please try again.");
       } else {
         setProjects(data || []);
       }
@@ -100,6 +120,8 @@ export default function Home() {
   const addProject = async () => {
     if (!name.trim() || !description.trim() || !dueDate.trim()) return;
 
+    setErrorMessage("");
+
     const { data, error } = await supabase
       .from("projects")
       .insert([
@@ -114,6 +136,7 @@ export default function Home() {
 
     if (error) {
       console.error("Error creating project:", error);
+      setErrorMessage("Failed to create project. Please try again.");
       return;
     }
 
@@ -145,6 +168,8 @@ export default function Home() {
     if (!editingProject) return;
     if (!editName.trim() || !editDescription.trim() || !editDueDate.trim()) return;
 
+    setErrorMessage("");
+
     const { data, error } = await supabase
       .from("projects")
       .update({
@@ -157,6 +182,7 @@ export default function Home() {
 
     if (error) {
       console.error("Error updating project:", error);
+      setErrorMessage("Failed to update project. Please try again.");
       return;
     }
 
@@ -168,11 +194,7 @@ export default function Home() {
       );
     }
 
-    setIsEditOpen(false);
-    setEditingProject(null);
-    setEditName("");
-    setEditDescription("");
-    setEditDueDate("");
+    closeEditModal();
   };
 
   /**
@@ -187,19 +209,45 @@ export default function Home() {
   };
 
   /**
+   * Open the delete confirmation modal.
+   */
+  const openDeleteModal = (project: Project) => {
+    setProjectToDelete(project);
+    setIsDeleteOpen(true);
+  };
+
+  /**
+   * Close the delete confirmation modal and clear selected project.
+   */
+  const closeDeleteModal = () => {
+    setProjectToDelete(null);
+    setIsDeleteOpen(false);
+  };
+
+  /**
    * Delete a project from Supabase and remove it from local state.
    */
-  const deleteProject = async (id: number) => {
-    const { error } = await supabase.from("projects").delete().eq("id", id);
+  const confirmDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    setErrorMessage("");
+
+    const { error } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", projectToDelete.id);
 
     if (error) {
       console.error("Error deleting project:", error);
+      setErrorMessage("Failed to delete project. Please try again.");
       return;
     }
 
     setProjects((current) =>
-      current.filter((project) => project.id !== id)
+      current.filter((project) => project.id !== projectToDelete.id)
     );
+
+    closeDeleteModal();
   };
 
   /**
@@ -252,69 +300,97 @@ export default function Home() {
         <main className="space-y-4">
           <h2 className="text-xl font-semibold">Project Cards</h2>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {projects.map((project) => (
-              <article
-                key={project.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+          {/* Error state */}
+          {errorMessage && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+              {errorMessage}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!errorMessage && projects.length === 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900">
+                No projects yet
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Create your first project to start building your dashboard.
+              </p>
+              <button
+                onClick={() => setIsOpen(true)}
+                className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
               >
-                <h3 className="text-base font-semibold">{project.name}</h3>
-                <p className="mt-1 text-sm text-slate-600">
-                  {project.description}
-                </p>
-                <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Due {project.due_date ?? "No due date"}
-                </p>
+                Create First Project
+              </button>
+            </div>
+          )}
 
-                <div className="mt-4 space-y-4">
-                  {/* Progress bar */}
-                  <div>
-                    <div className="mb-1 flex justify-between text-xs font-medium text-slate-600">
-                      <span>Progress Bar</span>
-                      <span>{project.progress}%</span>
+          {/* Project grid */}
+          {projects.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {projects.map((project) => (
+                <article
+                  key={project.id}
+                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                  <h3 className="text-base font-semibold">{project.name}</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {project.description}
+                  </p>
+                  <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Due {project.due_date ?? "No due date"}
+                  </p>
+
+                  <div className="mt-4 space-y-4">
+                    {/* Progress bar */}
+                    <div>
+                      <div className="mb-1 flex justify-between text-xs font-medium text-slate-600">
+                        <span>Progress Bar</span>
+                        <span>{project.progress}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-200">
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 rounded-full bg-slate-200">
-                      <div
-                        className="h-full rounded-full bg-emerald-500"
-                        style={{ width: `${project.progress}%` }}
-                      />
+
+                    {/* Placeholder deadline bar */}
+                    <div>
+                      <div className="mb-1 flex justify-between text-xs font-medium text-slate-600">
+                        <span>Deadline Bar</span>
+                        <span>5% used</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-200">
+                        <div
+                          className="h-full rounded-full bg-rose-500"
+                          style={{ width: "5%" }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="mt-3 flex gap-3">
+                      <button
+                        onClick={() => openEditModal(project)}
+                        className="text-sm font-medium text-indigo-600 hover:underline"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => openDeleteModal(project)}
+                        className="text-sm font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-
-                  {/* Placeholder deadline bar */}
-                  <div>
-                    <div className="mb-1 flex justify-between text-xs font-medium text-slate-600">
-                      <span>Deadline Bar</span>
-                      <span>5% used</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-slate-200">
-                      <div
-                        className="h-full rounded-full bg-rose-500"
-                        style={{ width: "5%" }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="mt-3 flex gap-3">
-                    <button
-                      onClick={() => openEditModal(project)}
-                      className="text-sm font-medium text-indigo-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => deleteProject(project.id)}
-                      className="text-sm font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          )}
         </main>
       </div>
 
@@ -410,6 +486,39 @@ export default function Home() {
                 className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
               >
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {isDeleteOpen && projectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Delete Project
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-slate-900">
+                {projectToDelete.name}
+              </span>
+              ? This action cannot be undone.
+            </p>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={closeDeleteModal}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteProject}
+                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500"
+              >
+                Delete Project
               </button>
             </div>
           </div>
