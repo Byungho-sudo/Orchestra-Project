@@ -2,43 +2,53 @@
 
 ## Overview
 
-**Orchestra Project** is a centralized dashboard web application for managing projects, tracking progress, and monitoring deadlines.
+**Orchestra Project** is a full-stack web application for managing projects, tracking progress, and organizing work in a centralized dashboard.
 
-The goal of the system is to provide a structured, extensible, and maintainable platform for organizing multiple initiatives in a single interface. The project is being developed incrementally using real production-style workflows, version control, and a live backend.
+The system is designed to be:
 
-This is an early-stage product under active development.
+* Practical
+* Maintainable
+* Production-oriented
+* Incrementally expandable
 
----
-
-## Current Status
-
-**Stage:** Early Product Development
-**Architecture:** Database-backed web application
-**Persistence:** Supabase (PostgreSQL)
-
-The application is fully functional locally and includes persistent data storage. Projects can be created, displayed, and deleted, with changes surviving page refreshes and application restarts.
+It is currently deployed and used as a real shared tool across multiple devices.
 
 ---
 
-## Implemented Features
+## Live Application
 
-### Core Functionality
+**Production URL**
 
-* Dashboard layout with header and sidebar navigation
-* Project cards displayed in a responsive grid
-* Progress tracking per project
-* Deadline tracking visualization
-* Modal form for creating new projects
-* Delete project functionality
-* Persistent data storage using Supabase
-* Automatic data loading on application startup
+```
+https://orchestra.vercel.app
+```
 
-### Data Persistence
+The application is hosted on **Vercel** and connected to a live **Supabase** database.
 
-* Projects stored in a Supabase PostgreSQL database
-* Data persists after page refresh
-* Data persists after restarting the development server
-* Real-time synchronization between UI and database
+---
+
+## Current Capabilities
+
+### Core Features
+
+* Create projects
+* View projects
+* Edit projects
+* Delete projects
+* Persistent database storage
+* Real-time shared data across devices
+* Production deployment
+* Automatic redeployment on push
+
+### UI Behavior States
+
+The system correctly handles:
+
+* Loading state
+* Empty state
+* Error state
+* Delete confirmation
+* Immediate UI updates after database actions
 
 ---
 
@@ -48,21 +58,25 @@ The application is fully functional locally and includes persistent data storage
 
 * Next.js (App Router)
 * React
-* TypeScript
+* TypeScript / JavaScript
 * Tailwind CSS
 
 ### Backend
 
 * Supabase
-* PostgreSQL database
 
-### Tooling
+### Database
 
-* Node.js
+* PostgreSQL (via Supabase)
+
+### Hosting
+
+* Vercel
+
+### Version Control
+
 * Git
 * GitHub
-* Cursor (primary development environment)
-* Stitch AI (UI design)
 
 ---
 
@@ -70,22 +84,54 @@ The application is fully functional locally and includes persistent data storage
 
 ```
 Orchestra-Project/
-  dashboard/
-    app/
-    lib/
-    public/
-    .env.local
-    package.json
-    next.config.ts
-    tailwind.config.ts
-  README.md
+
+dashboard/
+
+app/
+  page.tsx
+
+lib/
+  supabase.ts
+
+public/
+
+.env.local
+
+package.json
+next.config.ts
+tailwind.config.ts
+.gitignore
+README.md
 ```
 
-The application lives inside the **dashboard** directory.
+Important:
+
+The application lives inside:
+
+```
+dashboard/
+```
 
 ---
 
-## Getting Started
+## Development Workflow
+
+1. Design UI
+2. Implement feature
+3. Run locally
+
+```
+npm run dev
+```
+
+4. Test behavior
+5. Commit changes
+6. Push to GitHub
+7. Automatic deployment via Vercel
+
+---
+
+## Local Setup
 
 ### 1. Clone the repository
 
@@ -100,22 +146,20 @@ cd Orchestra-Project/dashboard
 npm install
 ```
 
-### 3. Configure environment variables
+### 3. Create environment variables
 
-Create a file named:
+Create a file:
 
 ```
 .env.local
 ```
 
-Add the following variables:
+Add:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
-
-These values can be found in your Supabase project settings.
 
 ### 4. Start the development server
 
@@ -123,7 +167,7 @@ These values can be found in your Supabase project settings.
 npm run dev
 ```
 
-Open your browser and navigate to:
+The app will run at:
 
 ```
 http://localhost:3000
@@ -131,52 +175,104 @@ http://localhost:3000
 
 ---
 
-## Current Capabilities
+## Environment Variables
 
-The system currently supports:
+Required:
 
-* Creating projects
-* Viewing projects
-* Deleting projects
-* Persistent storage
-* Local development workflow
+```
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+```
 
-This represents a stable foundation for future feature development.
+These values are provided by your Supabase project.
 
----
-
-## Planned Features
-
-The next development milestones are:
-
-1. Edit project functionality (Update)
-2. Project detail page (`/projects/[id]`)
-3. Confirmation dialog for deletion
-4. Improved deadline calculations
-5. User authentication
-6. File and document storage
-7. Deployment to Vercel
+Never commit real keys to the repository.
 
 ---
 
-## Development Principles
+## Deployment
 
-This project follows a disciplined incremental development approach:
+The application is deployed using:
 
-* Build step-by-step
-* Maintain working software at all times
-* Avoid premature complexity
-* Use version control consistently
-* Prioritize stability over speed
+**Vercel**
+
+Deployment behavior:
+
+* Push to `main`
+* Vercel builds automatically
+* Site updates automatically
+
+No manual deployment required.
 
 ---
 
-## Author
+## Current System Status
 
-Byungho
+The application currently provides:
+
+* Live production deployment
+* Shared database access
+* Multi-device synchronization
+* Stable CRUD operations
+* Reliable UI state handling
+
+This represents:
+
+**Dashboard v1 — Stable Foundation**
+
+---
+
+## Known Limitations
+
+The system does not yet include:
+
+* User authentication
+* Project detail pages
+* File attachments
+* Role permissions
+* Advanced filtering
+* Analytics
+* Notifications
+
+These are planned future features.
+
+---
+
+## Next Development Steps
+
+Priority roadmap:
+
+1. Project detail page
+
+```
+app/projects/[id]/page.tsx
+```
+
+2. Authentication system
+3. Project navigation
+4. Data visualization (charts)
+5. Deployment refinement
+6. Permissions and roles
+
+---
+
+## Purpose
+
+This project exists to:
+
+* Build a real production system
+* Support collaborative project management
+* Learn modern full-stack architecture
+* Establish a scalable development foundation
 
 ---
 
 ## License
 
-This project is currently under development and does not yet include a formal license.
+Private internal project.
+
+---
+
+## Author
+
+Byung Ho
