@@ -17,6 +17,10 @@ import {
   type ProjectVisibility,
   type SortOption,
 } from "@/lib/projects"
+import {
+  validateProjectForm,
+  type ProjectFormErrors,
+} from "@/lib/project-validation"
 import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 
@@ -29,6 +33,7 @@ export default function Home() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [isSavingProject, setIsSavingProject] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
@@ -37,10 +42,16 @@ export default function Home() {
   const [description, setDescription] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [visibility, setVisibility] = useState<ProjectVisibility>("public")
+  const [newProjectErrors, setNewProjectErrors] = useState<ProjectFormErrors>(
+    {}
+  )
 
   const [editName, setEditName] = useState("")
   const [editDescription, setEditDescription] = useState("")
   const [editDueDate, setEditDueDate] = useState("")
+  const [editProjectErrors, setEditProjectErrors] = useState<ProjectFormErrors>(
+    {}
+  )
 
   const [sortBy, setSortBy] = useState<SortOption>(() => {
     if (typeof window === "undefined") return "due_date"
@@ -105,23 +116,40 @@ export default function Home() {
   }, [sortBy])
 
   const addProject = async () => {
-    if (!name.trim() || !description.trim() || !dueDate.trim()) return
-
     setErrorMessage("")
+
+    const validation = validateProjectForm(
+      {
+        name,
+        description,
+        due_date: dueDate,
+        progress: 0,
+        visibility,
+      },
+      Boolean(currentUser)
+    )
+
+    setNewProjectErrors(validation.errors)
+
+    if (!validation.isValid) return
+
+    setIsSavingProject(true)
 
     const { data, error } = await supabase
       .from("projects")
       .insert([
         {
-          name: name.trim(),
-          description: description.trim(),
-          due_date: dueDate,
+          name: validation.values.name,
+          description: validation.values.description,
+          due_date: validation.values.due_date,
           progress: 0,
           user_id: currentUser?.id ?? null,
-          visibility,
+          visibility: validation.values.visibility,
         },
       ])
       .select()
+
+    setIsSavingProject(false)
 
     if (error) {
       console.error("Error creating project:", error)
@@ -137,6 +165,7 @@ export default function Home() {
     setDescription("")
     setDueDate("")
     setVisibility("public")
+    setNewProjectErrors({})
     setIsOpen(false)
   }
 
@@ -145,26 +174,42 @@ export default function Home() {
     setEditName(project.name)
     setEditDescription(project.description ?? "")
     setEditDueDate(project.due_date ?? "")
+    setEditProjectErrors({})
     setIsEditOpen(true)
   }
 
   const updateProject = async () => {
     if (!editingProject) return
-    if (!editName.trim() || !editDescription.trim() || !editDueDate.trim()) {
-      return
-    }
 
     setErrorMessage("")
+
+    const validation = validateProjectForm(
+      {
+        name: editName,
+        description: editDescription,
+        due_date: editDueDate,
+        visibility: editingProject.visibility,
+      },
+      editingProject.visibility === "private" || Boolean(currentUser)
+    )
+
+    setEditProjectErrors(validation.errors)
+
+    if (!validation.isValid) return
+
+    setIsSavingProject(true)
 
     const { data, error } = await supabase
       .from("projects")
       .update({
-        name: editName.trim(),
-        description: editDescription.trim(),
-        due_date: editDueDate,
+        name: validation.values.name,
+        description: validation.values.description,
+        due_date: validation.values.due_date,
       })
       .eq("id", editingProject.id)
       .select()
+
+    setIsSavingProject(false)
 
     if (error) {
       console.error("Error updating project:", error)
@@ -189,6 +234,7 @@ export default function Home() {
     setEditName("")
     setEditDescription("")
     setEditDueDate("")
+    setEditProjectErrors({})
   }
 
   const openDeleteModal = (project: Project) => {
@@ -310,11 +356,37 @@ export default function Home() {
           dueDate={dueDate}
           visibility={visibility}
           canCreatePrivate={Boolean(currentUser)}
-          onNameChange={setName}
-          onDescriptionChange={setDescription}
-          onDueDateChange={setDueDate}
-          onVisibilityChange={setVisibility}
-          onCancel={() => setIsOpen(false)}
+          errors={newProjectErrors}
+          isSaving={isSavingProject}
+          onNameChange={(value) => {
+            setName(value)
+            setNewProjectErrors((current) => ({ ...current, name: undefined }))
+          }}
+          onDescriptionChange={(value) => {
+            setDescription(value)
+            setNewProjectErrors((current) => ({
+              ...current,
+              description: undefined,
+            }))
+          }}
+          onDueDateChange={(value) => {
+            setDueDate(value)
+            setNewProjectErrors((current) => ({
+              ...current,
+              due_date: undefined,
+            }))
+          }}
+          onVisibilityChange={(value) => {
+            setVisibility(value)
+            setNewProjectErrors((current) => ({
+              ...current,
+              visibility: undefined,
+            }))
+          }}
+          onCancel={() => {
+            setIsOpen(false)
+            setNewProjectErrors({})
+          }}
           onCreateProject={addProject}
         />
       )}
@@ -324,9 +396,29 @@ export default function Home() {
           editName={editName}
           editDescription={editDescription}
           editDueDate={editDueDate}
-          onEditNameChange={setEditName}
-          onEditDescriptionChange={setEditDescription}
-          onEditDueDateChange={setEditDueDate}
+          errors={editProjectErrors}
+          isSaving={isSavingProject}
+          onEditNameChange={(value) => {
+            setEditName(value)
+            setEditProjectErrors((current) => ({
+              ...current,
+              name: undefined,
+            }))
+          }}
+          onEditDescriptionChange={(value) => {
+            setEditDescription(value)
+            setEditProjectErrors((current) => ({
+              ...current,
+              description: undefined,
+            }))
+          }}
+          onEditDueDateChange={(value) => {
+            setEditDueDate(value)
+            setEditProjectErrors((current) => ({
+              ...current,
+              due_date: undefined,
+            }))
+          }}
           onCancel={closeEditModal}
           onSaveProject={updateProject}
         />

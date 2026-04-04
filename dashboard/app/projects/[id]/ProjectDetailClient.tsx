@@ -10,6 +10,10 @@ import {
   getDeadlineStatus,
 } from "@/lib/project-deadline"
 import type { Project } from "@/lib/projects"
+import {
+  validateProjectForm,
+  type ProjectFormErrors,
+} from "@/lib/project-validation"
 import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 
@@ -25,6 +29,7 @@ export default function ProjectDetailClient({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
   const [deleteError, setDeleteError] = useState("")
 
   const [editForm, setEditForm] = useState({
@@ -35,26 +40,32 @@ export default function ProjectDetailClient({
   })
 
   async function handleUpdateProject() {
-    if (
-      !editForm.name.trim() ||
-      !editForm.description.trim() ||
-      !editForm.due_date.trim()
-    ) {
-      return
-    }
-
-    setIsSaving(true)
     setSaveError("")
 
-    const progressValue = Math.max(0, Math.min(100, Number(editForm.progress)))
+    const validation = validateProjectForm(
+      {
+        name: editForm.name,
+        description: editForm.description,
+        due_date: editForm.due_date,
+        progress: editForm.progress,
+        visibility: project.visibility,
+      },
+      project.visibility === "private" || Boolean(currentUser)
+    )
+
+    setSaveFieldErrors(validation.errors)
+
+    if (!validation.isValid) return
+
+    setIsSaving(true)
 
     const { error } = await supabase
       .from("projects")
       .update({
-        name: editForm.name.trim(),
-        description: editForm.description.trim(),
-        progress: progressValue,
-        due_date: editForm.due_date,
+        name: validation.values.name,
+        description: validation.values.description,
+        progress: validation.values.progress ?? project.progress,
+        due_date: validation.values.due_date,
       })
       .eq("id", project.id)
 
@@ -240,6 +251,7 @@ export default function ProjectDetailClient({
                     due_date: project.due_date ?? "",
                   })
                   setSaveError("")
+                  setSaveFieldErrors({})
                   setIsEditOpen(true)
                 }}
                 className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
@@ -277,11 +289,20 @@ export default function ProjectDetailClient({
                 <input
                   type="text"
                   value={editForm.name}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setEditForm({ ...editForm, name: e.target.value })
-                  }
+                    setSaveFieldErrors((current) => ({
+                      ...current,
+                      name: undefined,
+                    }))
+                  }}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                 />
+                {saveFieldErrors.name && (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {saveFieldErrors.name}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -291,11 +312,20 @@ export default function ProjectDetailClient({
                 <textarea
                   rows={4}
                   value={editForm.description}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setEditForm({ ...editForm, description: e.target.value })
-                  }
+                    setSaveFieldErrors((current) => ({
+                      ...current,
+                      description: undefined,
+                    }))
+                  }}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                 />
+                {saveFieldErrors.description && (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {saveFieldErrors.description}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -307,14 +337,23 @@ export default function ProjectDetailClient({
                   min={0}
                   max={100}
                   value={editForm.progress}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setEditForm({
                       ...editForm,
                       progress: Number(e.target.value),
                     })
-                  }
+                    setSaveFieldErrors((current) => ({
+                      ...current,
+                      progress: undefined,
+                    }))
+                  }}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                 />
+                {saveFieldErrors.progress && (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {saveFieldErrors.progress}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -324,11 +363,20 @@ export default function ProjectDetailClient({
                 <input
                   type="date"
                   value={editForm.due_date}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setEditForm({ ...editForm, due_date: e.target.value })
-                  }
+                    setSaveFieldErrors((current) => ({
+                      ...current,
+                      due_date: undefined,
+                    }))
+                  }}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                 />
+                {saveFieldErrors.due_date && (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {saveFieldErrors.due_date}
+                  </p>
+                )}
               </div>
 
               {saveError && (
@@ -341,6 +389,7 @@ export default function ProjectDetailClient({
                 onClick={() => {
                   setIsEditOpen(false)
                   setSaveError("")
+                  setSaveFieldErrors({})
                 }}
                 disabled={isSaving}
                 className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -350,12 +399,7 @@ export default function ProjectDetailClient({
 
               <button
                 onClick={handleUpdateProject}
-                disabled={
-                  isSaving ||
-                  !editForm.name.trim() ||
-                  !editForm.description.trim() ||
-                  !editForm.due_date.trim()
-                }
+                disabled={isSaving || !editForm.name.trim()}
                 className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSaving ? "Saving..." : "Save Changes"}
