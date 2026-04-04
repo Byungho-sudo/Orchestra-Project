@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { getSafeNextPath } from "@/lib/auth-redirect";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthCallbackPage() {
@@ -9,12 +10,14 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const confirmEmailSession = async () => {
-      const code = new URLSearchParams(window.location.search).get("code");
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get("code");
+      const nextPath = getSafeNextPath(searchParams);
 
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-        router.replace(error ? "/login" : "/");
+        router.replace(error ? "/login" : nextPath);
         return;
       }
 
@@ -22,7 +25,7 @@ export default function AuthCallbackPage() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      router.replace(session ? "/" : "/login");
+      router.replace(session ? nextPath : "/login");
     };
 
     confirmEmailSession();

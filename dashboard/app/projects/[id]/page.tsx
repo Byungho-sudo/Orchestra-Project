@@ -1,6 +1,5 @@
 import Link from "next/link"
-import { cookies } from "next/headers"
-import { createServerClient } from "@supabase/ssr"
+import { createSupabaseServerClient } from "@/lib/supabase-server"
 import ProjectDetailClient from "./ProjectDetailClient"
 
 type Project = {
@@ -20,21 +19,7 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const cookieStore = await cookies()
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set() {},
-        remove() {},
-      },
-    }
-  )
+  const supabase = await createSupabaseServerClient()
 
   const { data: project, error } = await supabase
     .from("projects")

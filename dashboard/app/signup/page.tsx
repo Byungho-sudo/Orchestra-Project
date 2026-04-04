@@ -1,17 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { getSafeNextPath } from "@/lib/auth-redirect";
 import { supabase } from "@/lib/supabase";
 
 export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
+
+  const nextPath = getSafeNextPath(searchParams);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -19,11 +31,11 @@ export default function SignupPage() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (session) router.push("/");
+      if (session) router.push(nextPath);
     };
 
     loadSession();
-  }, [router]);
+  }, [nextPath, router]);
 
   const signup = async () => {
     if (!email.trim() || !password.trim()) return;
@@ -35,7 +47,9 @@ export default function SignupPage() {
       email: email.trim(),
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+          nextPath
+        )}`,
       },
     });
 
@@ -45,7 +59,7 @@ export default function SignupPage() {
     }
 
     if (data.session) {
-      router.push("/");
+      router.push(nextPath);
       return;
     }
 
@@ -89,7 +103,7 @@ export default function SignupPage() {
 
         <div className="mt-6 flex items-center justify-between">
           <Link
-            href="/login"
+            href={nextPath === "/" ? "/login" : `/login?next=${encodeURIComponent(nextPath)}`}
             className="text-sm font-medium text-indigo-600 hover:underline"
           >
             Log in instead

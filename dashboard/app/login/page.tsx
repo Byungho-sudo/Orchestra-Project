@@ -1,16 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { getSafeNextPath } from "@/lib/auth-redirect";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
+
+  const nextPath = getSafeNextPath(searchParams);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -18,11 +30,11 @@ export default function LoginPage() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (session) router.push("/");
+      if (session) router.push(nextPath);
     };
 
     loadSession();
-  }, [router]);
+  }, [nextPath, router]);
 
   const login = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,7 +53,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    router.push(nextPath);
   };
 
   return (
@@ -76,7 +88,7 @@ export default function LoginPage() {
 
           <div className="mt-6 flex items-center justify-between">
           <Link
-            href="/signup"
+            href={nextPath === "/" ? "/signup" : `/signup?next=${encodeURIComponent(nextPath)}`}
             className="text-sm font-medium text-indigo-600 hover:underline"
           >
             Create account
