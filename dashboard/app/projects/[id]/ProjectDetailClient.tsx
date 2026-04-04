@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -29,15 +29,37 @@ type ProjectWorkspaceForm = {
   notes: string
 }
 
+type TaskDueStatus =
+  | "completed"
+  | "overdue"
+  | "due_today"
+  | "due_soon"
+  | "future"
+  | "no_deadline"
+
+type TaskSaveState = "idle" | "saving" | "saved" | "error"
+
 const detailCardClassName =
   "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
 const sectionCardClassName =
   "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
 const fieldCardClassName =
   "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
+const taskStatusRank: Record<TaskDueStatus, number> = {
+  completed: 0,
+  overdue: 1,
+  due_today: 2,
+  due_soon: 3,
+  no_deadline: 4,
+  future: 5,
+}
 
 function getTaskDueDateValue(dueDate: string | null) {
   return dueDate ? dueDate.slice(0, 10) : ""
+}
+
+function getTaskCompletedDateValue(completedAt: string | null) {
+  return completedAt ? completedAt.slice(0, 10) : ""
 }
 
 function parseTaskDueDate(dueDate: string | null) {
@@ -111,6 +133,159 @@ function getTaskDueBadge(task: ProjectTask) {
   }
 }
 
+void getTaskDueBadge
+
+function parseTaskDateInput(dateValue: string) {
+  if (!dateValue) return null
+
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue)
+
+  if (!dateMatch) return null
+
+  const year = Number(dateMatch[1])
+  const monthIndex = Number(dateMatch[2]) - 1
+  const day = Number(dateMatch[3])
+  const parsedDate = new Date(year, monthIndex, day)
+
+  if (
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() !== monthIndex ||
+    parsedDate.getDate() !== day
+  ) {
+    return null
+  }
+
+  parsedDate.setHours(0, 0, 0, 0)
+
+  return parsedDate
+}
+
+function normalizeTaskDueDateInput(dateValue: string) {
+  const trimmedValue = dateValue.trim()
+
+  if (!trimmedValue) return null
+
+  return parseTaskDateInput(trimmedValue) ? trimmedValue : null
+}
+
+function getTaskStatusByDueDate(task: ProjectTask): TaskDueStatus {
+  if (task.completed) return "completed"
+
+  const dueDate = parseTaskDateInput(getTaskDueDateValue(task.due_date))
+
+  if (!dueDate) return "no_deadline"
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const dayDifference = Math.round(
+    (dueDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000)
+  )
+
+  if (dayDifference < 0) return "overdue"
+  if (dayDifference === 0) return "due_today"
+  if (dayDifference <= 2) return "due_soon"
+
+  return "future"
+}
+
+function getTaskStatusBadge(task: ProjectTask) {
+  const dueDateLabel = getTaskDueDateValue(task.due_date)
+  const dueStatus = getTaskStatusByDueDate(task)
+
+  if (dueStatus === "completed") {
+    return {
+      label: `Completed - ${
+        getTaskCompletedDateValue(task.completed_at) ||
+        getTaskCompletedDateValue(new Date().toISOString())
+      }`,
+      className: "bg-green-100 text-green-700",
+    }
+  }
+
+  if (dueStatus === "overdue") {
+    return {
+      label: `Overdue - ${dueDateLabel}`,
+      className: "bg-red-100 text-red-700",
+    }
+  }
+
+  if (dueStatus === "due_today") {
+    return {
+      label: `Due today - ${dueDateLabel}`,
+      className: "bg-red-100 text-red-700",
+    }
+  }
+
+  if (dueStatus === "due_soon") {
+    return {
+      label: `Due soon - ${dueDateLabel}`,
+      className: "bg-amber-100 text-amber-700",
+    }
+  }
+
+  if (dueStatus === "no_deadline") {
+    return {
+      label: "No deadline",
+      className: "bg-slate-100 text-slate-600",
+    }
+  }
+
+  return {
+    label: `Due ${dueDateLabel}`,
+    className: "bg-slate-100 text-slate-600",
+  }
+}
+
+function sortTasksByUrgency(tasks: ProjectTask[]) {
+  return [...tasks].sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1
+
+    if (a.completed && b.completed) {
+      const aCompletedAt = a.completed_at ?? ""
+      const bCompletedAt = b.completed_at ?? ""
+
+      if (aCompletedAt !== bCompletedAt) {
+        return bCompletedAt.localeCompare(aCompletedAt)
+      }
+    }
+
+    const statusDifference =
+      taskStatusRank[getTaskStatusByDueDate(a)] -
+      taskStatusRank[getTaskStatusByDueDate(b)]
+
+    if (statusDifference !== 0) return statusDifference
+
+    const aDueTime =
+      parseTaskDateInput(getTaskDueDateValue(a.due_date))?.getTime() ??
+      Number.MAX_SAFE_INTEGER
+    const bDueTime =
+      parseTaskDateInput(getTaskDueDateValue(b.due_date))?.getTime() ??
+      Number.MAX_SAFE_INTEGER
+
+    if (aDueTime !== bDueTime) return aDueTime - bDueTime
+
+    const createdAtDifference = a.created_at.localeCompare(b.created_at)
+
+    if (createdAtDifference !== 0) return createdAtDifference
+
+    return a.id - b.id
+  })
+}
+
+function getTaskSaveStateLabel(taskSaveState: TaskSaveState) {
+  if (taskSaveState === "saving") return "Saving..."
+  if (taskSaveState === "saved") return "Saved"
+  if (taskSaveState === "error") return "Error"
+  return ""
+}
+
+function getTaskSaveStateClassName(taskSaveState: TaskSaveState) {
+  if (taskSaveState === "error") return "text-red-600"
+  if (taskSaveState === "saved") return "text-emerald-600"
+  return "text-slate-500"
+}
+
 function WorkspaceValue({ value }: { value: string | null }) {
   return (
     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
@@ -169,10 +344,14 @@ export default function ProjectDetailClient({
   const [saveError, setSaveError] = useState("")
   const [workspaceError, setWorkspaceError] = useState("")
   const [taskError, setTaskError] = useState("")
+  const [taskSaveState, setTaskSaveState] = useState<TaskSaveState>("idle")
   const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
   const [deleteError, setDeleteError] = useState("")
   const [newTaskText, setNewTaskText] = useState("")
   const [newTaskDueDate, setNewTaskDueDate] = useState("")
+  const taskSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  )
 
   const [editForm, setEditForm] = useState({
     name: currentProject.name,
@@ -226,6 +405,30 @@ export default function ProjectDetailClient({
 
     loadProjectTasks()
   }, [currentProject.id])
+
+  useEffect(() => {
+    return () => {
+      if (taskSaveResetTimeoutRef.current) {
+        clearTimeout(taskSaveResetTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  function updateTaskSaveState(nextState: TaskSaveState) {
+    if (taskSaveResetTimeoutRef.current) {
+      clearTimeout(taskSaveResetTimeoutRef.current)
+      taskSaveResetTimeoutRef.current = null
+    }
+
+    setTaskSaveState(nextState)
+
+    if (nextState === "saved") {
+      taskSaveResetTimeoutRef.current = setTimeout(() => {
+        setTaskSaveState("idle")
+        taskSaveResetTimeoutRef.current = null
+      }, 1600)
+    }
+  }
 
   async function handleUpdateProject() {
     if (isSaving) return
@@ -340,8 +543,11 @@ export default function ProjectDetailClient({
 
     setTaskError("")
     setIsSavingTasks(true)
+    updateTaskSaveState("saving")
 
     try {
+      const normalizedDueDate = normalizeTaskDueDateInput(newTaskDueDate)
+
       console.log("Updating projectId:", currentProject.id)
 
       const { data, error, status, statusText } = await supabase
@@ -351,7 +557,8 @@ export default function ProjectDetailClient({
             project_id: currentProject.id,
             text: taskText,
             completed: false,
-            due_date: newTaskDueDate || null,
+            completed_at: null,
+            due_date: normalizedDueDate,
           },
         ])
         .select("*")
@@ -371,12 +578,14 @@ export default function ProjectDetailClient({
       setTasks((current) => [...current, data as ProjectTask])
       setNewTaskText("")
       setNewTaskDueDate("")
+      updateTaskSaveState("saved")
       router.refresh()
       return true
     } catch (error) {
       console.error("Task update failed:", error)
       console.error("Task update failed JSON:", JSON.stringify(error, null, 2))
       setTaskError("Failed to update tasks. Please try again.")
+      updateTaskSaveState("error")
       return false
     } finally {
       setIsSavingTasks(false)
@@ -388,13 +597,16 @@ export default function ProjectDetailClient({
 
     setTaskError("")
     setIsSavingTasks(true)
+    updateTaskSaveState("saving")
 
     try {
+      const normalizedDueDate = normalizeTaskDueDateInput(dueDate)
+
       console.log("Updating projectId:", currentProject.id)
 
       const { data, error, status, statusText } = await supabase
         .from("project_tasks")
-        .update({ due_date: dueDate || null })
+        .update({ due_date: normalizedDueDate })
         .eq("id", taskId)
         .eq("project_id", currentProject.id)
         .select("*")
@@ -416,6 +628,7 @@ export default function ProjectDetailClient({
           task.id === taskId ? (data as ProjectTask) : task
         )
       )
+      updateTaskSaveState("saved")
       router.refresh()
     } catch (error) {
       console.error("Task due date update failed:", error)
@@ -424,6 +637,7 @@ export default function ProjectDetailClient({
         JSON.stringify(error, null, 2)
       )
       setTaskError("Failed to update task due date. Please try again.")
+      updateTaskSaveState("error")
     } finally {
       setIsSavingTasks(false)
     }
@@ -438,13 +652,19 @@ export default function ProjectDetailClient({
 
     setTaskError("")
     setIsSavingTasks(true)
+    updateTaskSaveState("saving")
 
     try {
+      const nextCompleted = !taskToUpdate.completed
+
       console.log("Updating projectId:", currentProject.id)
 
       const { data, error, status, statusText } = await supabase
         .from("project_tasks")
-        .update({ completed: !taskToUpdate.completed })
+        .update({
+          completed: nextCompleted,
+          completed_at: nextCompleted ? new Date().toISOString() : null,
+        })
         .eq("id", taskId)
         .eq("project_id", currentProject.id)
         .select("*")
@@ -466,11 +686,13 @@ export default function ProjectDetailClient({
           task.id === taskId ? (data as ProjectTask) : task
         )
       )
+      updateTaskSaveState("saved")
       router.refresh()
     } catch (error) {
       console.error("Task update failed:", error)
       console.error("Task update failed JSON:", JSON.stringify(error, null, 2))
       setTaskError("Failed to update tasks. Please try again.")
+      updateTaskSaveState("error")
     } finally {
       setIsSavingTasks(false)
     }
@@ -481,6 +703,7 @@ export default function ProjectDetailClient({
 
     setTaskError("")
     setIsSavingTasks(true)
+    updateTaskSaveState("saving")
 
     try {
       console.log("Updating projectId:", currentProject.id)
@@ -505,11 +728,13 @@ export default function ProjectDetailClient({
       }
 
       setTasks((current) => current.filter((task) => task.id !== taskId))
+      updateTaskSaveState("saved")
       router.refresh()
     } catch (error) {
       console.error("Task delete failed:", error)
       console.error("Task delete failed JSON:", JSON.stringify(error, null, 2))
       setTaskError("Failed to delete task. Please try again.")
+      updateTaskSaveState("error")
     } finally {
       setIsSavingTasks(false)
     }
@@ -538,6 +763,7 @@ export default function ProjectDetailClient({
   }
 
   const deadlineStatus = getDeadlineStatus(currentProject.due_date)
+  const sortedTasks = sortTasksByUrgency(tasks)
 
   return (
     <>
@@ -818,9 +1044,21 @@ export default function ProjectDetailClient({
             </section>
 
             <section className={sectionCardClassName}>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Tasks / Next Steps
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Tasks / Next Steps
+                </p>
+
+                {taskSaveState !== "idle" && (
+                  <p
+                    className={`text-xs font-semibold uppercase tracking-[0.2em] ${getTaskSaveStateClassName(
+                      taskSaveState
+                    )}`}
+                  >
+                    {getTaskSaveStateLabel(taskSaveState)}
+                  </p>
+                )}
+              </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <input
@@ -852,63 +1090,65 @@ export default function ProjectDetailClient({
               )}
 
               <div className="mt-6 space-y-3">
-                {tasks.length === 0 && (
+                {sortedTasks.length === 0 && (
                   <p className="text-sm text-slate-400">Not added yet</p>
                 )}
 
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <label className="flex flex-1 items-center gap-3 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={task.completed}
-                        onChange={() => handleToggleTask(task.id)}
-                        disabled={isSavingTasks}
-                        className="h-4 w-4 accent-indigo-600"
-                      />
-                      <span
-                        className={
-                          task.completed
-                            ? "text-slate-400 line-through"
-                            : "text-slate-700"
-                        }
-                      >
-                        {task.text}
-                      </span>
-                    </label>
+                {sortedTasks.map((task) => {
+                  const taskStatusBadge = getTaskStatusBadge(task)
 
-                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                      <input
-                        type="date"
-                        value={getTaskDueDateValue(task.due_date)}
-                        onChange={(event) =>
-                          handleUpdateTaskDueDate(task.id, event.target.value)
-                        }
-                        disabled={isSavingTasks}
-                        className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-                      />
-
-                      {getTaskDueBadge(task) && (
+                  return (
+                    <div
+                      key={task.id}
+                      className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <label className="flex flex-1 items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={() => handleToggleTask(task.id)}
+                          disabled={isSavingTasks}
+                          className="h-4 w-4 accent-indigo-600"
+                        />
                         <span
-                          className={`rounded-full px-2 py-1 text-[10px] font-semibold ${getTaskDueBadge(task)?.className}`}
+                          className={
+                            task.completed
+                              ? "text-slate-400 line-through"
+                              : "text-slate-700"
+                          }
                         >
-                          {getTaskDueBadge(task)?.label}
+                          {task.text}
                         </span>
-                      )}
+                      </label>
 
-                      <button
-                        onClick={() => handleDeleteTask(task.id)}
-                        disabled={isSavingTasks}
-                        className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                        <input
+                          type="date"
+                          value={getTaskDueDateValue(task.due_date)}
+                          onChange={(event) =>
+                            handleUpdateTaskDueDate(task.id, event.target.value)
+                          }
+                          disabled={isSavingTasks}
+                          className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+
+                        <span
+                          className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskStatusBadge.className}`}
+                        >
+                          {taskStatusBadge.label}
+                        </span>
+
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          disabled={isSavingTasks}
+                          className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </section>
           </div>
