@@ -9,7 +9,11 @@ import {
   getDeadlineFill,
   getDeadlineStatus,
 } from "@/lib/project-deadline"
-import type { Project, ProjectTask } from "@/lib/projects"
+import type {
+  Project,
+  ProjectTask,
+  ProjectVisibility,
+} from "@/lib/projects"
 import {
   validateProjectForm,
   type ProjectFormErrors,
@@ -276,6 +280,20 @@ function getTaskSaveStateClassName(taskSaveState: TaskSaveState) {
   return "text-slate-500"
 }
 
+function normalizeProgressInputValue(value: string) {
+  const digitsOnly = value.replace(/\D/g, "")
+
+  if (!digitsOnly) return ""
+
+  return String(Math.min(100, Number(digitsOnly)))
+}
+
+function normalizeProgressOnBlur(value: string, fallbackProgress: number) {
+  if (!value.trim()) return String(fallbackProgress)
+
+  return String(Math.min(100, Math.max(0, Number(value))))
+}
+
 function WorkspaceValue({ value }: { value: string | null }) {
   return (
     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
@@ -356,8 +374,9 @@ export default function ProjectDetailClient({
   const [editForm, setEditForm] = useState({
     name: currentProject.name,
     description: currentProject.description ?? "",
-    progress: currentProject.progress,
+    progress: String(currentProject.progress),
     due_date: currentProject.due_date ?? "",
+    visibility: currentProject.visibility,
   })
 
   const [workspaceForm, setWorkspaceForm] = useState<ProjectWorkspaceForm>({
@@ -484,6 +503,14 @@ export default function ProjectDetailClient({
     }
   }
 
+  function closeEditProjectModal() {
+    if (isSaving) return
+
+    setIsEditOpen(false)
+    setSaveError("")
+    setSaveFieldErrors({})
+  }
+
   async function handleUpdateProject() {
     if (isSaving) return
 
@@ -495,9 +522,9 @@ export default function ProjectDetailClient({
         description: editForm.description,
         due_date: editForm.due_date,
         progress: editForm.progress,
-        visibility: currentProject.visibility,
+        visibility: editForm.visibility,
       },
-      currentProject.visibility === "private" || Boolean(currentUser)
+      editForm.visibility === "private" || Boolean(currentUser)
     )
 
     setSaveFieldErrors(validation.errors)
@@ -511,6 +538,7 @@ export default function ProjectDetailClient({
       description: validation.values.description,
       progress: validation.values.progress ?? currentProject.progress,
       due_date: validation.values.due_date,
+      visibility: validation.values.visibility,
     }
 
     const { error } = await supabase
@@ -1020,8 +1048,9 @@ export default function ProjectDetailClient({
                   setEditForm({
                     name: currentProject.name,
                     description: currentProject.description ?? "",
-                    progress: currentProject.progress,
+                    progress: String(currentProject.progress),
                     due_date: currentProject.due_date ?? "",
+                    visibility: currentProject.visibility,
                   })
                   setSaveError("")
                   setSaveFieldErrors({})
@@ -1310,8 +1339,14 @@ export default function ProjectDetailClient({
       </main>
 
       {isEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={closeEditProjectModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <h2 className="text-xl font-bold text-slate-900">Edit Project</h2>
             <p className="mt-1 text-sm text-slate-600">
               Update the project details below.
@@ -1376,13 +1411,22 @@ export default function ProjectDetailClient({
                   onChange={(e) => {
                     setEditForm({
                       ...editForm,
-                      progress: Number(e.target.value),
+                      progress: normalizeProgressInputValue(e.target.value),
                     })
                     setSaveFieldErrors((current) => ({
                       ...current,
                       progress: undefined,
                     }))
                   }}
+                  onBlur={() =>
+                    setEditForm((current) => ({
+                      ...current,
+                      progress: normalizeProgressOnBlur(
+                        current.progress,
+                        currentProject.progress
+                      ),
+                    }))
+                  }
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                 />
                 {saveFieldErrors.progress && (
@@ -1415,6 +1459,34 @@ export default function ProjectDetailClient({
                 )}
               </div>
 
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Visibility
+                </label>
+                <select
+                  value={editForm.visibility}
+                  onChange={(e) => {
+                    setEditForm({
+                      ...editForm,
+                      visibility: e.target.value as ProjectVisibility,
+                    })
+                    setSaveFieldErrors((current) => ({
+                      ...current,
+                      visibility: undefined,
+                    }))
+                  }}
+                  className="w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                >
+                  <option value="private">Private</option>
+                  <option value="public">Public</option>
+                </select>
+                {saveFieldErrors.visibility && (
+                  <p className="mt-1 text-xs font-medium text-red-600">
+                    {saveFieldErrors.visibility}
+                  </p>
+                )}
+              </div>
+
               {saveError && (
                 <p className="text-sm font-medium text-red-600">{saveError}</p>
               )}
@@ -1422,23 +1494,19 @@ export default function ProjectDetailClient({
 
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  if (isSaving) return
-
-                  setIsEditOpen(false)
-                  setSaveError("")
-                  setSaveFieldErrors({})
-                }}
+                type="button"
+                onClick={closeEditProjectModal}
                 disabled={isSaving}
-                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
 
               <button
+                type="button"
                 onClick={handleUpdateProject}
                 disabled={isSaving || !editForm.name.trim()}
-                className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSaving ? "Saving..." : "Save Changes"}
               </button>
