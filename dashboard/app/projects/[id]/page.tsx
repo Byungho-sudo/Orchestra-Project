@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { supabase } from "@/lib/supabase"
+import { cookies } from "next/headers"
+import { createServerClient } from "@supabase/ssr"
 import ProjectDetailClient from "./ProjectDetailClient"
 
 type Project = {
@@ -9,8 +10,8 @@ type Project = {
   progress: number
   due_date: string | null
   created_at: string
-  owner_id: string | null
-  is_public: boolean
+  user_id: string | null
+  visibility: "public" | "private"
 }
 
 export default async function ProjectDetailPage({
@@ -19,20 +20,30 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const cookieStore = await cookies()
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set() {},
+        remove() {},
+      },
+    }
+  )
 
   const { data: project, error } = await supabase
     .from("projects")
     .select("*")
-    .eq("id", id)
-    .single<Project>()
+    .eq("id", Number(id))
+    .single()
 
   if (error) {
-    console.error("Error fetching project:", {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      errorJson: JSON.stringify(error),
-    })
+    console.error("Error fetching project:", error)
 
     return (
       <main className="min-h-screen bg-slate-50 px-6 py-10">
@@ -99,5 +110,5 @@ export default async function ProjectDetailPage({
     )
   }
 
-  return <ProjectDetailClient project={project} />
+  return <ProjectDetailClient project={project as Project} />
 }
