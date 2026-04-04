@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -45,14 +45,7 @@ const sectionCardClassName =
   "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
 const fieldCardClassName =
   "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
-const taskStatusRank: Record<TaskDueStatus, number> = {
-  completed: 0,
-  overdue: 1,
-  due_today: 2,
-  due_soon: 3,
-  no_deadline: 4,
-  future: 5,
-}
+const taskDeleteUndoDurationMs = 8000
 
 function getTaskDueDateValue(dueDate: string | null) {
   return dueDate ? dueDate.slice(0, 10) : ""
@@ -248,28 +241,25 @@ function sortTasksByUrgency(tasks: ProjectTask[]) {
       if (aCompletedAt !== bCompletedAt) {
         return bCompletedAt.localeCompare(aCompletedAt)
       }
+
+      const completedCreatedAtDifference = b.created_at.localeCompare(
+        a.created_at
+      )
+
+      if (completedCreatedAtDifference !== 0) {
+        return completedCreatedAtDifference
+      }
+
+      return b.id - a.id
     }
 
-    const statusDifference =
-      taskStatusRank[getTaskStatusByDueDate(a)] -
-      taskStatusRank[getTaskStatusByDueDate(b)]
+    const createdAtDifference = b.created_at.localeCompare(a.created_at)
 
-    if (statusDifference !== 0) return statusDifference
+    if (createdAtDifference !== 0) {
+      return createdAtDifference
+    }
 
-    const aDueTime =
-      parseTaskDateInput(getTaskDueDateValue(a.due_date))?.getTime() ??
-      Number.MAX_SAFE_INTEGER
-    const bDueTime =
-      parseTaskDateInput(getTaskDueDateValue(b.due_date))?.getTime() ??
-      Number.MAX_SAFE_INTEGER
-
-    if (aDueTime !== bDueTime) return aDueTime - bDueTime
-
-    const createdAtDifference = a.created_at.localeCompare(b.created_at)
-
-    if (createdAtDifference !== 0) return createdAtDifference
-
-    return a.id - b.id
+    return b.id - a.id
   })
 }
 
@@ -339,6 +329,7 @@ export default function ProjectDetailClient({
   const [isWorkspaceEditOpen, setIsWorkspaceEditOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingWorkspace, setIsSavingWorkspace] = useState(false)
+  const [isSavingTask, setIsSavingTask] = useState(false)
   const [isSavingTasks, setIsSavingTasks] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
@@ -349,9 +340,18 @@ export default function ProjectDetailClient({
   const [deleteError, setDeleteError] = useState("")
   const [newTaskText, setNewTaskText] = useState("")
   const [newTaskDueDate, setNewTaskDueDate] = useState("")
+  const [taskInputError, setTaskInputError] = useState(false)
+  const [pendingDeletedTask, setPendingDeletedTask] =
+    useState<ProjectTask | null>(null)
+  const [isUndoTimerRunning, setIsUndoTimerRunning] = useState(false)
+  const newTaskInputRef = useRef<HTMLInputElement | null>(null)
   const taskSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
+  const taskDeleteUndoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  )
+  const pendingDeletedTaskRef = useRef<ProjectTask | null>(null)
 
   const [editForm, setEditForm] = useState({
     name: currentProject.name,
@@ -411,6 +411,11 @@ export default function ProjectDetailClient({
       if (taskSaveResetTimeoutRef.current) {
         clearTimeout(taskSaveResetTimeoutRef.current)
       }
+
+      if (taskDeleteUndoTimeoutRef.current) {
+        clearTimeout(taskDeleteUndoTimeoutRef.current)
+      }
+
     }
   }, [])
 
@@ -427,6 +432,55 @@ export default function ProjectDetailClient({
         setTaskSaveState("idle")
         taskSaveResetTimeoutRef.current = null
       }, 1600)
+    }
+  }
+
+  function clearPendingTaskDeleteTimeout() {
+    if (taskDeleteUndoTimeoutRef.current) {
+      clearTimeout(taskDeleteUndoTimeoutRef.current)
+      taskDeleteUndoTimeoutRef.current = null
+    }
+
+  }
+
+  async function commitTaskDelete(taskToDelete: ProjectTask) {
+    setTaskError("")
+    updateTaskSaveState("saving")
+
+    try {
+      console.log("Updating projectId:", currentProject.id)
+
+      const { data, error, status, statusText } = await supabase
+        .from("project_tasks")
+        .delete()
+        .eq("id", taskToDelete.id)
+        .eq("project_id", taskToDelete.project_id)
+        .select("id")
+        .single()
+
+      logSupabaseMutationResult("Task delete", {
+        data,
+        error,
+        status,
+        statusText,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      updateTaskSaveState("saved")
+      router.refresh()
+    } catch (error) {
+      console.error("Task delete failed:", error)
+      console.error("Task delete failed JSON:", JSON.stringify(error, null, 2))
+      setTasks((current) =>
+        current.some((task) => task.id === taskToDelete.id)
+          ? current
+          : [...current, taskToDelete]
+      )
+      setTaskError("Failed to delete task. Please try again.")
+      updateTaskSaveState("error")
     }
   }
 
@@ -535,19 +589,34 @@ export default function ProjectDetailClient({
   }
 
   async function handleAddTask() {
-    if (isSavingTasks) return
+    if (isSavingTask || isSavingTasks) return
 
     const taskText = newTaskText.trim()
 
-    if (!taskText) return
+    if (!taskText) {
+      setTaskInputError(true)
+      return
+    }
 
+    const normalizedDueDate = normalizeTaskDueDateInput(newTaskDueDate)
+    const temporaryTaskId = -Date.now()
+    const temporaryTask: ProjectTask = {
+      id: temporaryTaskId,
+      project_id: currentProject.id,
+      text: taskText,
+      completed: false,
+      completed_at: null,
+      due_date: normalizedDueDate,
+      created_at: new Date().toISOString(),
+    }
+
+    setTaskInputError(false)
     setTaskError("")
-    setIsSavingTasks(true)
+    setIsSavingTask(true)
     updateTaskSaveState("saving")
+    setTasks((current) => [...current, temporaryTask])
 
     try {
-      const normalizedDueDate = normalizeTaskDueDateInput(newTaskDueDate)
-
       console.log("Updating projectId:", currentProject.id)
 
       const { data, error, status, statusText } = await supabase
@@ -575,21 +644,42 @@ export default function ProjectDetailClient({
         throw error
       }
 
-      setTasks((current) => [...current, data as ProjectTask])
+      setTasks((current) =>
+        current.map((task) =>
+          task.id === temporaryTaskId ? (data as ProjectTask) : task
+        )
+      )
       setNewTaskText("")
       setNewTaskDueDate("")
       updateTaskSaveState("saved")
+      newTaskInputRef.current?.focus()
       router.refresh()
       return true
     } catch (error) {
       console.error("Task update failed:", error)
       console.error("Task update failed JSON:", JSON.stringify(error, null, 2))
+      setTasks((current) =>
+        current.filter((task) => task.id !== temporaryTaskId)
+      )
       setTaskError("Failed to update tasks. Please try again.")
       updateTaskSaveState("error")
       return false
     } finally {
-      setIsSavingTasks(false)
+      setIsSavingTask(false)
     }
+  }
+
+  function handleNewTaskKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return
+
+    event.preventDefault()
+
+    if (!newTaskText.trim()) {
+      setTaskInputError(true)
+      return
+    }
+
+    void handleAddTask()
   }
 
   async function handleUpdateTaskDueDate(taskId: number, dueDate: string) {
@@ -698,46 +788,58 @@ export default function ProjectDetailClient({
     }
   }
 
-  async function handleDeleteTask(taskId: number) {
+  function handleDeleteTask(taskId: number) {
     if (isSavingTasks) return
 
-    setTaskError("")
-    setIsSavingTasks(true)
-    updateTaskSaveState("saving")
+    const taskToDelete = tasks.find((task) => task.id === taskId)
 
-    try {
-      console.log("Updating projectId:", currentProject.id)
+    if (!taskToDelete) return
 
-      const { data, error, status, statusText } = await supabase
-        .from("project_tasks")
-        .delete()
-        .eq("id", taskId)
-        .eq("project_id", currentProject.id)
-        .select("id")
-        .single()
+    const previousPendingTask = pendingDeletedTaskRef.current
 
-      logSupabaseMutationResult("Task delete", {
-        data,
-        error,
-        status,
-        statusText,
-      })
+    clearPendingTaskDeleteTimeout()
 
-      if (error) {
-        throw error
-      }
-
-      setTasks((current) => current.filter((task) => task.id !== taskId))
-      updateTaskSaveState("saved")
-      router.refresh()
-    } catch (error) {
-      console.error("Task delete failed:", error)
-      console.error("Task delete failed JSON:", JSON.stringify(error, null, 2))
-      setTaskError("Failed to delete task. Please try again.")
-      updateTaskSaveState("error")
-    } finally {
-      setIsSavingTasks(false)
+    if (previousPendingTask) {
+      void commitTaskDelete(previousPendingTask)
     }
+
+    pendingDeletedTaskRef.current = taskToDelete
+    setPendingDeletedTask(taskToDelete)
+    setIsUndoTimerRunning(false)
+    setTaskError("")
+    setTasks((current) => current.filter((task) => task.id !== taskId))
+
+    requestAnimationFrame(() => {
+      setIsUndoTimerRunning(true)
+    })
+
+    taskDeleteUndoTimeoutRef.current = setTimeout(() => {
+      const taskPendingDelete = pendingDeletedTaskRef.current
+
+      if (!taskPendingDelete) return
+
+      clearPendingTaskDeleteTimeout()
+      pendingDeletedTaskRef.current = null
+      setPendingDeletedTask(null)
+      setIsUndoTimerRunning(false)
+      void commitTaskDelete(taskPendingDelete)
+    }, taskDeleteUndoDurationMs)
+  }
+
+  function handleUndoDeleteTask() {
+    const taskToRestore = pendingDeletedTaskRef.current
+
+    if (!taskToRestore) return
+
+    clearPendingTaskDeleteTimeout()
+    pendingDeletedTaskRef.current = null
+    setPendingDeletedTask(null)
+    setIsUndoTimerRunning(false)
+    setTasks((current) =>
+      current.some((task) => task.id === taskToRestore.id)
+        ? current
+        : [...current, taskToRestore]
+    )
   }
 
   async function confirmDeleteProject() {
@@ -1062,11 +1164,20 @@ export default function ProjectDetailClient({
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <input
+                  ref={newTaskInputRef}
                   type="text"
                   value={newTaskText}
-                  onChange={(event) => setNewTaskText(event.target.value)}
+                  onChange={(event) => {
+                    setNewTaskText(event.target.value)
+                    if (taskInputError && event.target.value.trim()) {
+                      setTaskInputError(false)
+                    }
+                  }}
+                  onKeyDown={handleNewTaskKeyDown}
                   placeholder="Add a new task"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500 ${
+                    taskInputError ? "border-red-300 bg-red-50" : "border-slate-300"
+                  }`}
                 />
                 <input
                   type="date"
@@ -1076,7 +1187,7 @@ export default function ProjectDetailClient({
                 />
                 <button
                   onClick={handleAddTask}
-                  disabled={isSavingTasks || !newTaskText.trim()}
+                  disabled={isSavingTask || !newTaskText.trim()}
                   className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Add Task
@@ -1100,7 +1211,9 @@ export default function ProjectDetailClient({
                   return (
                     <div
                       key={task.id}
-                      className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:flex-row sm:items-center sm:justify-between"
+                      className={`flex flex-col gap-3 rounded-xl border border-slate-200 p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors duration-200 sm:flex-row sm:items-center sm:justify-between ${
+                        task.completed ? "bg-slate-50 opacity-80" : "bg-white opacity-100"
+                      }`}
                     >
                       <label className="flex flex-1 items-center gap-3 text-sm">
                         <input
@@ -1113,8 +1226,8 @@ export default function ProjectDetailClient({
                         <span
                           className={
                             task.completed
-                              ? "text-slate-400 line-through"
-                              : "text-slate-700"
+                              ? "text-slate-400 line-through transition-all duration-200"
+                              : "text-slate-700 transition-all duration-200"
                           }
                         >
                           {task.text}
@@ -1149,6 +1262,47 @@ export default function ProjectDetailClient({
                     </div>
                   )
                 })}
+              </div>
+
+              <div
+                className={`overflow-hidden transition-all duration-300 ${
+                  pendingDeletedTask
+                    ? "mt-4 max-h-24 opacity-100"
+                    : "mt-0 max-h-0 opacity-0"
+                }`}
+              >
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 [&>button]:hidden [&>span]:hidden">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate">
+                      Deleted: {pendingDeletedTask?.text ?? ""}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleUndoDeleteTask}
+                      className="shrink-0 text-sm font-medium text-indigo-600 hover:underline"
+                    >
+                      Undo
+                    </button>
+                  </div>
+
+                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full origin-left rounded-full bg-indigo-500 transition-transform ease-linear"
+                      style={{
+                        transform: isUndoTimerRunning ? "scaleX(0)" : "scaleX(1)",
+                        transitionDuration: `${taskDeleteUndoDurationMs}ms`,
+                      }}
+                    />
+                  </div>
+                  <span>Task deleted — Undo</span>
+                  <button
+                    type="button"
+                    onClick={handleUndoDeleteTask}
+                    className="text-sm font-medium text-indigo-600 hover:underline"
+                  >
+                    Undo
+                  </button>
+                </div>
               </div>
             </section>
           </div>
