@@ -1,6 +1,11 @@
 import { getDeadlineStatus, type DeadlineFilter } from "@/lib/project-deadline"
 
 export type ProjectVisibility = "public" | "private"
+export type ProjectStatus =
+  | "not_started"
+  | "in_progress"
+  | "blocked"
+  | "completed"
 export type SortOption = "due_date" | "created_at" | "name" | "progress"
 
 export type Project = {
@@ -12,6 +17,7 @@ export type Project = {
   created_at: string
   user_id: string | null
   visibility: ProjectVisibility
+  status: ProjectStatus
 }
 
 export function sortProjects(projects: Project[], sortBy: SortOption) {

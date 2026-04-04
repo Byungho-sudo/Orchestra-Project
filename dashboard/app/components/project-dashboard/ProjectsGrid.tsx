@@ -21,11 +21,18 @@ import {
 import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 
-export function ProjectsGrid() {
+export function ProjectsGrid({
+  isCreateProjectOpen,
+  onOpenCreateProject,
+  onCloseCreateProject,
+}: {
+  isCreateProjectOpen: boolean
+  onOpenCreateProject: () => void
+  onCloseCreateProject: () => void
+}) {
   const router = useRouter()
   const { currentUser } = useCurrentUser()
 
-  const [isOpen, setIsOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [isCreatingProject, setIsCreatingProject] = useState(false)
@@ -133,6 +140,7 @@ export function ProjectsGrid() {
           progress: 0,
           user_id: currentUser?.id ?? null,
           visibility: validation.values.visibility,
+          status: "not_started",
         },
       ])
       .select()
@@ -154,7 +162,7 @@ export function ProjectsGrid() {
     setDueDate("")
     setVisibility("public")
     setNewProjectErrors({})
-    setIsOpen(false)
+    onCloseCreateProject()
   }
 
   if (loading) {
@@ -187,7 +195,7 @@ export function ProjectsGrid() {
             Create your first project to start building your dashboard.
           </p>
           <button
-            onClick={() => setIsOpen(true)}
+            onClick={onOpenCreateProject}
             className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
           >
             Create First Project
@@ -220,7 +228,7 @@ export function ProjectsGrid() {
         </div>
       )}
 
-      {isOpen && (
+      {isCreateProjectOpen && (
         <NewProjectModal
           name={name}
           description={description}
@@ -255,7 +263,7 @@ export function ProjectsGrid() {
             }))
           }}
           onCancel={() => {
-            setIsOpen(false)
+            onCloseCreateProject()
             setNewProjectErrors({})
           }}
           onCreateProject={addProject}
