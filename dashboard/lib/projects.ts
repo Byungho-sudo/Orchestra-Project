@@ -9,9 +9,11 @@ export type ProjectStatus =
 export type SortOption = "due_date" | "created_at" | "name" | "progress"
 
 export type ProjectTask = {
-  id: string
+  id: number
+  project_id: number
   text: string
   completed: boolean
+  created_at: string
 }
 
 export type Project = {
@@ -33,7 +35,6 @@ export type Project = {
   supplier: string | null
   budget: string | null
   notes: string | null
-  tasks: ProjectTask[]
 }
 
 export function sortProjects(projects: Project[], sortBy: SortOption) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -29,20 +29,41 @@ type ProjectWorkspaceForm = {
   notes: string
 }
 
-function getTaskId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID()
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
 function WorkspaceValue({ value }: { value: string | null }) {
   return (
     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
       {value?.trim() || <span className="text-slate-400">Not added yet</span>}
     </p>
   )
+}
+
+function logSupabaseMutationResult(
+  label: string,
+  result: {
+    data: unknown
+    error: unknown
+    status: number
+    statusText: string
+  }
+) {
+  console.log(`${label} result:`, result)
+
+  if (result.error) {
+    console.error(`${label} failed:`, result.error)
+    console.error(
+      `${label} failed JSON:`,
+      JSON.stringify(result.error, null, 2)
+    )
+    console.error(`${label} failed details:`, {
+      name: (result.error as { name?: string })?.name,
+      message: (result.error as { message?: string })?.message,
+      code: (result.error as { code?: string })?.code,
+      details: (result.error as { details?: string })?.details,
+      hint: (result.error as { hint?: string })?.hint,
+      status: result.status,
+      statusText: result.statusText,
+    })
+  }
 }
 
 export default function ProjectDetailClient({
@@ -53,10 +74,8 @@ export default function ProjectDetailClient({
   const router = useRouter()
   const { currentUser, logout } = useCurrentUser()
 
-  const [currentProject, setCurrentProject] = useState<Project>({
-    ...project,
-    tasks: project.tasks ?? [],
-  })
+  const [currentProject, setCurrentProject] = useState<Project>(project)
+  const [tasks, setTasks] = useState<ProjectTask[]>([])
 
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -90,6 +109,40 @@ export default function ProjectDetailClient({
     budget: currentProject.budget ?? "",
     notes: currentProject.notes ?? "",
   })
+
+  useEffect(() => {
+    async function loadProjectTasks() {
+      setTaskError("")
+
+      const { data, error, status, statusText } = await supabase
+        .from("project_tasks")
+        .select("*")
+        .eq("project_id", currentProject.id)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+
+      console.log("Project tasks fetch result:", {
+        data,
+        error,
+        status,
+        statusText,
+      })
+
+      if (error) {
+        console.error("Project tasks fetch failed:", error)
+        console.error(
+          "Project tasks fetch failed JSON:",
+          JSON.stringify(error, null, 2)
+        )
+        setTaskError("Failed to load tasks. Please refresh and try again.")
+        return
+      }
+
+      setTasks((data as ProjectTask[]) || [])
+    }
+
+    loadProjectTasks()
+  }, [currentProject.id])
 
   async function handleUpdateProject() {
     if (isSaving) return
@@ -140,6 +193,10 @@ export default function ProjectDetailClient({
   async function handleUpdateWorkspace() {
     if (isSavingWorkspace) return
 
+    const projectId = currentProject.id
+
+    console.log("Updating projectId:", projectId)
+
     setWorkspaceError("")
     setIsSavingWorkspace(true)
 
@@ -155,73 +212,176 @@ export default function ProjectDetailClient({
       notes: workspaceForm.notes.trim() || null,
     }
 
-    const { error } = await supabase
-      .from("projects")
-      .update(updates)
-      .eq("id", currentProject.id)
+    try {
+      const { data, error, status, statusText } = await supabase
+        .from("projects")
+        .update(updates)
+        .eq("id", projectId)
+        .select("*")
+        .single()
 
-    setIsSavingWorkspace(false)
+      logSupabaseMutationResult("Workspace update", {
+        data,
+        error,
+        status,
+        statusText,
+      })
 
-    if (error) {
+      if (error) {
+        throw error
+      }
+
+      setCurrentProject({
+        ...(data as Project),
+      })
+      setIsWorkspaceEditOpen(false)
+      router.refresh()
+    } catch (error) {
+      console.error("Workspace update failed:", error)
+      console.error(
+        "Workspace update failed JSON:",
+        JSON.stringify(error, null, 2)
+      )
       setWorkspaceError("Failed to save workspace. Please try again.")
-      return
+    } finally {
+      setIsSavingWorkspace(false)
     }
-
-    setCurrentProject((current) => ({ ...current, ...updates }))
-    setIsWorkspaceEditOpen(false)
-    router.refresh()
-  }
-
-  async function saveTasks(nextTasks: ProjectTask[]) {
-    if (isSavingTasks) return false
-
-    setTaskError("")
-    setIsSavingTasks(true)
-
-    const { error } = await supabase
-      .from("projects")
-      .update({ tasks: nextTasks })
-      .eq("id", currentProject.id)
-
-    setIsSavingTasks(false)
-
-    if (error) {
-      setTaskError("Failed to update tasks. Please try again.")
-      return false
-    }
-
-    setCurrentProject((current) => ({ ...current, tasks: nextTasks }))
-    router.refresh()
-    return true
   }
 
   async function handleAddTask() {
+    if (isSavingTasks) return
+
     const taskText = newTaskText.trim()
 
     if (!taskText) return
 
-    const didSave = await saveTasks([
-      ...(currentProject.tasks ?? []),
-      { id: getTaskId(), text: taskText, completed: false },
-    ])
+    setTaskError("")
+    setIsSavingTasks(true)
 
-    if (didSave) {
+    try {
+      console.log("Updating projectId:", currentProject.id)
+
+      const { data, error, status, statusText } = await supabase
+        .from("project_tasks")
+        .insert([
+          {
+            project_id: currentProject.id,
+            text: taskText,
+            completed: false,
+          },
+        ])
+        .select("*")
+        .single()
+
+      logSupabaseMutationResult("Task update", {
+        data,
+        error,
+        status,
+        statusText,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      setTasks((current) => [...current, data as ProjectTask])
       setNewTaskText("")
+      router.refresh()
+      return true
+    } catch (error) {
+      console.error("Task update failed:", error)
+      console.error("Task update failed JSON:", JSON.stringify(error, null, 2))
+      setTaskError("Failed to update tasks. Please try again.")
+      return false
+    } finally {
+      setIsSavingTasks(false)
     }
   }
 
-  async function handleToggleTask(taskId: string) {
-    await saveTasks(
-      (currentProject.tasks ?? []).map((task) =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
+  async function handleToggleTask(taskId: number) {
+    if (isSavingTasks) return
+
+    const taskToUpdate = tasks.find((task) => task.id === taskId)
+
+    if (!taskToUpdate) return
+
+    setTaskError("")
+    setIsSavingTasks(true)
+
+    try {
+      console.log("Updating projectId:", currentProject.id)
+
+      const { data, error, status, statusText } = await supabase
+        .from("project_tasks")
+        .update({ completed: !taskToUpdate.completed })
+        .eq("id", taskId)
+        .eq("project_id", currentProject.id)
+        .select("*")
+        .single()
+
+      logSupabaseMutationResult("Task update", {
+        data,
+        error,
+        status,
+        statusText,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      setTasks((current) =>
+        current.map((task) =>
+          task.id === taskId ? (data as ProjectTask) : task
+        )
       )
-    )
+      router.refresh()
+    } catch (error) {
+      console.error("Task update failed:", error)
+      console.error("Task update failed JSON:", JSON.stringify(error, null, 2))
+      setTaskError("Failed to update tasks. Please try again.")
+    } finally {
+      setIsSavingTasks(false)
+    }
   }
 
-  async function handleDeleteTask(taskId: string) {
-    await saveTasks(
-      (currentProject.tasks ?? []).filter((task) => task.id !== taskId)
-    )
+  async function handleDeleteTask(taskId: number) {
+    if (isSavingTasks) return
+
+    setTaskError("")
+    setIsSavingTasks(true)
+
+    try {
+      console.log("Updating projectId:", currentProject.id)
+
+      const { data, error, status, statusText } = await supabase
+        .from("project_tasks")
+        .delete()
+        .eq("id", taskId)
+        .eq("project_id", currentProject.id)
+        .select("id")
+        .single()
+
+      logSupabaseMutationResult("Task delete", {
+        data,
+        error,
+        status,
+        statusText,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      setTasks((current) => current.filter((task) => task.id !== taskId))
+      router.refresh()
+    } catch (error) {
+      console.error("Task delete failed:", error)
+      console.error("Task delete failed JSON:", JSON.stringify(error, null, 2))
+      setTaskError("Failed to delete task. Please try again.")
+    } finally {
+      setIsSavingTasks(false)
+    }
   }
 
   async function confirmDeleteProject() {
@@ -555,11 +715,11 @@ export default function ProjectDetailClient({
               )}
 
               <div className="mt-6 space-y-3">
-                {(currentProject.tasks ?? []).length === 0 && (
+                {tasks.length === 0 && (
                   <p className="text-sm text-slate-400">Not added yet</p>
                 )}
 
-                {(currentProject.tasks ?? []).map((task) => (
+                {tasks.map((task) => (
                   <div
                     key={task.id}
                     className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
