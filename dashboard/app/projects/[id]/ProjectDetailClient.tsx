@@ -1,6 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
@@ -44,6 +51,37 @@ type TaskDueStatus =
 
 type TaskSaveState = "idle" | "saving" | "saved" | "error"
 
+type ProjectModuleType =
+  | "workspace_plan"
+  | "planning_operations"
+  | "tasks"
+  | "timeline"
+  | "assets"
+  | "text_grid"
+  | "notes"
+  | "checklist"
+  | "metrics"
+  | "links"
+
+type ProjectWorkspaceModule = {
+  id: string
+  title: string
+  type: ProjectModuleType
+  order: number
+}
+
+type ProjectModuleRecord = {
+  id: string
+  title: string
+  type: ProjectModuleType
+  order: number
+}
+
+type CreateProjectModuleForm = {
+  title: string
+  type: ProjectModuleType
+}
+
 const detailCardClassName =
   "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
 const sectionCardClassName =
@@ -57,6 +95,55 @@ const projectWorkspaceNavigation = [
   { href: "#tasks", label: "Task Board" },
   { href: "#timeline", label: "Timeline" },
   { href: "#assets", label: "Assets" },
+]
+const projectWorkspaceModules: ProjectWorkspaceModule[] = [
+  {
+    id: "overview",
+    title: "Workspace Plan",
+    type: "workspace_plan",
+    order: 1,
+  },
+  {
+    id: "operations",
+    title: "Planning / Operations",
+    type: "planning_operations",
+    order: 2,
+  },
+  {
+    id: "tasks",
+    title: "Tasks / Next Steps",
+    type: "tasks",
+    order: 3,
+  },
+  {
+    id: "timeline",
+    title: "Timeline",
+    type: "timeline",
+    order: 4,
+  },
+  {
+    id: "assets",
+    title: "Assets",
+    type: "assets",
+    order: 5,
+  },
+]
+const defaultProjectModuleAnchors: Partial<Record<ProjectModuleType, string>> = {
+  workspace_plan: "overview",
+  planning_operations: "operations",
+  tasks: "tasks",
+  timeline: "timeline",
+  assets: "assets",
+}
+const customProjectModuleOptions: Array<{
+  label: string
+  value: ProjectModuleType
+}> = [
+  { label: "Text Grid", value: "text_grid" },
+  { label: "Notes", value: "notes" },
+  { label: "Checklist", value: "checklist" },
+  { label: "Metrics", value: "metrics" },
+  { label: "Links", value: "links" },
 ]
 
 function getTaskDueDateValue(dueDate: string | null) {
@@ -329,6 +416,128 @@ function WorkspaceValue({ value }: { value: string | null }) {
   )
 }
 
+function ProjectModule({
+  module,
+  isFirst,
+  isLast,
+  isDeleting,
+  isMoving,
+  onDelete,
+  onMoveDown,
+  onMoveUp,
+  children,
+}: {
+  module: ProjectWorkspaceModule
+  isFirst: boolean
+  isLast: boolean
+  isDeleting: boolean
+  isMoving: boolean
+  onDelete: (moduleId: string) => void
+  onMoveDown: (moduleId: string) => void
+  onMoveUp: (moduleId: string) => void
+  children: ReactNode
+}) {
+  return (
+    <section
+      id={defaultProjectModuleAnchors[module.type] || module.id}
+      className={sectionCardClassName}
+    >
+      <div className="mb-4 flex flex-wrap justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => onMoveUp(module.id)}
+          disabled={isFirst || isMoving || isDeleting}
+          className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Move Up
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onMoveDown(module.id)}
+          disabled={isLast || isMoving || isDeleting}
+          className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Move Down
+        </button>
+      </div>
+
+      {children}
+
+      <div className="mt-6 flex justify-end">
+        <button
+          type="button"
+          onClick={() => onDelete(module.id)}
+          disabled={isDeleting}
+          className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isDeleting ? "Deleting..." : "Delete Module"}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function CustomProjectModulePlaceholder({
+  module,
+}: {
+  module: ProjectWorkspaceModule
+}) {
+  const moduleDescriptions: Partial<Record<ProjectModuleType, string>> = {
+    text_grid: "Organize structured text fields in this module.",
+    notes: "Capture long-form notes and working context here.",
+    checklist: "Track custom checklist items in this module.",
+    metrics: "Summarize key project metrics in this module.",
+    links: "Collect important project links and references here.",
+  }
+
+  return (
+    <>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+        {module.title}
+      </p>
+      <p className="mt-4 text-sm leading-6 text-slate-600">
+        {moduleDescriptions[module.type] ||
+          "This custom module is ready for a future content pass."}
+      </p>
+    </>
+  )
+}
+
+function mapWorkspaceModules(moduleRows: ProjectModuleRecord[]) {
+  return moduleRows
+    .map((module) => ({
+      id: module.id,
+      title: module.title,
+      type: module.type,
+      order: module.order,
+    }))
+    .sort((firstModule, secondModule) => firstModule.order - secondModule.order)
+    .map((module, moduleIndex) => ({
+      ...module,
+      order: moduleIndex + 1,
+    }))
+}
+
+function getDefaultWorkspaceModuleRows(projectId: number) {
+  return projectWorkspaceModules.map((module) => ({
+    project_id: projectId,
+    title: module.title,
+    type: module.type,
+    order: module.order,
+  }))
+}
+
+function isProjectModulesSchemaMissingError(error: unknown) {
+  const errorCode = (error as { code?: string } | null)?.code
+  const errorMessage = (error as { message?: string } | null)?.message || ""
+
+  return (
+    errorCode === "PGRST205" ||
+    errorMessage.includes("Could not find the table 'public.project_modules'")
+  )
+}
+
 function logSupabaseMutationResult(
   label: string,
   result: {
@@ -368,17 +577,25 @@ export default function ProjectDetailClient({
 
   const [currentProject, setCurrentProject] = useState<Project>(project)
   const [tasks, setTasks] = useState<ProjectTask[]>([])
+  const [workspaceModules, setWorkspaceModules] =
+    useState<ProjectWorkspaceModule[]>(projectWorkspaceModules)
 
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isWorkspaceEditOpen, setIsWorkspaceEditOpen] = useState(false)
+  const [isAddModuleOpen, setIsAddModuleOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingWorkspace, setIsSavingWorkspace] = useState(false)
   const [isSavingTask, setIsSavingTask] = useState(false)
   const [isSavingTasks, setIsSavingTasks] = useState(false)
+  const [isCreatingModule, setIsCreatingModule] = useState(false)
+  const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null)
+  const [movingModuleId, setMovingModuleId] = useState<string | null>(null)
+  const [isResettingModules, setIsResettingModules] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
   const [workspaceError, setWorkspaceError] = useState("")
+  const [moduleError, setModuleError] = useState("")
   const [taskError, setTaskError] = useState("")
   const [taskSaveState, setTaskSaveState] = useState<TaskSaveState>("idle")
   const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
@@ -417,6 +634,107 @@ export default function ProjectDetailClient({
     budget: currentProject.budget ?? "",
     notes: currentProject.notes ?? "",
   })
+  const [createModuleForm, setCreateModuleForm] =
+    useState<CreateProjectModuleForm>({
+      title: "",
+      type: "notes",
+    })
+
+  const loadWorkspaceModules = useCallback(async () => {
+    const { data, error, status, statusText } = await supabase
+      .from("project_modules")
+      .select("id,title,type,order")
+      .eq("project_id", currentProject.id)
+      .order("order", { ascending: true })
+      .order("created_at", { ascending: true })
+
+    logSupabaseMutationResult("Project modules fetch", {
+      data,
+      error,
+      status,
+      statusText,
+    })
+
+    if (error) {
+      if (isProjectModulesSchemaMissingError(error)) {
+        console.warn(
+          "Project modules table is unavailable. Rendering default workspace modules only.",
+          error
+        )
+        setWorkspaceModules(projectWorkspaceModules)
+        return
+      }
+
+      console.error("Project modules fetch failed:", error)
+      setWorkspaceModules(projectWorkspaceModules)
+      return
+    }
+
+    const moduleRows = (data as ProjectModuleRecord[]) || []
+
+    if (moduleRows.length > 0) {
+      const normalizedModules = mapWorkspaceModules(moduleRows)
+
+      if (
+        moduleRows.some((moduleRow, moduleIndex) => moduleRow.order !== moduleIndex + 1)
+      ) {
+        const normalizeResults = await Promise.all(
+          normalizedModules.map((module) =>
+            supabase
+              .from("project_modules")
+              .update({ order: module.order })
+              .eq("id", module.id)
+              .eq("project_id", currentProject.id)
+          )
+        )
+        const normalizeError = normalizeResults.find(
+          (result) => result.error
+        )?.error
+
+        if (normalizeError) {
+          console.warn(
+            "Failed to normalize project module ordering. Rendering normalized order locally.",
+            normalizeError
+          )
+        }
+      }
+
+      setWorkspaceModules(normalizedModules)
+      return
+    }
+
+    const {
+      data: defaultModulesData,
+      error: defaultModulesError,
+      status: defaultModulesStatus,
+      statusText: defaultModulesStatusText,
+    } = await supabase
+      .from("project_modules")
+      .insert(getDefaultWorkspaceModuleRows(currentProject.id))
+      .select("id,title,type,order")
+      .order("order", { ascending: true })
+      .order("created_at", { ascending: true })
+
+    logSupabaseMutationResult("Default project modules insert", {
+      data: defaultModulesData,
+      error: defaultModulesError,
+      status: defaultModulesStatus,
+      statusText: defaultModulesStatusText,
+    })
+
+    if (defaultModulesError) {
+      console.warn(
+        "Failed to seed default project modules. Rendering local defaults only.",
+        defaultModulesError
+      )
+      setWorkspaceModules(projectWorkspaceModules)
+      return
+    }
+
+    setWorkspaceModules(
+      mapWorkspaceModules((defaultModulesData as ProjectModuleRecord[]) || [])
+    )
+  }, [currentProject.id])
 
   useEffect(() => {
     async function loadProjectTasks() {
@@ -451,6 +769,10 @@ export default function ProjectDetailClient({
 
     loadProjectTasks()
   }, [currentProject.id])
+
+  useEffect(() => {
+    loadWorkspaceModules()
+  }, [loadWorkspaceModules])
 
   useEffect(() => {
     return () => {
@@ -545,11 +867,230 @@ export default function ProjectDetailClient({
     setWorkspaceError("")
   }
 
+  function closeAddModuleModal() {
+    if (isCreatingModule) return
+
+    setIsAddModuleOpen(false)
+    setModuleError("")
+    setCreateModuleForm({
+      title: "",
+      type: "notes",
+    })
+  }
+
   function closeDeleteProjectModal() {
     if (isDeleting) return
 
     setIsDeleteOpen(false)
     setDeleteError("")
+  }
+
+  async function handleCreateWorkspaceModule() {
+    if (isCreatingModule || isResettingModules || deletingModuleId || movingModuleId) {
+      return
+    }
+
+    const moduleTitle = createModuleForm.title.trim()
+
+    if (!moduleTitle) {
+      setModuleError("Module title is required.")
+      return
+    }
+
+    setModuleError("")
+    setIsCreatingModule(true)
+
+    const nextOrder =
+      Math.max(0, ...workspaceModules.map((module) => module.order)) + 1
+
+    const { data, error, status, statusText } = await supabase
+      .from("project_modules")
+      .insert({
+        project_id: currentProject.id,
+        title: moduleTitle,
+        type: createModuleForm.type,
+        order: nextOrder,
+      })
+      .select("id,title,type,order")
+      .single()
+
+    logSupabaseMutationResult("Project module insert", {
+      data,
+      error,
+      status,
+      statusText,
+    })
+
+    setIsCreatingModule(false)
+
+    if (error) {
+      if (isProjectModulesSchemaMissingError(error)) {
+        console.warn(
+          "Project modules table is unavailable. Custom modules cannot be saved until the migration is applied.",
+          error
+        )
+        setModuleError(
+          "Custom modules are unavailable until the project_modules table is created."
+        )
+        setWorkspaceModules(projectWorkspaceModules)
+        return
+      }
+
+      setModuleError("Failed to create module. Please try again.")
+      return
+    }
+
+    await loadWorkspaceModules()
+    closeAddModuleModal()
+  }
+
+  async function handleDeleteWorkspaceModule(moduleId: string) {
+    if (deletingModuleId || isResettingModules || movingModuleId) return
+
+    setModuleError("")
+    setDeletingModuleId(moduleId)
+
+    const { error } = await supabase
+      .from("project_modules")
+      .delete()
+      .eq("id", moduleId)
+      .eq("project_id", currentProject.id)
+
+    setDeletingModuleId(null)
+
+    if (error) {
+      if (isProjectModulesSchemaMissingError(error)) {
+        console.warn(
+          "Project modules table is unavailable. Module delete is disabled until the migration is applied.",
+          error
+        )
+      } else {
+        console.error("Project module delete failed:", error)
+      }
+
+      setModuleError("Failed to delete module. Please try again.")
+      return
+    }
+
+    const nextModules = workspaceModules
+      .filter((module) => module.id !== moduleId)
+      .sort((firstModule, secondModule) => firstModule.order - secondModule.order)
+      .map((module, moduleIndex) => ({
+        ...module,
+        order: moduleIndex + 1,
+      }))
+
+    if (nextModules.length > 0) {
+      const updateResults = await Promise.all(
+        nextModules.map((module) =>
+          supabase
+            .from("project_modules")
+            .update({ order: module.order })
+            .eq("id", module.id)
+            .eq("project_id", currentProject.id)
+        )
+      )
+
+      const updateError = updateResults.find((result) => result.error)?.error
+
+      if (updateError) {
+        console.error("Project module reorder after delete failed:", updateError)
+        setModuleError("Module was deleted, but order cleanup failed.")
+      }
+    }
+
+    await loadWorkspaceModules()
+  }
+
+  async function handleMoveWorkspaceModule(
+    moduleId: string,
+    direction: "up" | "down"
+  ) {
+    if (movingModuleId || deletingModuleId || isResettingModules || isCreatingModule) {
+      return
+    }
+
+    const sortedModules = [...workspaceModules].sort(
+      (firstModule, secondModule) => firstModule.order - secondModule.order
+    )
+    const moduleIndex = sortedModules.findIndex(
+      (module) => module.id === moduleId
+    )
+    const swapIndex = direction === "up" ? moduleIndex - 1 : moduleIndex + 1
+
+    if (
+      moduleIndex === -1 ||
+      swapIndex < 0 ||
+      swapIndex >= sortedModules.length
+    ) {
+      return
+    }
+
+    const currentModule = sortedModules[moduleIndex]
+    const adjacentModule = sortedModules[swapIndex]
+
+    setModuleError("")
+    setMovingModuleId(moduleId)
+
+    const [currentUpdateResult, adjacentUpdateResult] = await Promise.all([
+      supabase
+        .from("project_modules")
+        .update({ order: adjacentModule.order })
+        .eq("id", currentModule.id)
+        .eq("project_id", currentProject.id),
+      supabase
+        .from("project_modules")
+        .update({ order: currentModule.order })
+        .eq("id", adjacentModule.id)
+        .eq("project_id", currentProject.id),
+    ])
+
+    setMovingModuleId(null)
+
+    const updateError = currentUpdateResult.error || adjacentUpdateResult.error
+
+    if (updateError) {
+      console.error("Project module move failed:", updateError)
+      setModuleError("Failed to reorder module. Please try again.")
+      return
+    }
+
+    await loadWorkspaceModules()
+  }
+
+  async function handleResetWorkspaceModules() {
+    if (isResettingModules || isCreatingModule || deletingModuleId || movingModuleId) {
+      return
+    }
+
+    setModuleError("")
+    setIsResettingModules(true)
+
+    const { error: deleteError } = await supabase
+      .from("project_modules")
+      .delete()
+      .eq("project_id", currentProject.id)
+
+    if (deleteError) {
+      console.error("Project module reset delete failed:", deleteError)
+      setModuleError("Failed to reset modules. Please try again.")
+      setIsResettingModules(false)
+      return
+    }
+
+    const { error: insertError } = await supabase
+      .from("project_modules")
+      .insert(getDefaultWorkspaceModuleRows(currentProject.id))
+
+    if (insertError) {
+      console.error("Project module reset insert failed:", insertError)
+      setModuleError("Failed to recreate default modules. Please try again.")
+      setIsResettingModules(false)
+      return
+    }
+
+    await loadWorkspaceModules()
+    setIsResettingModules(false)
   }
 
   async function handleUpdateProject() {
@@ -935,6 +1476,9 @@ export default function ProjectDetailClient({
 
   const deadlineStatus = getDeadlineStatus(currentProject.due_date)
   const sortedTasks = sortTasksByUrgency(tasks)
+  const sortedWorkspaceModules = [...workspaceModules].sort(
+    (firstModule, secondModule) => firstModule.order - secondModule.order
+  )
   const hasEditProjectChanges =
     editForm.name !== currentProject.name ||
     editForm.description !== (currentProject.description ?? "") ||
@@ -951,6 +1495,315 @@ export default function ProjectDetailClient({
     workspaceForm.supplier !== (currentProject.supplier ?? "") ||
     workspaceForm.budget !== (currentProject.budget ?? "") ||
     workspaceForm.notes !== (currentProject.notes ?? "")
+  const hasCreateModuleChanges =
+    createModuleForm.title.trim() !== "" || createModuleForm.type !== "notes"
+
+  function renderProjectModuleContent(module: ProjectWorkspaceModule) {
+    if (module.type === "workspace_plan") {
+      return (
+        <>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Project Overview
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-900">
+                {module.title}
+              </h2>
+            </div>
+
+            <button
+              onClick={() => {
+                setWorkspaceForm({
+                  intention: currentProject.intention ?? "",
+                  idea: currentProject.idea ?? "",
+                  target_buyer: currentProject.target_buyer ?? "",
+                  product: currentProject.product ?? "",
+                  price: currentProject.price ?? "",
+                  tools: currentProject.tools ?? "",
+                  supplier: currentProject.supplier ?? "",
+                  budget: currentProject.budget ?? "",
+                  notes: currentProject.notes ?? "",
+                })
+                setWorkspaceError("")
+                setIsWorkspaceEditOpen(true)
+              }}
+              className="hidden rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Edit Workspace
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Intention
+              </p>
+              <WorkspaceValue value={currentProject.intention} />
+            </div>
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Idea
+              </p>
+              <WorkspaceValue value={currentProject.idea} />
+            </div>
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Target Buyer
+              </p>
+              <WorkspaceValue value={currentProject.target_buyer} />
+            </div>
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Product
+              </p>
+              <WorkspaceValue value={currentProject.product} />
+            </div>
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Price
+              </p>
+              <WorkspaceValue value={currentProject.price} />
+            </div>
+          </div>
+        </>
+      )
+    }
+
+    if (module.type === "planning_operations") {
+      return (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {module.title}
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Tools
+              </p>
+              <WorkspaceValue value={currentProject.tools} />
+            </div>
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Supplier
+              </p>
+              <WorkspaceValue value={currentProject.supplier} />
+            </div>
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Budget
+              </p>
+              <WorkspaceValue value={currentProject.budget} />
+            </div>
+            <div className={`${fieldCardClassName} md:col-span-2`}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Notes
+              </p>
+              <WorkspaceValue value={currentProject.notes} />
+            </div>
+          </div>
+        </>
+      )
+    }
+
+    if (module.type === "tasks") {
+      return (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              {module.title}
+            </p>
+
+            {taskSaveState !== "idle" && (
+              <p
+                className={`text-xs font-semibold uppercase tracking-[0.2em] ${getTaskSaveStateClassName(
+                  taskSaveState
+                )}`}
+              >
+                {getTaskSaveStateLabel(taskSaveState)}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <input
+              ref={newTaskInputRef}
+              type="text"
+              value={newTaskText}
+              onChange={(event) => {
+                setNewTaskText(event.target.value)
+                if (taskInputError && event.target.value.trim()) {
+                  setTaskInputError(false)
+                }
+              }}
+              onKeyDown={handleNewTaskKeyDown}
+              placeholder="Add a new task"
+              className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500 ${
+                taskInputError
+                  ? "border-red-300 bg-red-50"
+                  : "border-slate-300"
+              }`}
+            />
+            <input
+              type="date"
+              value={newTaskDueDate}
+              onChange={(event) => setNewTaskDueDate(event.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
+            />
+            <button
+              onClick={handleAddTask}
+              disabled={isSavingTask || !newTaskText.trim()}
+              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Add Task
+            </button>
+          </div>
+
+          {taskError && (
+            <p className="mt-3 text-sm font-medium text-red-600">
+              {taskError}
+            </p>
+          )}
+
+          <div className="mt-6 space-y-3">
+            {sortedTasks.length === 0 && (
+              <p className="text-sm text-slate-400">Not added yet</p>
+            )}
+
+            {sortedTasks.map((task) => {
+              const taskStatusBadge = getTaskStatusBadge(task)
+
+              return (
+                <div
+                  key={task.id}
+                  className={`flex flex-col gap-3 rounded-xl border border-slate-200 p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors duration-200 sm:flex-row sm:items-center sm:justify-between ${
+                    task.completed
+                      ? "bg-slate-50 opacity-80"
+                      : "bg-white opacity-100"
+                  }`}
+                >
+                  <label className="flex flex-1 items-center gap-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={() => handleToggleTask(task.id)}
+                      disabled={isSavingTasks}
+                      className="h-4 w-4 accent-indigo-600"
+                    />
+                    <span
+                      className={
+                        task.completed
+                          ? "text-slate-400 line-through transition-all duration-200"
+                          : "text-slate-700 transition-all duration-200"
+                      }
+                    >
+                      {task.text}
+                    </span>
+                  </label>
+
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <input
+                      type="date"
+                      value={getTaskDueDateValue(task.due_date)}
+                      onChange={(event) =>
+                        handleUpdateTaskDueDate(task.id, event.target.value)
+                      }
+                      disabled={isSavingTasks}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    />
+
+                    <span
+                      className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskStatusBadge.className}`}
+                    >
+                      {taskStatusBadge.label}
+                    </span>
+
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      disabled={isSavingTasks}
+                      className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div
+            className={`overflow-hidden transition-all duration-300 ${
+              pendingDeletedTask
+                ? "mt-4 max-h-24 opacity-100"
+                : "mt-0 max-h-0 opacity-0"
+            }`}
+          >
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 [&>button]:hidden [&>span]:hidden">
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate">
+                  Deleted: {pendingDeletedTask?.text ?? ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleUndoDeleteTask}
+                  className="shrink-0 text-sm font-medium text-indigo-600 hover:underline"
+                >
+                  Undo
+                </button>
+              </div>
+
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full origin-left rounded-full bg-indigo-500 transition-transform ease-linear"
+                  style={{
+                    transform: isUndoTimerRunning ? "scaleX(0)" : "scaleX(1)",
+                    transitionDuration: `${taskDeleteUndoDurationMs}ms`,
+                  }}
+                />
+              </div>
+              <span>Task deleted â€” Undo</span>
+              <button
+                type="button"
+                onClick={handleUndoDeleteTask}
+                className="text-sm font-medium text-indigo-600 hover:underline"
+              >
+                Undo
+              </button>
+            </div>
+          </div>
+        </>
+      )
+    }
+
+    if (module.type === "timeline") {
+      return (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {module.title}
+          </p>
+          <p className="mt-4 text-sm leading-6 text-slate-600">
+            Timeline details can be organized here in a future pass.
+          </p>
+        </>
+      )
+    }
+
+    if (module.type === "assets") {
+      return (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {module.title}
+          </p>
+          <p className="mt-4 text-sm leading-6 text-slate-600">
+            Project assets can be organized here in a future pass.
+          </p>
+        </>
+      )
+    }
+
+    return <CustomProjectModulePlaceholder module={module} />
+  }
 
   return (
     <>
@@ -1157,6 +2010,69 @@ export default function ProjectDetailClient({
           </div>
 
           <div className="mt-8 space-y-8">
+            <div className="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleResetWorkspaceModules}
+                disabled={
+                  isResettingModules ||
+                  isCreatingModule ||
+                  Boolean(deletingModuleId) ||
+                  Boolean(movingModuleId)
+                }
+                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isResettingModules ? "Resetting..." : "Reset to default"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setModuleError("")
+                  setCreateModuleForm({
+                    title: "",
+                    type: "notes",
+                  })
+                  setIsAddModuleOpen(true)
+                }}
+                disabled={
+                  isResettingModules ||
+                  isCreatingModule ||
+                  Boolean(deletingModuleId) ||
+                  Boolean(movingModuleId)
+                }
+                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Add Module
+              </button>
+            </div>
+
+            {moduleError && (
+              <p className="text-sm font-medium text-red-600">{moduleError}</p>
+            )}
+
+            {sortedWorkspaceModules.map((module, moduleIndex) => (
+              <ProjectModule
+                key={module.id}
+                module={module}
+                isFirst={moduleIndex === 0}
+                isLast={moduleIndex === sortedWorkspaceModules.length - 1}
+                isDeleting={deletingModuleId === module.id || isResettingModules}
+                isMoving={movingModuleId === module.id || isResettingModules}
+                onDelete={handleDeleteWorkspaceModule}
+                onMoveDown={(moduleId) =>
+                  handleMoveWorkspaceModule(moduleId, "down")
+                }
+                onMoveUp={(moduleId) =>
+                  handleMoveWorkspaceModule(moduleId, "up")
+                }
+              >
+                {renderProjectModuleContent(module)}
+              </ProjectModule>
+            ))}
+          </div>
+
+          <div className="hidden">
             <section id="overview" className={sectionCardClassName}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -1439,27 +2355,9 @@ export default function ProjectDetailClient({
           </div>
 
           <aside className={`${detailCardClassName} lg:sticky lg:top-6`}>
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Context
-              </p>
-
-              {currentUser ? (
-                <button
-                  onClick={logout}
-                  className="text-sm font-medium text-slate-700 hover:underline"
-                >
-                  Log out
-                </button>
-              ) : (
-                <Link
-                  href="/login"
-                  className="text-sm font-medium text-slate-700 hover:underline"
-                >
-                  Log in
-                </Link>
-              )}
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Project Context
+            </p>
 
             <div className="mt-6 space-y-4">
               <div className={fieldCardClassName}>
@@ -1552,63 +2450,81 @@ export default function ProjectDetailClient({
               </div>
             </div>
 
-            <div className="mt-6 space-y-3">
-              <button
-                onClick={() => {
-                  setEditForm({
-                    name: currentProject.name,
-                    description: currentProject.description ?? "",
-                    progress: String(currentProject.progress),
-                    due_date: currentProject.due_date ?? "",
-                    visibility: currentProject.visibility,
-                  })
-                  setSaveError("")
-                  setSaveFieldErrors({})
-                  setIsEditOpen(true)
-                }}
-                className="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-              >
-                Edit Project
-              </button>
+            <div className="mt-6 space-y-4">
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Primary Actions
+                </p>
 
-              <button
-                onClick={() => {
-                  setWorkspaceForm({
-                    intention: currentProject.intention ?? "",
-                    idea: currentProject.idea ?? "",
-                    target_buyer: currentProject.target_buyer ?? "",
-                    product: currentProject.product ?? "",
-                    price: currentProject.price ?? "",
-                    tools: currentProject.tools ?? "",
-                    supplier: currentProject.supplier ?? "",
-                    budget: currentProject.budget ?? "",
-                    notes: currentProject.notes ?? "",
-                  })
-                  setWorkspaceError("")
-                  setIsWorkspaceEditOpen(true)
-                }}
-                className="inline-flex w-full justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Edit Workspace
-              </button>
+                <button
+                  onClick={() => {
+                    setEditForm({
+                      name: currentProject.name,
+                      description: currentProject.description ?? "",
+                      progress: String(currentProject.progress),
+                      due_date: currentProject.due_date ?? "",
+                      visibility: currentProject.visibility,
+                    })
+                    setSaveError("")
+                    setSaveFieldErrors({})
+                    setIsEditOpen(true)
+                  }}
+                  className="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  Edit Project
+                </button>
 
-              <button
-                type="button"
-                disabled
-                className="inline-flex w-full cursor-not-allowed justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-400 opacity-70"
-              >
-                Archive Project
-              </button>
+                <button
+                  onClick={() => {
+                    setWorkspaceForm({
+                      intention: currentProject.intention ?? "",
+                      idea: currentProject.idea ?? "",
+                      target_buyer: currentProject.target_buyer ?? "",
+                      product: currentProject.product ?? "",
+                      price: currentProject.price ?? "",
+                      tools: currentProject.tools ?? "",
+                      supplier: currentProject.supplier ?? "",
+                      budget: currentProject.budget ?? "",
+                      notes: currentProject.notes ?? "",
+                    })
+                    setWorkspaceError("")
+                    setIsWorkspaceEditOpen(true)
+                  }}
+                  className="inline-flex w-full justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Edit Workspace
+                </button>
+              </div>
 
-              <button
-                onClick={() => {
-                  setDeleteError("")
-                  setIsDeleteOpen(true)
-                }}
-                className="inline-flex w-full justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500"
-              >
-                Delete Project
-              </button>
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Secondary Action
+                </p>
+
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex w-full cursor-not-allowed justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-400 opacity-70"
+                >
+                  Archive Project
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Destructive Action
+                </p>
+
+                <button
+                  onClick={() => {
+                    setDeleteError("")
+                    setIsDeleteOpen(true)
+                  }}
+                  className="inline-flex w-full justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500"
+                >
+                  Delete Project
+                </button>
+              </div>
             </div>
           </aside>
         </div>
@@ -1871,6 +2787,94 @@ export default function ProjectDetailClient({
                 {isSavingWorkspace ? "Saving..." : "Save Workspace"}
               </button>
             </div>
+            </>
+          )}
+        </ModalShell>
+      )}
+
+      {isAddModuleOpen && (
+        <ModalShell
+          hasUnsavedChanges={hasCreateModuleChanges}
+          isDismissDisabled={isCreatingModule}
+          panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          onClose={closeAddModuleModal}
+        >
+          {({ requestClose }) => (
+            <>
+              <h2 className="text-xl font-bold text-slate-900">Add Module</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Create a new workspace module in the center column.
+              </p>
+
+              <div className="mt-6 space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Module Title
+                  </label>
+                  <input
+                    type="text"
+                    value={createModuleForm.title}
+                    onChange={(event) => {
+                      setCreateModuleForm((current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                      if (moduleError && event.target.value.trim()) {
+                        setModuleError("")
+                      }
+                    }}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Module Type
+                  </label>
+                  <select
+                    value={createModuleForm.type}
+                    onChange={(event) =>
+                      setCreateModuleForm((current) => ({
+                        ...current,
+                        type: event.target.value as ProjectModuleType,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                  >
+                    {customProjectModuleOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {moduleError && (
+                <p className="mt-4 text-sm font-medium text-red-600">
+                  {moduleError}
+                </p>
+              )}
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={requestClose}
+                  disabled={isCreatingModule}
+                  className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCreateWorkspaceModule}
+                  disabled={isCreatingModule || !createModuleForm.title.trim()}
+                  className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  {isCreatingModule ? "Creating..." : "Create Module"}
+                </button>
+              </div>
             </>
           )}
         </ModalShell>
