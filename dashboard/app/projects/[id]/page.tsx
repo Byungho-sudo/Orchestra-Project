@@ -9,6 +9,8 @@ type Project = {
   progress: number
   due_date: string | null
   created_at: string
+  owner_id: string | null
+  is_public: boolean
 }
 
 export default async function ProjectDetailPage({
@@ -25,6 +27,13 @@ export default async function ProjectDetailPage({
     .single<Project>()
 
   if (error) {
+    console.error("Error fetching project:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      errorJson: JSON.stringify(error),
+    })
+
     return (
       <main className="min-h-screen bg-slate-50 px-6 py-10">
         <div className="mx-auto max-w-3xl">

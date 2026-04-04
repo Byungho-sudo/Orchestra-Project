@@ -35,10 +35,13 @@ type Project = {
   progress: number;
   due_date: string | null;
   created_at: string;
+  owner_id: string | null;
+  is_public: boolean;
 };
 
 type SortOption = "due_date" | "created_at" | "name" | "progress";
 type DeadlineFilter = "All" | "Overdue" | "Due today" | "Due soon" | "No deadline";
+type VisibilityOption = "public" | "private";
 
 export default function Home() {
   /**
@@ -92,6 +95,7 @@ export default function Home() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [visibility, setVisibility] = useState<VisibilityOption>("public");
 
   /**
    * Controlled form state for the "Edit Project" modal.
@@ -230,13 +234,24 @@ export default function Home() {
     const fetchProjects = async () => {
       setErrorMessage("");
 
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .order("due_date", { ascending: true });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const query = supabase.from("projects").select("*");
+      const { data, error } = user
+        ? await query
+            .or(`visibility.eq.public,user_id.eq.${user.id}`)
+            .order("due_date", { ascending: true })
+        : await query
+            .eq("visibility", "public")
+            .order("due_date", { ascending: true });
 
       if (error) {
-        console.error("Error fetching projects:", error);
+        console.error("Supabase error:", error);
+        console.error("message:", error?.message);
+        console.error("details:", error?.details);
+        console.error("hint:", error?.hint);
         setErrorMessage("Failed to load projects. Please try again.");
       } else {
         setProjects(data || []);
@@ -292,6 +307,8 @@ export default function Home() {
           description: description.trim(),
           due_date: dueDate,
           progress: 0,
+          user_id: currentUser?.id ?? null,
+          visibility,
         },
       ])
       .select();
@@ -309,6 +326,7 @@ export default function Home() {
     setName("");
     setDescription("");
     setDueDate("");
+    setVisibility("public");
     setIsOpen(false);
   };
 
@@ -695,6 +713,18 @@ export default function Home() {
                 onChange={(event) => setDueDate(event.target.value)}
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-indigo-500 focus:ring-2"
               />
+              <select
+                value={visibility}
+                onChange={(event) =>
+                  setVisibility(event.target.value as VisibilityOption)
+                }
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-indigo-500 focus:ring-2"
+              >
+                <option value="public">Public</option>
+                <option value="private" disabled={!currentUser}>
+                  Private
+                </option>
+              </select>
             </div>
 
             <div className="mt-5 flex justify-end gap-2">

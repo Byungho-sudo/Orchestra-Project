@@ -13,6 +13,8 @@ type Project = {
   progress: number
   due_date: string | null
   created_at: string
+  owner_id: string | null
+  is_public: boolean
 }
 
 export default function ProjectDetailClient({
