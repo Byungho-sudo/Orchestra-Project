@@ -13,6 +13,7 @@ export type ProjectTask = {
   project_id: number
   text: string
   completed: boolean
+  due_date: string | null
   created_at: string
 }
 

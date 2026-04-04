@@ -20,7 +20,7 @@ export function ProjectCard({
   return (
     <article
       onClick={onOpenProject}
-      className="cursor-pointer rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+      className="cursor-pointer rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm transition hover:shadow-md"
     >
       <h3 className="text-base font-semibold">{project.name}</h3>
       <p className="mt-1 min-h-[2.5rem] text-sm text-slate-600">

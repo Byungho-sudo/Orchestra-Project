@@ -67,7 +67,7 @@ function SignupForm() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 px-6 py-10 text-slate-900">
+    <main className="min-h-screen bg-gray-50 px-6 py-10 text-slate-900">
       <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900">Sign up</h1>
         <p className="mt-2 text-sm text-slate-600">

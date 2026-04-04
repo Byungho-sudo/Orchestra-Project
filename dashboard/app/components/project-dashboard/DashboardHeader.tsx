@@ -15,7 +15,7 @@ export function DashboardHeader({
   onCreateProject?: () => void
 }) {
   return (
-    <header className="h-16 border-b border-slate-200 bg-white px-6 shadow-sm">
+    <header className="h-16 border-b border-slate-300 bg-slate-50 px-6 shadow-sm">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between">
         <h1 className="text-lg font-semibold">{title}</h1>
         <div className="flex items-center gap-3">

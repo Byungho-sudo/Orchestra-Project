@@ -29,6 +29,88 @@ type ProjectWorkspaceForm = {
   notes: string
 }
 
+const detailCardClassName =
+  "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
+const sectionCardClassName =
+  "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
+const fieldCardClassName =
+  "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
+
+function getTaskDueDateValue(dueDate: string | null) {
+  return dueDate ? dueDate.slice(0, 10) : ""
+}
+
+function parseTaskDueDate(dueDate: string | null) {
+  const dateValue = getTaskDueDateValue(dueDate)
+
+  if (!dateValue) return null
+
+  return new Date(`${dateValue}T00:00:00`)
+}
+
+function isOverdue(task: ProjectTask) {
+  if (task.completed) return false
+
+  const dueDate = parseTaskDueDate(task.due_date)
+
+  if (!dueDate) return false
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  return dueDate.getTime() < today.getTime()
+}
+
+function isDueSoon(task: ProjectTask) {
+  if (task.completed || isOverdue(task)) return false
+
+  const dueDate = parseTaskDueDate(task.due_date)
+
+  if (!dueDate) return false
+
+  const now = new Date()
+  const dueSoonLimit = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+
+  return dueDate.getTime() <= dueSoonLimit.getTime()
+}
+
+function getTaskDueBadge(task: ProjectTask) {
+  if (!task.due_date) return null
+
+  if (isOverdue(task)) {
+    return {
+      label: `Overdue - ${getTaskDueDateValue(task.due_date)}`,
+      className: "bg-red-100 text-red-700",
+    }
+  }
+
+  if (isDueSoon(task)) {
+    return {
+      label: `Due soon - ${getTaskDueDateValue(task.due_date)}`,
+      className: "bg-amber-100 text-amber-700",
+    }
+  }
+
+  if (isOverdue(task)) {
+    return {
+      label: `Overdue · ${getTaskDueDateValue(task.due_date)}`,
+      className: "bg-red-100 text-red-700",
+    }
+  }
+
+  if (isDueSoon(task)) {
+    return {
+      label: `Due soon · ${getTaskDueDateValue(task.due_date)}`,
+      className: "bg-amber-100 text-amber-700",
+    }
+  }
+
+  return {
+    label: `Due ${getTaskDueDateValue(task.due_date)}`,
+    className: "bg-slate-100 text-slate-600",
+  }
+}
+
 function WorkspaceValue({ value }: { value: string | null }) {
   return (
     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
@@ -90,6 +172,7 @@ export default function ProjectDetailClient({
   const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
   const [deleteError, setDeleteError] = useState("")
   const [newTaskText, setNewTaskText] = useState("")
+  const [newTaskDueDate, setNewTaskDueDate] = useState("")
 
   const [editForm, setEditForm] = useState({
     name: currentProject.name,
@@ -268,6 +351,7 @@ export default function ProjectDetailClient({
             project_id: currentProject.id,
             text: taskText,
             completed: false,
+            due_date: newTaskDueDate || null,
           },
         ])
         .select("*")
@@ -286,6 +370,7 @@ export default function ProjectDetailClient({
 
       setTasks((current) => [...current, data as ProjectTask])
       setNewTaskText("")
+      setNewTaskDueDate("")
       router.refresh()
       return true
     } catch (error) {
@@ -293,6 +378,52 @@ export default function ProjectDetailClient({
       console.error("Task update failed JSON:", JSON.stringify(error, null, 2))
       setTaskError("Failed to update tasks. Please try again.")
       return false
+    } finally {
+      setIsSavingTasks(false)
+    }
+  }
+
+  async function handleUpdateTaskDueDate(taskId: number, dueDate: string) {
+    if (isSavingTasks) return
+
+    setTaskError("")
+    setIsSavingTasks(true)
+
+    try {
+      console.log("Updating projectId:", currentProject.id)
+
+      const { data, error, status, statusText } = await supabase
+        .from("project_tasks")
+        .update({ due_date: dueDate || null })
+        .eq("id", taskId)
+        .eq("project_id", currentProject.id)
+        .select("*")
+        .single()
+
+      logSupabaseMutationResult("Task due date update", {
+        data,
+        error,
+        status,
+        statusText,
+      })
+
+      if (error) {
+        throw error
+      }
+
+      setTasks((current) =>
+        current.map((task) =>
+          task.id === taskId ? (data as ProjectTask) : task
+        )
+      )
+      router.refresh()
+    } catch (error) {
+      console.error("Task due date update failed:", error)
+      console.error(
+        "Task due date update failed JSON:",
+        JSON.stringify(error, null, 2)
+      )
+      setTaskError("Failed to update task due date. Please try again.")
     } finally {
       setIsSavingTasks(false)
     }
@@ -410,7 +541,7 @@ export default function ProjectDetailClient({
 
   return (
     <>
-      <main className="min-h-screen bg-slate-50 px-6 py-10">
+      <main className="min-h-screen bg-gray-50 px-6 py-10">
         <div className="mx-auto max-w-4xl">
           <div className="mb-6 flex items-center justify-between">
             <Link
@@ -437,7 +568,7 @@ export default function ProjectDetailClient({
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className={detailCardClassName}>
             <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -454,7 +585,7 @@ export default function ProjectDetailClient({
                 </p>
               </div>
 
-              <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Project ID
                 </p>
@@ -465,7 +596,7 @@ export default function ProjectDetailClient({
             </div>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className={fieldCardClassName}>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Due Date
                 </p>
@@ -474,7 +605,7 @@ export default function ProjectDetailClient({
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className={fieldCardClassName}>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Progress
                 </p>
@@ -483,7 +614,7 @@ export default function ProjectDetailClient({
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className={fieldCardClassName}>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Created At
                 </p>
@@ -494,7 +625,7 @@ export default function ProjectDetailClient({
             </div>
 
             <div className="mt-8 space-y-6">
-              <div className="rounded-xl border border-slate-200 p-5">
+              <div className="rounded-xl border border-slate-200 bg-white p-5">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-700">
                     Progress Bar
@@ -512,7 +643,7 @@ export default function ProjectDetailClient({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 p-5">
+              <div className="rounded-xl border border-slate-200 bg-white p-5">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-700">
                     Deadline Bar
@@ -585,8 +716,8 @@ export default function ProjectDetailClient({
             </div>
           </div>
 
-          <div className="mt-6 space-y-6">
-            <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mt-8 space-y-8">
+            <section className={sectionCardClassName}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -620,31 +751,31 @@ export default function ProjectDetailClient({
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={fieldCardClassName}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Intention
                   </p>
                   <WorkspaceValue value={currentProject.intention} />
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={fieldCardClassName}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Idea
                   </p>
                   <WorkspaceValue value={currentProject.idea} />
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={fieldCardClassName}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Target Buyer
                   </p>
                   <WorkspaceValue value={currentProject.target_buyer} />
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={fieldCardClassName}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Product
                   </p>
                   <WorkspaceValue value={currentProject.product} />
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={fieldCardClassName}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Price
                   </p>
@@ -653,31 +784,31 @@ export default function ProjectDetailClient({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <section className={sectionCardClassName}>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Planning / Operations
               </p>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={fieldCardClassName}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Tools
                   </p>
                   <WorkspaceValue value={currentProject.tools} />
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={fieldCardClassName}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Supplier
                   </p>
                   <WorkspaceValue value={currentProject.supplier} />
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className={fieldCardClassName}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Budget
                   </p>
                   <WorkspaceValue value={currentProject.budget} />
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
+                <div className={`${fieldCardClassName} md:col-span-2`}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Notes
                   </p>
@@ -686,7 +817,7 @@ export default function ProjectDetailClient({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <section className={sectionCardClassName}>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Tasks / Next Steps
               </p>
@@ -698,6 +829,12 @@ export default function ProjectDetailClient({
                   onChange={(event) => setNewTaskText(event.target.value)}
                   placeholder="Add a new task"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                />
+                <input
+                  type="date"
+                  value={newTaskDueDate}
+                  onChange={(event) => setNewTaskDueDate(event.target.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
                 />
                 <button
                   onClick={handleAddTask}
@@ -722,7 +859,7 @@ export default function ProjectDetailClient({
                 {tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+                    className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] sm:flex-row sm:items-center sm:justify-between"
                   >
                     <label className="flex flex-1 items-center gap-3 text-sm">
                       <input
@@ -743,13 +880,33 @@ export default function ProjectDetailClient({
                       </span>
                     </label>
 
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      disabled={isSavingTasks}
-                      className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                      <input
+                        type="date"
+                        value={getTaskDueDateValue(task.due_date)}
+                        onChange={(event) =>
+                          handleUpdateTaskDueDate(task.id, event.target.value)
+                        }
+                        disabled={isSavingTasks}
+                        className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      />
+
+                      {getTaskDueBadge(task) && (
+                        <span
+                          className={`rounded-full px-2 py-1 text-[10px] font-semibold ${getTaskDueBadge(task)?.className}`}
+                        >
+                          {getTaskDueBadge(task)?.label}
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        disabled={isSavingTasks}
+                        className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

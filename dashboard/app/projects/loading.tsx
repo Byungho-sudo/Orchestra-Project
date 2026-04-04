@@ -1,6 +1,6 @@
 export default function ProjectsLoading() {
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-gray-50 text-slate-900">
       <header className="h-16 border-b border-slate-200 bg-white px-6 shadow-sm">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between">
           <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />

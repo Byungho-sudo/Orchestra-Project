@@ -14,7 +14,7 @@ export function DashboardSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <aside className="rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm">
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
         Sidebar
       </h2>
