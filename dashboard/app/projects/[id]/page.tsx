@@ -1,17 +1,7 @@
 import Link from "next/link"
 import { createSupabaseServerClient } from "@/lib/supabase-server"
+import type { Project } from "@/lib/projects"
 import ProjectDetailClient from "./ProjectDetailClient"
-
-type Project = {
-  id: number
-  name: string
-  description: string | null
-  progress: number
-  due_date: string | null
-  created_at: string
-  user_id: string | null
-  visibility: "public" | "private"
-}
 
 export default async function ProjectDetailPage({
   params,

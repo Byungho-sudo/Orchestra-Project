@@ -1,21 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { User } from "@supabase/supabase-js"
+import {
+  getDeadlineBadgeClass,
+  getDeadlineBarClass,
+  getDeadlineFill,
+  getDeadlineStatus,
+} from "@/lib/project-deadline"
+import type { Project } from "@/lib/projects"
 import { supabase } from "@/lib/supabase"
-
-type Project = {
-  id: number
-  name: string
-  description: string | null
-  progress: number
-  due_date: string | null
-  created_at: string
-  user_id: string | null
-  visibility: "public" | "private"
-}
+import { useCurrentUser } from "@/lib/use-current-user"
 
 export default function ProjectDetailClient({
   project,
@@ -23,13 +19,13 @@ export default function ProjectDetailClient({
   project: Project
 }) {
   const router = useRouter()
+  const { currentUser, logout } = useCurrentUser()
 
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
   const [deleteError, setDeleteError] = useState("")
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
 
   const [editForm, setEditForm] = useState({
     name: project.name,
@@ -37,26 +33,6 @@ export default function ProjectDetailClient({
     progress: project.progress,
     due_date: project.due_date ?? "",
   })
-
-  useEffect(() => {
-    const loadCurrentUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      setCurrentUser(user)
-    }
-
-    loadCurrentUser()
-
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUser(session?.user ?? null)
-    })
-
-    return () => {
-      data.subscription.unsubscribe()
-    }
-  }, [])
 
   async function handleUpdateProject() {
     if (
@@ -110,72 +86,7 @@ export default function ProjectDetailClient({
     router.push("/")
   }
 
-  async function logout() {
-    await supabase.auth.signOut()
-    setCurrentUser(null)
-    router.push("/login")
-  }
-
-  function getDeadlineStatus(dueDate: string | null) {
-    if (!dueDate) return "No deadline"
-
-    const [year, month, day] = dueDate.split("-").map(Number)
-    const dueAt = Date.UTC(year, month - 1, day)
-    const today = new Date()
-    const todayAt = Date.UTC(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    )
-
-    const daysUntilDue = Math.round(
-      (dueAt - todayAt) / (1000 * 60 * 60 * 24)
-    )
-
-    if (daysUntilDue < 0) return "Overdue"
-    if (daysUntilDue === 0) return "Due today"
-    if (daysUntilDue <= 7) return "Due soon"
-    return `Due in ${daysUntilDue} days`
-  }
-
-  function getDeadlineFill(dueDate: string | null) {
-    if (!dueDate) return 0
-
-    const [year, month, day] = dueDate.split("-").map(Number)
-    const dueAt = Date.UTC(year, month - 1, day)
-    const today = new Date()
-    const todayAt = Date.UTC(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    )
-    const daysUntilDue = Math.round(
-      (dueAt - todayAt) / (1000 * 60 * 60 * 24)
-    )
-
-    if (daysUntilDue <= 0) return 100
-    if (daysUntilDue <= 3) return 90
-    if (daysUntilDue <= 7) return 75
-    if (daysUntilDue <= 14) return 45
-    if (daysUntilDue <= 30) return 20
-    return 5
-  }
-
-  function getDeadlineBarClass(status: string) {
-    if (status === "Overdue") return "bg-red-700"
-    if (status === "Due today") return "bg-orange-600"
-    if (status === "Due soon") return "bg-amber-500"
-    if (status === "No deadline") return "bg-gray-400"
-    return "bg-blue-700"
-  }
-
-  function getDeadlineBadgeClass(status: string) {
-    if (status === "Overdue") return "bg-red-100 text-red-700"
-    if (status === "Due today") return "bg-orange-100 text-orange-700"
-    if (status === "Due soon") return "bg-yellow-100 text-yellow-800"
-    if (status === "No deadline") return "bg-slate-100 text-slate-600"
-    return "bg-blue-100 text-blue-700"
-  }
+  const deadlineStatus = getDeadlineStatus(project.due_date)
 
   return (
     <>
@@ -286,14 +197,14 @@ export default function ProjectDetailClient({
                     Deadline Bar
                   </span>
                   <span className="text-sm font-medium text-slate-600">
-                    {getDeadlineStatus(project.due_date)}
+                    {deadlineStatus}
                   </span>
                 </div>
 
                 <div className="h-3 rounded-full bg-slate-200">
                   <div
                     className={`h-full rounded-full transition-all ${getDeadlineBarClass(
-                      getDeadlineStatus(project.due_date)
+                      deadlineStatus
                     )}`}
                     style={{ width: `${getDeadlineFill(project.due_date)}%` }}
                   />
@@ -303,10 +214,10 @@ export default function ProjectDetailClient({
                   {project.due_date ? `Due ${project.due_date}` : "No due date"}
                   <span
                     className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getDeadlineBadgeClass(
-                      getDeadlineStatus(project.due_date)
+                      deadlineStatus
                     )}`}
                   >
-                    {getDeadlineStatus(project.due_date)}
+                    {deadlineStatus}
                   </span>
                 </p>
               </div>

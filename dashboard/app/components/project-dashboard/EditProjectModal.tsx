@@ -1,0 +1,69 @@
+"use client"
+
+export function EditProjectModal({
+  editName,
+  editDescription,
+  editDueDate,
+  onEditNameChange,
+  onEditDescriptionChange,
+  onEditDueDateChange,
+  onCancel,
+  onSaveProject,
+}: {
+  editName: string
+  editDescription: string
+  editDueDate: string
+  onEditNameChange: (value: string) => void
+  onEditDescriptionChange: (value: string) => void
+  onEditDueDateChange: (value: string) => void
+  onCancel: () => void
+  onSaveProject: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <h3 className="text-lg font-semibold">Edit Project</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Update this project&apos;s information.
+        </p>
+
+        <div className="mt-4 space-y-3">
+          <input
+            value={editName}
+            onChange={(event) => onEditNameChange(event.target.value)}
+            placeholder="Project name"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-indigo-500 focus:ring-2"
+          />
+          <textarea
+            value={editDescription}
+            onChange={(event) => onEditDescriptionChange(event.target.value)}
+            placeholder="Project description"
+            rows={3}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-indigo-500 focus:ring-2"
+          />
+          <input
+            type="date"
+            value={editDueDate}
+            onChange={(event) => onEditDueDateChange(event.target.value)}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-indigo-500 focus:ring-2"
+          />
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSaveProject}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
