@@ -102,7 +102,7 @@ export default function ProjectDetailClient({
     }
 
     setIsDeleteOpen(false)
-    router.push("/")
+    router.push("/projects")
   }
 
   const deadlineStatus = getDeadlineStatus(project.due_date)
@@ -113,7 +113,7 @@ export default function ProjectDetailClient({
         <div className="mx-auto max-w-4xl">
           <div className="mb-6 flex items-center justify-between">
             <Link
-              href="/"
+              href="/projects"
               className="text-sm font-medium text-indigo-600 hover:underline"
             >
               ← Back to dashboard
@@ -244,7 +244,7 @@ export default function ProjectDetailClient({
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                href="/"
+                href="/projects"
                 className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 Back to dashboard

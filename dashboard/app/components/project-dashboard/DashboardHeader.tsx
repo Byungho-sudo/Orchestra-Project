@@ -4,18 +4,20 @@ import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
 
 export function DashboardHeader({
+  title = "Project Dashboard",
   currentUser,
   onLogout,
   onCreateProject,
 }: {
+  title?: string
   currentUser: User | null
   onLogout: () => void
-  onCreateProject: () => void
+  onCreateProject?: () => void
 }) {
   return (
     <header className="h-16 border-b border-slate-200 bg-white px-6 shadow-sm">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between">
-        <h1 className="text-lg font-semibold">Project Dashboard</h1>
+        <h1 className="text-lg font-semibold">{title}</h1>
         <div className="flex items-center gap-3">
           {currentUser ? (
             <>
@@ -46,12 +48,14 @@ export function DashboardHeader({
             </>
           )}
 
-          <button
-            onClick={onCreateProject}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
-          >
-            New Project
-          </button>
+          {onCreateProject && (
+            <button
+              onClick={onCreateProject}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+            >
+              New Project
+            </button>
+          )}
         </div>
       </div>
     </header>

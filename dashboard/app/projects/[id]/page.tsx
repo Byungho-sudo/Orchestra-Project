@@ -24,7 +24,7 @@ export default async function ProjectDetailPage({
       <main className="min-h-screen bg-slate-50 px-6 py-10">
         <div className="mx-auto max-w-3xl">
           <Link
-            href="/"
+            href="/projects"
             className="mb-6 inline-block text-sm font-medium text-indigo-600 hover:underline"
           >
             ← Back to dashboard
@@ -40,7 +40,7 @@ export default async function ProjectDetailPage({
 
             <div className="mt-6">
               <Link
-                href="/"
+                href="/projects"
                 className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
               >
                 Return to dashboard
@@ -57,7 +57,7 @@ export default async function ProjectDetailPage({
       <main className="min-h-screen bg-slate-50 px-6 py-10">
         <div className="mx-auto max-w-3xl">
           <Link
-            href="/"
+            href="/projects"
             className="mb-6 inline-block text-sm font-medium text-indigo-600 hover:underline"
           >
             ← Back to dashboard
@@ -73,7 +73,7 @@ export default async function ProjectDetailPage({
 
             <div className="mt-6">
               <Link
-                href="/"
+                href="/projects"
                 className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
               >
                 Return to dashboard
