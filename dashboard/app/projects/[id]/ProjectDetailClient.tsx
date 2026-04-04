@@ -78,6 +78,46 @@ export default function ProjectDetailClient({
     router.push("/")
   }
 
+  function getDeadlineStatus(dueDate: string | null) {
+    if (!dueDate) return "No deadline"
+
+    const [year, month, day] = dueDate.split("-").map(Number)
+    const dueAt = new Date(year, month - 1, day)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const daysUntilDue = Math.round(
+      (dueAt.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    )
+
+    if (daysUntilDue < 0) return "Overdue"
+    if (daysUntilDue === 0) return "Due today"
+    return "Due soon"
+  }
+
+  function getDeadlineFill(dueDate: string | null) {
+    if (!dueDate) return 0
+
+    const [year, month, day] = dueDate.split("-").map(Number)
+    const dueAt = Date.UTC(year, month - 1, day)
+    const today = new Date()
+    const todayAt = Date.UTC(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    )
+    const daysUntilDue = Math.round(
+      (dueAt - todayAt) / (1000 * 60 * 60 * 24)
+    )
+
+    if (daysUntilDue <= 0) return 100
+    if (daysUntilDue <= 3) return 90
+    if (daysUntilDue <= 7) return 75
+    if (daysUntilDue <= 14) return 45
+    if (daysUntilDue <= 30) return 20
+    return 5
+  }
+
   return (
     <>
       <main className="min-h-screen bg-slate-50 px-6 py-10">
@@ -169,19 +209,19 @@ export default function ProjectDetailClient({
                     Deadline Indicator
                   </span>
                   <span className="text-sm font-medium text-slate-600">
-                    Placeholder
+                    {getDeadlineStatus(project.due_date)}
                   </span>
                 </div>
 
                 <div className="h-3 rounded-full bg-slate-200">
                   <div
                     className="h-full rounded-full bg-rose-500 transition-all"
-                    style={{ width: "5%" }}
+                    style={{ width: `${getDeadlineFill(project.due_date)}%` }}
                   />
                 </div>
 
                 <p className="mt-3 text-xs text-slate-500">
-                  This section is ready for future deadline calculation logic.
+                  {project.due_date ? `Due ${project.due_date}` : "No deadline set."}
                 </p>
               </div>
             </div>

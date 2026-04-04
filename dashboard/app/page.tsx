@@ -97,6 +97,11 @@ export default function Home() {
    */
   const [sortBy, setSortBy] = useState<SortOption>("due_date");
 
+  /**
+   * Controls client-side project search by name.
+   */
+  const [searchQuery, setSearchQuery] = useState("");
+
   const router = useRouter();
 
   /**
@@ -125,6 +130,58 @@ export default function Home() {
           return 0;
       }
     });
+  };
+
+  const filteredProjects = projects.filter((project) =>
+    project.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+  );
+
+  /**
+   * Calculate a readable deadline status from a project's due date.
+   */
+  const getDeadlineStatus = (dueDate: string | null) => {
+    if (!dueDate) return "No deadline";
+
+    const [year, month, day] = dueDate.split("-").map(Number);
+    const dueAt = Date.UTC(year, month - 1, day);
+    const today = new Date();
+    const todayAt = Date.UTC(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    const daysUntilDue = Math.round(
+      (dueAt - todayAt) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysUntilDue < 0) return "Overdue";
+    if (daysUntilDue === 0) return "Due today";
+    if (daysUntilDue <= 7) return "Due soon";
+    return `Due in ${daysUntilDue} days`;
+  };
+
+  const getDeadlineFill = (dueDate: string | null) => {
+    if (!dueDate) return 0;
+
+    const [year, month, day] = dueDate.split("-").map(Number);
+    const dueAt = Date.UTC(year, month - 1, day);
+    const today = new Date();
+    const todayAt = Date.UTC(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const daysUntilDue = Math.round(
+      (dueAt - todayAt) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysUntilDue <= 0) return 100;
+    if (daysUntilDue <= 3) return 90;
+    if (daysUntilDue <= 7) return 75;
+    if (daysUntilDue <= 14) return 45;
+    if (daysUntilDue <= 30) return 20;
+    return 5;
   };
 
   /**
@@ -339,7 +396,16 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-semibold">Project Cards</h2>
 
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center text-sm">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search projects..."
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 sm:w-56"
+              />
+
+              <div className="flex items-center gap-2">
               <span className="text-slate-600">Sort by:</span>
               <select
                 value={sortBy}
@@ -351,6 +417,7 @@ export default function Home() {
                 <option value="name">Name</option>
                 <option value="progress">Progress</option>
               </select>
+              </div>
             </div>
           </div>
 
@@ -382,7 +449,7 @@ export default function Home() {
           {/* Project grid */}
           {projects.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {sortProjects(projects).map((project) => (
+              {sortProjects(filteredProjects).map((project) => (
                 <article
                   key={project.id}
                   onClick={() => router.push(`/projects/${project.id}`)}
@@ -412,12 +479,12 @@ export default function Home() {
                     <div>
                       <div className="mb-1 flex justify-between text-xs font-medium text-slate-600">
                         <span>Deadline Bar</span>
-                        <span>5% used</span>
+                        <span>{getDeadlineStatus(project.due_date)}</span>
                       </div>
                       <div className="h-2 rounded-full bg-slate-200">
                         <div
                           className="h-full rounded-full bg-rose-500"
-                          style={{ width: "5%" }}
+                          style={{ width: `${getDeadlineFill(project.due_date)}%` }}
                         />
                       </div>
                     </div>
