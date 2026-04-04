@@ -118,6 +118,14 @@ export default function ProjectDetailClient({
     return 5
   }
 
+  function getDeadlineBarClass(status: string) {
+    if (status === "Overdue") return "bg-red-700"
+    if (status === "Due today") return "bg-orange-600"
+    if (status === "Due soon") return "bg-amber-500"
+    if (status === "No deadline") return "bg-gray-400"
+    return "bg-blue-700"
+  }
+
   return (
     <>
       <main className="min-h-screen bg-slate-50 px-6 py-10">
@@ -197,7 +205,7 @@ export default function ProjectDetailClient({
 
                 <div className="h-3 rounded-full bg-slate-200">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    className="h-full rounded-full bg-green-700 transition-all"
                     style={{ width: `${project.progress}%` }}
                   />
                 </div>
@@ -215,7 +223,9 @@ export default function ProjectDetailClient({
 
                 <div className="h-3 rounded-full bg-slate-200">
                   <div
-                    className="h-full rounded-full bg-rose-500 transition-all"
+                    className={`h-full rounded-full transition-all ${getDeadlineBarClass(
+                      getDeadlineStatus(project.due_date)
+                    )}`}
                     style={{ width: `${getDeadlineFill(project.due_date)}%` }}
                   />
                 </div>

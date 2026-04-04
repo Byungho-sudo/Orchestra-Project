@@ -36,6 +36,7 @@ type Project = {
 };
 
 type SortOption = "due_date" | "created_at" | "name" | "progress";
+type DeadlineFilter = "All" | "Overdue" | "Due today" | "Due soon" | "No deadline";
 
 export default function Home() {
   /**
@@ -95,12 +96,25 @@ export default function Home() {
   /**
    * Controls dashboard sorting.
    */
-  const [sortBy, setSortBy] = useState<SortOption>("due_date");
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    if (typeof window === "undefined") return "due_date";
+
+    return (localStorage.getItem("sortBy") as SortOption) || "due_date";
+  });
 
   /**
    * Controls client-side project search by name.
    */
   const [searchQuery, setSearchQuery] = useState("");
+
+  /**
+   * Controls client-side filtering by deadline status.
+   */
+  const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>(() => {
+    if (typeof window === "undefined") return "All";
+
+    return (localStorage.getItem("deadlineFilter") as DeadlineFilter) || "All";
+  });
 
   const router = useRouter();
 
@@ -132,10 +146,6 @@ export default function Home() {
     });
   };
 
-  const filteredProjects = projects.filter((project) =>
-    project.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
-  );
-
   /**
    * Calculate a readable deadline status from a project's due date.
    */
@@ -160,6 +170,28 @@ export default function Home() {
     if (daysUntilDue <= 7) return "Due soon";
     return `Due in ${daysUntilDue} days`;
   };
+
+  const getDeadlineBadgeClass = (status: string) => {
+    if (status === "Overdue") return "bg-red-100 text-red-700";
+    if (status === "Due today") return "bg-orange-100 text-orange-700";
+    if (status === "Due soon") return "bg-yellow-100 text-yellow-800";
+    if (status === "No deadline") return "bg-slate-100 text-slate-600";
+    return "bg-blue-100 text-blue-700";
+  };
+
+  const getDeadlineBarClass = (status: string) => {
+    if (status === "Overdue") return "bg-red-700";
+    if (status === "Due today") return "bg-orange-600";
+    if (status === "Due soon") return "bg-amber-500";
+    if (status === "No deadline") return "bg-gray-400";
+    return "bg-blue-700";
+  };
+
+  const filteredProjects = projects.filter((project) =>
+    project.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
+    (deadlineFilter === "All" ||
+      getDeadlineStatus(project.due_date) === deadlineFilter)
+  );
 
   const getDeadlineFill = (dueDate: string | null) => {
     if (!dueDate) return 0;
@@ -208,6 +240,14 @@ export default function Home() {
 
     fetchProjects();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("deadlineFilter", deadlineFilter);
+  }, [deadlineFilter]);
+
+  useEffect(() => {
+    localStorage.setItem("sortBy", sortBy);
+  }, [sortBy]);
 
   /**
    * Create a new project in Supabase and immediately update local state.
@@ -406,17 +446,33 @@ export default function Home() {
               />
 
               <div className="flex items-center gap-2">
-              <span className="text-slate-600">Sort by:</span>
-              <select
-                value={sortBy}
-                onChange={(event) => setSortBy(event.target.value as SortOption)}
-                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="due_date">Due date</option>
-                <option value="created_at">Created date</option>
-                <option value="name">Name</option>
-                <option value="progress">Progress</option>
-              </select>
+                <select
+                  value={deadlineFilter}
+                  onChange={(event) =>
+                    setDeadlineFilter(event.target.value as DeadlineFilter)
+                  }
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="All">All</option>
+                  <option value="Overdue">Overdue</option>
+                  <option value="Due today">Due today</option>
+                  <option value="Due soon">Due soon</option>
+                  <option value="No deadline">No deadline</option>
+                </select>
+
+                <span className="text-slate-600">Sort by:</span>
+                <select
+                  value={sortBy}
+                  onChange={(event) =>
+                    setSortBy(event.target.value as SortOption)
+                  }
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="due_date">Due date</option>
+                  <option value="created_at">Created date</option>
+                  <option value="name">Name</option>
+                  <option value="progress">Progress</option>
+                </select>
               </div>
             </div>
           </div>
@@ -469,7 +525,7 @@ export default function Home() {
                       </div>
                       <div className="h-2 rounded-full bg-slate-200">
                         <div
-                          className="h-full rounded-full bg-emerald-500"
+                          className="h-full rounded-full bg-green-700"
                           style={{ width: `${project.progress}%` }}
                         />
                       </div>
@@ -483,14 +539,23 @@ export default function Home() {
                       </div>
                       <div className="h-2 rounded-full bg-slate-200">
                         <div
-                          className="h-full rounded-full bg-rose-500"
+                          className={`h-full rounded-full ${getDeadlineBarClass(
+                            getDeadlineStatus(project.due_date)
+                          )}`}
                           style={{ width: `${getDeadlineFill(project.due_date)}%` }}
                         />
                       </div>
                     </div>
 
-                    <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <p className="mt-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                       Due {project.due_date ?? "No due date"}
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal ${getDeadlineBadgeClass(
+                          getDeadlineStatus(project.due_date)
+                        )}`}
+                      >
+                        {getDeadlineStatus(project.due_date)}
+                      </span>
                     </p>
 
                     {/* Action buttons */}
