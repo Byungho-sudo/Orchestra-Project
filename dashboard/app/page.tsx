@@ -4,8 +4,6 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardHeader } from "@/app/components/project-dashboard/DashboardHeader"
 import { DashboardSidebar } from "@/app/components/project-dashboard/DashboardSidebar"
-import { DeleteProjectModal } from "@/app/components/project-dashboard/DeleteProjectModal"
-import { EditProjectModal } from "@/app/components/project-dashboard/EditProjectModal"
 import { NewProjectModal } from "@/app/components/project-dashboard/NewProjectModal"
 import { ProjectCard } from "@/app/components/project-dashboard/ProjectCard"
 import { ProjectToolbar } from "@/app/components/project-dashboard/ProjectToolbar"
@@ -29,27 +27,16 @@ export default function Home() {
   const { currentUser, logout } = useCurrentUser()
 
   const [isOpen, setIsOpen] = useState(false)
-  const [isEditOpen, setIsEditOpen] = useState(false)
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
-  const [isSavingProject, setIsSavingProject] = useState(false)
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
-  const [editingProject, setEditingProject] = useState<Project | null>(null)
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
 
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [visibility, setVisibility] = useState<ProjectVisibility>("public")
   const [newProjectErrors, setNewProjectErrors] = useState<ProjectFormErrors>(
-    {}
-  )
-
-  const [editName, setEditName] = useState("")
-  const [editDescription, setEditDescription] = useState("")
-  const [editDueDate, setEditDueDate] = useState("")
-  const [editProjectErrors, setEditProjectErrors] = useState<ProjectFormErrors>(
     {}
   )
 
@@ -116,6 +103,8 @@ export default function Home() {
   }, [sortBy])
 
   const addProject = async () => {
+    if (isCreatingProject) return
+
     setErrorMessage("")
 
     const validation = validateProjectForm(
@@ -133,7 +122,7 @@ export default function Home() {
 
     if (!validation.isValid) return
 
-    setIsSavingProject(true)
+    setIsCreatingProject(true)
 
     const { data, error } = await supabase
       .from("projects")
@@ -149,7 +138,7 @@ export default function Home() {
       ])
       .select()
 
-    setIsSavingProject(false)
+    setIsCreatingProject(false)
 
     if (error) {
       console.error("Error creating project:", error)
@@ -167,107 +156,6 @@ export default function Home() {
     setVisibility("public")
     setNewProjectErrors({})
     setIsOpen(false)
-  }
-
-  const openEditModal = (project: Project) => {
-    setEditingProject(project)
-    setEditName(project.name)
-    setEditDescription(project.description ?? "")
-    setEditDueDate(project.due_date ?? "")
-    setEditProjectErrors({})
-    setIsEditOpen(true)
-  }
-
-  const updateProject = async () => {
-    if (!editingProject) return
-
-    setErrorMessage("")
-
-    const validation = validateProjectForm(
-      {
-        name: editName,
-        description: editDescription,
-        due_date: editDueDate,
-        visibility: editingProject.visibility,
-      },
-      editingProject.visibility === "private" || Boolean(currentUser)
-    )
-
-    setEditProjectErrors(validation.errors)
-
-    if (!validation.isValid) return
-
-    setIsSavingProject(true)
-
-    const { data, error } = await supabase
-      .from("projects")
-      .update({
-        name: validation.values.name,
-        description: validation.values.description,
-        due_date: validation.values.due_date,
-      })
-      .eq("id", editingProject.id)
-      .select()
-
-    setIsSavingProject(false)
-
-    if (error) {
-      console.error("Error updating project:", error)
-      setErrorMessage("Failed to update project. Please try again.")
-      return
-    }
-
-    if (data) {
-      setProjects((current) =>
-        current.map((project) =>
-          project.id === editingProject.id ? data[0] : project
-        )
-      )
-    }
-
-    closeEditModal()
-  }
-
-  const closeEditModal = () => {
-    setIsEditOpen(false)
-    setEditingProject(null)
-    setEditName("")
-    setEditDescription("")
-    setEditDueDate("")
-    setEditProjectErrors({})
-  }
-
-  const openDeleteModal = (project: Project) => {
-    setProjectToDelete(project)
-    setIsDeleteOpen(true)
-  }
-
-  const closeDeleteModal = () => {
-    setProjectToDelete(null)
-    setIsDeleteOpen(false)
-  }
-
-  const confirmDeleteProject = async () => {
-    if (!projectToDelete) return
-
-    setErrorMessage("")
-
-    const { error } = await supabase
-      .from("projects")
-      .delete()
-      .eq("id", projectToDelete.id)
-
-    if (error) {
-      console.error("Error deleting project:", error)
-      setErrorMessage("Failed to delete project. Please try again.")
-      return
-    }
-
-    setProjects((current) =>
-      current.filter((project) => project.id !== projectToDelete.id)
-    )
-
-    closeDeleteModal()
   }
 
   if (loading) {
@@ -340,8 +228,6 @@ export default function Home() {
                   key={project.id}
                   project={project}
                   onOpenProject={() => router.push(`/projects/${project.id}`)}
-                  onEditProject={() => openEditModal(project)}
-                  onDeleteProject={() => openDeleteModal(project)}
                 />
               ))}
             </div>
@@ -357,7 +243,7 @@ export default function Home() {
           visibility={visibility}
           canCreatePrivate={Boolean(currentUser)}
           errors={newProjectErrors}
-          isSaving={isSavingProject}
+          isSaving={isCreatingProject}
           onNameChange={(value) => {
             setName(value)
             setNewProjectErrors((current) => ({ ...current, name: undefined }))
@@ -391,46 +277,6 @@ export default function Home() {
         />
       )}
 
-      {isEditOpen && (
-        <EditProjectModal
-          editName={editName}
-          editDescription={editDescription}
-          editDueDate={editDueDate}
-          errors={editProjectErrors}
-          isSaving={isSavingProject}
-          onEditNameChange={(value) => {
-            setEditName(value)
-            setEditProjectErrors((current) => ({
-              ...current,
-              name: undefined,
-            }))
-          }}
-          onEditDescriptionChange={(value) => {
-            setEditDescription(value)
-            setEditProjectErrors((current) => ({
-              ...current,
-              description: undefined,
-            }))
-          }}
-          onEditDueDateChange={(value) => {
-            setEditDueDate(value)
-            setEditProjectErrors((current) => ({
-              ...current,
-              due_date: undefined,
-            }))
-          }}
-          onCancel={closeEditModal}
-          onSaveProject={updateProject}
-        />
-      )}
-
-      {isDeleteOpen && projectToDelete && (
-        <DeleteProjectModal
-          projectName={projectToDelete.name}
-          onCancel={closeDeleteModal}
-          onConfirmDelete={confirmDeleteProject}
-        />
-      )}
     </div>
   )
 }

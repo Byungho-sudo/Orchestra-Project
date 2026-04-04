@@ -28,6 +28,7 @@ export default function ProjectDetailClient({
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
   const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
   const [deleteError, setDeleteError] = useState("")
@@ -40,6 +41,8 @@ export default function ProjectDetailClient({
   })
 
   async function handleUpdateProject() {
+    if (isSaving) return
+
     setSaveError("")
 
     const validation = validateProjectForm(
@@ -81,12 +84,17 @@ export default function ProjectDetailClient({
   }
 
   async function confirmDeleteProject() {
+    if (isDeleting) return
+
     setDeleteError("")
+    setIsDeleting(true)
 
     const { error } = await supabase
       .from("projects")
       .delete()
       .eq("id", project.id)
+
+    setIsDeleting(false)
 
     if (error) {
       setDeleteError("Failed to delete project. Please try again.")
@@ -387,6 +395,8 @@ export default function ProjectDetailClient({
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => {
+                  if (isSaving) return
+
                   setIsEditOpen(false)
                   setSaveError("")
                   setSaveFieldErrors({})
@@ -432,18 +442,22 @@ export default function ProjectDetailClient({
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => {
+                  if (isDeleting) return
+
                   setIsDeleteOpen(false)
                   setDeleteError("")
                 }}
-                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                disabled={isDeleting}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteProject}
-                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500"
+                disabled={isDeleting}
+                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Delete Project
+                {isDeleting ? "Deleting..." : "Delete Project"}
               </button>
             </div>
           </div>

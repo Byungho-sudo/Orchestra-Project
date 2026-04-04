@@ -11,13 +11,9 @@ import type { Project } from "@/lib/projects"
 export function ProjectCard({
   project,
   onOpenProject,
-  onEditProject,
-  onDeleteProject,
 }: {
   project: Project
   onOpenProject: () => void
-  onEditProject: () => void
-  onDeleteProject: () => void
 }) {
   const deadlineStatus = getDeadlineStatus(project.due_date)
 
@@ -27,7 +23,9 @@ export function ProjectCard({
       className="cursor-pointer rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
     >
       <h3 className="text-base font-semibold">{project.name}</h3>
-      <p className="mt-1 text-sm text-slate-600">{project.description}</p>
+      <p className="mt-1 min-h-[2.5rem] text-sm text-slate-600">
+        {project.description?.trim() || "No description provided."}
+      </p>
 
       <div className="mt-4 space-y-4">
         <div>
@@ -69,27 +67,6 @@ export function ProjectCard({
           </span>
         </p>
 
-        <div className="mt-3 flex gap-3">
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              onEditProject()
-            }}
-            className="text-sm font-medium text-indigo-600 hover:underline"
-          >
-            Edit
-          </button>
-
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              onDeleteProject()
-            }}
-            className="text-sm font-medium text-red-600 hover:underline"
-          >
-            Delete
-          </button>
-        </div>
       </div>
     </article>
   )
