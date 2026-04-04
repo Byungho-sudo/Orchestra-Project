@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 import {
   getDeadlineBadgeClass,
   getDeadlineBarClass,
@@ -50,6 +51,13 @@ const sectionCardClassName =
 const fieldCardClassName =
   "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
 const taskDeleteUndoDurationMs = 8000
+const projectWorkspaceNavigation = [
+  { href: "#overview", label: "Overview" },
+  { href: "#operations", label: "Operations" },
+  { href: "#tasks", label: "Task Board" },
+  { href: "#timeline", label: "Timeline" },
+  { href: "#assets", label: "Assets" },
+]
 
 function getTaskDueDateValue(dueDate: string | null) {
   return dueDate ? dueDate.slice(0, 10) : ""
@@ -294,6 +302,25 @@ function normalizeProgressOnBlur(value: string, fallbackProgress: number) {
   return String(Math.min(100, Math.max(0, Number(value))))
 }
 
+function getDerivedProjectStatus(project: Project) {
+  if (project.progress === 100) {
+    return "Completed"
+  }
+
+  const deadlineDate = parseTaskDateInput(getTaskDueDateValue(project.due_date))
+
+  if (deadlineDate) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (deadlineDate.getTime() < today.getTime()) {
+      return "Overdue"
+    }
+  }
+
+  return "Active"
+}
+
 function WorkspaceValue({ value }: { value: string | null }) {
   return (
     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
@@ -509,6 +536,20 @@ export default function ProjectDetailClient({
     setIsEditOpen(false)
     setSaveError("")
     setSaveFieldErrors({})
+  }
+
+  function closeWorkspaceEditModal() {
+    if (isSavingWorkspace) return
+
+    setIsWorkspaceEditOpen(false)
+    setWorkspaceError("")
+  }
+
+  function closeDeleteProjectModal() {
+    if (isDeleting) return
+
+    setIsDeleteOpen(false)
+    setDeleteError("")
   }
 
   async function handleUpdateProject() {
@@ -894,12 +935,47 @@ export default function ProjectDetailClient({
 
   const deadlineStatus = getDeadlineStatus(currentProject.due_date)
   const sortedTasks = sortTasksByUrgency(tasks)
+  const hasEditProjectChanges =
+    editForm.name !== currentProject.name ||
+    editForm.description !== (currentProject.description ?? "") ||
+    editForm.progress !== String(currentProject.progress) ||
+    editForm.due_date !== (currentProject.due_date ?? "") ||
+    editForm.visibility !== currentProject.visibility
+  const hasWorkspaceChanges =
+    workspaceForm.intention !== (currentProject.intention ?? "") ||
+    workspaceForm.idea !== (currentProject.idea ?? "") ||
+    workspaceForm.target_buyer !== (currentProject.target_buyer ?? "") ||
+    workspaceForm.product !== (currentProject.product ?? "") ||
+    workspaceForm.price !== (currentProject.price ?? "") ||
+    workspaceForm.tools !== (currentProject.tools ?? "") ||
+    workspaceForm.supplier !== (currentProject.supplier ?? "") ||
+    workspaceForm.budget !== (currentProject.budget ?? "") ||
+    workspaceForm.notes !== (currentProject.notes ?? "")
 
   return (
     <>
       <main className="min-h-screen bg-gray-50 px-6 py-10">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-6 flex items-center justify-between">
+        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
+          <aside className="rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm lg:sticky lg:top-6">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Navigation
+            </h2>
+
+            <nav className="flex flex-wrap gap-2 text-sm lg:flex-col">
+              {projectWorkspaceNavigation.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </aside>
+
+          <div className="min-w-0">
+          <div className="mb-6 hidden items-center justify-between">
             <Link
               href="/projects"
               className="text-sm font-medium text-indigo-600 hover:underline"
@@ -910,14 +986,14 @@ export default function ProjectDetailClient({
             {currentUser ? (
               <button
                 onClick={logout}
-                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                className="hidden rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
                 Log out
               </button>
             ) : (
               <Link
                 href="/login"
-                className="text-sm font-medium text-slate-700 hover:underline"
+                className="hidden text-sm font-medium text-slate-700 hover:underline"
               >
                 Log in
               </Link>
@@ -927,6 +1003,13 @@ export default function ProjectDetailClient({
           <div className={detailCardClassName}>
             <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl">
+                <Link
+                  href="/projects"
+                  className="text-sm font-medium text-indigo-600 hover:underline"
+                >
+                  Back to projects
+                </Link>
+
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                   Project Detail
                 </p>
@@ -951,7 +1034,7 @@ export default function ProjectDetailClient({
               </div>
             </div>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="mt-8 hidden gap-4 md:grid-cols-3">
               <div className={fieldCardClassName}>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Due Date
@@ -980,7 +1063,7 @@ export default function ProjectDetailClient({
               </div>
             </div>
 
-            <div className="mt-8 space-y-6">
+            <div className="mt-8 hidden space-y-6">
               <div className="rounded-xl border border-slate-200 bg-white p-5">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-700">
@@ -1035,7 +1118,7 @@ export default function ProjectDetailClient({
               </div>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 hidden flex-wrap gap-3">
               <Link
                 href="/projects"
                 className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -1074,7 +1157,7 @@ export default function ProjectDetailClient({
           </div>
 
           <div className="mt-8 space-y-8">
-            <section className={sectionCardClassName}>
+            <section id="overview" className={sectionCardClassName}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -1101,7 +1184,7 @@ export default function ProjectDetailClient({
                     setWorkspaceError("")
                     setIsWorkspaceEditOpen(true)
                   }}
-                  className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  className="hidden rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                 >
                   Edit Workspace
                 </button>
@@ -1141,7 +1224,7 @@ export default function ProjectDetailClient({
               </div>
             </section>
 
-            <section className={sectionCardClassName}>
+            <section id="operations" className={sectionCardClassName}>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Planning / Operations
               </p>
@@ -1174,7 +1257,7 @@ export default function ProjectDetailClient({
               </div>
             </section>
 
-            <section className={sectionCardClassName}>
+            <section id="tasks" className={sectionCardClassName}>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                   Tasks / Next Steps
@@ -1334,19 +1417,213 @@ export default function ProjectDetailClient({
                 </div>
               </div>
             </section>
+
+            <section id="timeline" className={sectionCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Timeline
+              </p>
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                Timeline details can be organized here in a future pass.
+              </p>
+            </section>
+
+            <section id="assets" className={sectionCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Assets
+              </p>
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                Project assets can be organized here in a future pass.
+              </p>
+            </section>
           </div>
+          </div>
+
+          <aside className={`${detailCardClassName} lg:sticky lg:top-6`}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Context
+              </p>
+
+              {currentUser ? (
+                <button
+                  onClick={logout}
+                  className="text-sm font-medium text-slate-700 hover:underline"
+                >
+                  Log out
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-slate-700 hover:underline"
+                >
+                  Log in
+                </Link>
+              )}
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className={fieldCardClassName}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Status
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {getDerivedProjectStatus(currentProject)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Progress Bar
+                  </span>
+                  <span className="text-sm font-medium text-slate-600">
+                    {currentProject.progress}%
+                  </span>
+                </div>
+
+                <div className="h-3 rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-green-700 transition-all"
+                    style={{ width: `${currentProject.progress}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-700">
+                    Deadline Bar
+                  </span>
+                  <span className="text-sm font-medium text-slate-600">
+                    {deadlineStatus}
+                  </span>
+                </div>
+
+                <div className="h-3 rounded-full bg-slate-200">
+                  <div
+                    className={`h-full rounded-full transition-all ${getDeadlineBarClass(
+                      deadlineStatus
+                    )}`}
+                    style={{
+                      width: `${getDeadlineFill(currentProject.due_date)}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="mt-3 text-xs text-slate-500">
+                  {currentProject.due_date
+                    ? `Due ${currentProject.due_date}`
+                    : "No due date"}
+                  <span
+                    className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getDeadlineBadgeClass(
+                      deadlineStatus
+                    )}`}
+                  >
+                    {deadlineStatus}
+                  </span>
+                </p>
+              </div>
+
+              <div className={fieldCardClassName}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Created At
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {new Date(currentProject.created_at).toLocaleDateString()}
+                </p>
+              </div>
+
+              <div className={fieldCardClassName}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Supplier
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {currentProject.supplier?.trim() || "Not added yet"}
+                </p>
+              </div>
+
+              <div className={fieldCardClassName}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Budget
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {currentProject.budget?.trim() || "Not added yet"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <button
+                onClick={() => {
+                  setEditForm({
+                    name: currentProject.name,
+                    description: currentProject.description ?? "",
+                    progress: String(currentProject.progress),
+                    due_date: currentProject.due_date ?? "",
+                    visibility: currentProject.visibility,
+                  })
+                  setSaveError("")
+                  setSaveFieldErrors({})
+                  setIsEditOpen(true)
+                }}
+                className="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                Edit Project
+              </button>
+
+              <button
+                onClick={() => {
+                  setWorkspaceForm({
+                    intention: currentProject.intention ?? "",
+                    idea: currentProject.idea ?? "",
+                    target_buyer: currentProject.target_buyer ?? "",
+                    product: currentProject.product ?? "",
+                    price: currentProject.price ?? "",
+                    tools: currentProject.tools ?? "",
+                    supplier: currentProject.supplier ?? "",
+                    budget: currentProject.budget ?? "",
+                    notes: currentProject.notes ?? "",
+                  })
+                  setWorkspaceError("")
+                  setIsWorkspaceEditOpen(true)
+                }}
+                className="inline-flex w-full justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Edit Workspace
+              </button>
+
+              <button
+                type="button"
+                disabled
+                className="inline-flex w-full cursor-not-allowed justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-400 opacity-70"
+              >
+                Archive Project
+              </button>
+
+              <button
+                onClick={() => {
+                  setDeleteError("")
+                  setIsDeleteOpen(true)
+                }}
+                className="inline-flex w-full justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500"
+              >
+                Delete Project
+              </button>
+            </div>
+          </aside>
         </div>
       </main>
 
       {isEditOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onClick={closeEditProjectModal}
+        <ModalShell
+          hasUnsavedChanges={hasEditProjectChanges}
+          isDismissDisabled={isSaving}
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          onClose={closeEditProjectModal}
         >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
+          {({ requestClose }) => (
+            <>
             <h2 className="text-xl font-bold text-slate-900">Edit Project</h2>
             <p className="mt-1 text-sm text-slate-600">
               Update the project details below.
@@ -1495,7 +1772,7 @@ export default function ProjectDetailClient({
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={closeEditProjectModal}
+                onClick={requestClose}
                 disabled={isSaving}
                 className="inline-flex cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -1511,13 +1788,21 @@ export default function ProjectDetailClient({
                 {isSaving ? "Saving..." : "Save Changes"}
               </button>
             </div>
-          </div>
-        </div>
+            </>
+          )}
+        </ModalShell>
       )}
 
       {isWorkspaceEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <ModalShell
+          hasUnsavedChanges={hasWorkspaceChanges}
+          isDismissDisabled={isSavingWorkspace}
+          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          panelClassName="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+          onClose={closeWorkspaceEditModal}
+        >
+          {({ requestClose }) => (
+            <>
             <h2 className="text-xl font-bold text-slate-900">
               Edit Workspace
             </h2>
@@ -1569,12 +1854,8 @@ export default function ProjectDetailClient({
 
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  if (isSavingWorkspace) return
-
-                  setIsWorkspaceEditOpen(false)
-                  setWorkspaceError("")
-                }}
+                type="button"
+                onClick={requestClose}
                 disabled={isSavingWorkspace}
                 className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -1582,6 +1863,7 @@ export default function ProjectDetailClient({
               </button>
 
               <button
+                type="button"
                 onClick={handleUpdateWorkspace}
                 disabled={isSavingWorkspace}
                 className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -1589,13 +1871,19 @@ export default function ProjectDetailClient({
                 {isSavingWorkspace ? "Saving..." : "Save Workspace"}
               </button>
             </div>
-          </div>
-        </div>
+            </>
+          )}
+        </ModalShell>
       )}
 
       {isDeleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <ModalShell
+          isDismissDisabled={isDeleting}
+          panelClassName="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+          onClose={closeDeleteProjectModal}
+        >
+          {({ requestClose }) => (
+            <>
             <h3 className="text-lg font-semibold text-slate-900">
               Delete Project
             </h3>
@@ -1615,18 +1903,15 @@ export default function ProjectDetailClient({
 
             <div className="mt-5 flex justify-end gap-2">
               <button
-                onClick={() => {
-                  if (isDeleting) return
-
-                  setIsDeleteOpen(false)
-                  setDeleteError("")
-                }}
+                type="button"
+                onClick={requestClose}
                 disabled={isDeleting}
                 className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={confirmDeleteProject}
                 disabled={isDeleting}
                 className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
@@ -1634,8 +1919,9 @@ export default function ProjectDetailClient({
                 {isDeleting ? "Deleting..." : "Delete Project"}
               </button>
             </div>
-          </div>
-        </div>
+            </>
+          )}
+        </ModalShell>
       )}
     </>
   )

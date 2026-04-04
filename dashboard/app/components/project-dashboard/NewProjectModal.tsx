@@ -2,6 +2,7 @@
 
 import type { ProjectFormErrors } from "@/lib/project-validation"
 import type { ProjectVisibility } from "@/lib/projects"
+import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 
 export function NewProjectModal({
   name,
@@ -33,8 +34,16 @@ export function NewProjectModal({
   onCreateProject: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+    <ModalShell
+      hasUnsavedChanges={Boolean(
+        name.trim() || description.trim() || dueDate || visibility !== "public"
+      )}
+      isDismissDisabled={isSaving}
+      panelClassName="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+      onClose={onCancel}
+    >
+      {({ requestClose }) => (
+        <>
         <h3 className="text-lg font-semibold">New Project</h3>
         <p className="mt-1 text-sm text-slate-600">
           Add a new project card to the dashboard.
@@ -107,13 +116,15 @@ export function NewProjectModal({
 
         <div className="mt-5 flex justify-end gap-2">
           <button
-            onClick={onCancel}
+            type="button"
+            onClick={requestClose}
             disabled={isSaving}
             className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={onCreateProject}
             disabled={isSaving || !name.trim()}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
@@ -121,7 +132,8 @@ export function NewProjectModal({
             {isSaving ? "Creating..." : "Create Project"}
           </button>
         </div>
-      </div>
-    </div>
+        </>
+      )}
+    </ModalShell>
   )
 }

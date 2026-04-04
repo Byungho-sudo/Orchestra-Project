@@ -263,6 +263,10 @@ export function ProjectsGrid({
             }))
           }}
           onCancel={() => {
+            setName("")
+            setDescription("")
+            setDueDate("")
+            setVisibility("public")
             onCloseCreateProject()
             setNewProjectErrors({})
           }}
