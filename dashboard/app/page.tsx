@@ -20,6 +20,8 @@
  */
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -68,6 +70,11 @@ export default function Home() {
    * Stores a fetch/create/update/delete error message for display.
    */
   const [errorMessage, setErrorMessage] = useState("");
+
+  /**
+   * Stores the currently authenticated Supabase user session.
+   */
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   /**
    * Stores the currently selected project for editing.
@@ -249,6 +256,26 @@ export default function Home() {
     localStorage.setItem("sortBy", sortBy);
   }, [sortBy]);
 
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setCurrentUser(user);
+    };
+
+    loadCurrentUser();
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
   /**
    * Create a new project in Supabase and immediately update local state.
    */
@@ -385,6 +412,12 @@ export default function Home() {
     closeDeleteModal();
   };
 
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    router.push("/login");
+  };
+
   /**
    * Show a loading screen while data is being fetched.
    */
@@ -398,12 +431,43 @@ export default function Home() {
       <header className="h-16 border-b border-slate-200 bg-white px-6 shadow-sm">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between">
           <h1 className="text-lg font-semibold">Project Dashboard</h1>
-          <button
-            onClick={() => setIsOpen(true)}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
-          >
-            New Project
-          </button>
+          <div className="flex items-center gap-3">
+            {currentUser ? (
+              <>
+                <span className="hidden text-sm text-slate-600 sm:inline">
+                  {currentUser.email}
+                </span>
+                <button
+                  onClick={logout}
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-slate-700 hover:underline"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/signup"
+                  className="text-sm font-medium text-indigo-600 hover:underline"
+                >
+                  Sign up
+                </Link>
+              </>
+            )}
+
+            <button
+              onClick={() => setIsOpen(true)}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+            >
+              New Project
+            </button>
+          </div>
         </div>
       </header>
 
@@ -502,8 +566,22 @@ export default function Home() {
             </div>
           )}
 
+          {/* No results state */}
+          {!errorMessage && projects.length > 0 && filteredProjects.length === 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900">
+                No matching projects
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {searchQuery.trim()
+                  ? "No projects match your current search."
+                  : "No projects match your selected deadline filter."}
+              </p>
+            </div>
+          )}
+
           {/* Project grid */}
-          {projects.length > 0 && (
+          {filteredProjects.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {sortProjects(filteredProjects).map((project) => (
                 <article
