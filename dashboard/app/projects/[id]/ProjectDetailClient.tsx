@@ -36,6 +36,7 @@ import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
+import { projectSectionAnchorOffsetPx } from "./project-detail/helpers"
 import { ModuleStackFooter } from "./project-detail/ModuleStackFooter"
 import { ProjectModuleSection } from "./project-detail/ProjectModuleSection"
 
@@ -542,6 +543,10 @@ export default function ProjectDetailClient({
     projectWorkspaceNavigationIds[0] ?? "overview"
   )
   const newTaskInputRef = useRef<HTMLInputElement | null>(null)
+  const pendingNavigationSectionRef = useRef<string | null>(null)
+  const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  )
   const taskSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
@@ -747,6 +752,10 @@ export default function ProjectDetailClient({
         clearTimeout(taskDeleteUndoTimeoutRef.current)
       }
 
+      if (pendingNavigationTimeoutRef.current) {
+        clearTimeout(pendingNavigationTimeoutRef.current)
+      }
+
     }
   }, [])
 
@@ -759,30 +768,69 @@ export default function ProjectDetailClient({
 
     if (navigationSections.length === 0) return
 
-    const updateActiveSection = () => {
-      const viewportOffset = 160
-      const currentSection = [...navigationSections]
-        .reverse()
-        .find((section) => section.getBoundingClientRect().top <= viewportOffset)
+    const getClosestSectionId = () => {
+      const pendingSectionId = pendingNavigationSectionRef.current
 
-      setActiveSection(currentSection?.id ?? navigationSections[0].id)
+      if (pendingSectionId) {
+        const pendingSection = navigationSections.find(
+          (section) => section.id === pendingSectionId
+        )
+
+        if (pendingSection) {
+          const pendingDistance = Math.abs(
+            pendingSection.getBoundingClientRect().top -
+              projectSectionAnchorOffsetPx
+          )
+
+          if (pendingDistance > 12) {
+            return pendingSectionId
+          }
+        }
+
+        pendingNavigationSectionRef.current = null
+      }
+
+      const rankedSections = navigationSections.map((section) => {
+        const topOffset =
+          section.getBoundingClientRect().top - projectSectionAnchorOffsetPx
+
+        return {
+          id: section.id,
+          distance: Math.abs(topOffset),
+        }
+      })
+
+      rankedSections.sort((firstSection, secondSection) => {
+        return firstSection.distance - secondSection.distance
+      })
+
+      return rankedSections[0]?.id ?? navigationSections[0].id
+    }
+
+    let frameId = 0
+    const updateActiveSection = () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId)
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        setActiveSection(getClosestSectionId())
+      })
     }
 
     updateActiveSection()
 
-    const observer = new IntersectionObserver(() => {
-      updateActiveSection()
-    }, {
-      root: null,
-      rootMargin: "-18% 0px -60% 0px",
-      threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-    })
-
-    navigationSections.forEach((section) => observer.observe(section))
+    window.addEventListener("scroll", updateActiveSection, { passive: true })
+    window.addEventListener("resize", updateActiveSection)
     window.addEventListener("hashchange", updateActiveSection)
 
     return () => {
-      observer.disconnect()
+      if (frameId) {
+        cancelAnimationFrame(frameId)
+      }
+
+      window.removeEventListener("scroll", updateActiveSection)
+      window.removeEventListener("resize", updateActiveSection)
       window.removeEventListener("hashchange", updateActiveSection)
     }
   }, [workspaceModules])
@@ -1576,6 +1624,17 @@ export default function ProjectDetailClient({
 
     event.preventDefault()
     setActiveSection(targetId)
+    pendingNavigationSectionRef.current = targetId
+
+    if (pendingNavigationTimeoutRef.current) {
+      clearTimeout(pendingNavigationTimeoutRef.current)
+    }
+
+    pendingNavigationTimeoutRef.current = setTimeout(() => {
+      pendingNavigationSectionRef.current = null
+      pendingNavigationTimeoutRef.current = null
+    }, 1200)
+
     window.history.replaceState(null, "", href)
     targetElement.scrollIntoView({
       behavior: "smooth",
@@ -1902,7 +1961,7 @@ export default function ProjectDetailClient({
               Navigation
             </h2>
 
-            <nav className="flex flex-wrap gap-2 text-sm lg:flex-col">
+            <nav className="flex flex-wrap gap-2 text-sm lg:block lg:space-y-2">
               {projectWorkspaceNavigation.map((item) => (
                 <Link
                   key={item.href}
@@ -1913,9 +1972,9 @@ export default function ProjectDetailClient({
                       : undefined
                   }
                   onClick={(event) => handleNavigationClick(event, item.href)}
-                  className={`block rounded-lg px-3 py-2 transition-colors ${
+                  className={`block rounded-md px-3 py-2 transition-colors ${
                     activeSection === item.href.replace("#", "")
-                      ? "bg-slate-900/10 font-semibold text-slate-900"
+                      ? "bg-indigo-50 font-medium text-indigo-700"
                       : "text-slate-700 hover:bg-slate-100"
                   }`}
                 >

@@ -26,6 +26,7 @@ export const sectionCardClassName =
 export const fieldCardClassName =
   "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
 export const taskDeleteUndoDurationMs = 8000
+export const projectSectionAnchorOffsetPx = 24
 
 export const projectWorkspaceNavigation = [
   { href: "#overview", label: "Overview" },

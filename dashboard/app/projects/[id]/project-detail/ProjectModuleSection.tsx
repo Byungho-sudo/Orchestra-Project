@@ -1,5 +1,9 @@
 import type { ReactNode } from "react"
-import { getProjectModuleAnchor, sectionCardClassName } from "./helpers"
+import {
+  getProjectModuleAnchor,
+  projectSectionAnchorOffsetPx,
+  sectionCardClassName,
+} from "./helpers"
 import type { ProjectWorkspaceModule } from "./types"
 
 export function ProjectModuleSection({
@@ -26,7 +30,8 @@ export function ProjectModuleSection({
   return (
     <section
       id={getProjectModuleAnchor(module)}
-      className={`${sectionCardClassName} scroll-mt-8 lg:scroll-mt-10`}
+      className={sectionCardClassName}
+      style={{ scrollMarginTop: `${projectSectionAnchorOffsetPx}px` }}
     >
       <div className="mb-4 flex flex-wrap justify-end gap-3">
         <button
