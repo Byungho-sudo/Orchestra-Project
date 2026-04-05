@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
-  type ReactNode,
 } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -19,6 +18,7 @@ import {
 } from "@/lib/project-deadline"
 import type {
   Project,
+  ProjectMetadata,
   ProjectTask,
   ProjectVisibility,
 } from "@/lib/projects"
@@ -27,25 +27,15 @@ import {
   type ProjectFormErrors,
 } from "@/lib/project-validation"
 import {
-  defaultProjectModuleAnchors,
   getDefaultProjectModuleRows,
   getDefaultProjectWorkspaceModules,
   type DefaultProjectModuleType,
 } from "@/lib/project-modules"
 import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
-
-type ProjectWorkspaceForm = {
-  intention: string
-  idea: string
-  target_buyer: string
-  product: string
-  price: string
-  tools: string
-  supplier: string
-  budget: string
-  notes: string
-}
+import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
+import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
+import { ProjectModuleSection } from "./project-detail/ProjectModuleSection"
 
 type TaskDueStatus =
   | "completed"
@@ -84,10 +74,13 @@ type CreateProjectModuleForm = {
   type: ProjectModuleType
 }
 
-const detailCardClassName =
-  "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
-const sectionCardClassName =
-  "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
+type ProjectMetadataDraft = {
+  id: string
+  key: string
+  value: string
+  order: number
+}
+
 const fieldCardClassName =
   "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
 const taskDeleteUndoDurationMs = 8000
@@ -352,25 +345,6 @@ function normalizeProgressOnBlur(value: string, fallbackProgress: number) {
   return String(Math.min(100, Math.max(0, Number(value))))
 }
 
-function getDerivedProjectStatus(project: Project) {
-  if (project.progress === 100) {
-    return "Completed"
-  }
-
-  const deadlineDate = parseTaskDateInput(getTaskDueDateValue(project.due_date))
-
-  if (deadlineDate) {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    if (deadlineDate.getTime() < today.getTime()) {
-      return "Overdue"
-    }
-  }
-
-  return "Active"
-}
-
 function WorkspaceValue({ value }: { value: string | null }) {
   return (
     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
@@ -379,74 +353,54 @@ function WorkspaceValue({ value }: { value: string | null }) {
   )
 }
 
-function getProjectModuleAnchor(module: ProjectWorkspaceModule) {
-  if (module.type in defaultProjectModuleAnchors) {
-    return defaultProjectModuleAnchors[module.type as DefaultProjectModuleType]
+function createMetadataDraft(
+  metadata?: Partial<Pick<ProjectMetadata, "id" | "key" | "value" | "order">>
+): ProjectMetadataDraft {
+  return {
+    id:
+      metadata?.id ??
+      (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `metadata-${Date.now()}-${Math.random()}`),
+    key: metadata?.key ?? "",
+    value: metadata?.value ?? "",
+    order: metadata?.order ?? 0,
   }
-
-  return module.id
 }
 
-function ProjectModule({
-  module,
-  isFirst,
-  isLast,
-  isDeleting,
-  isMoving,
-  onDelete,
-  onMoveDown,
-  onMoveUp,
-  children,
-}: {
-  module: ProjectWorkspaceModule
-  isFirst: boolean
-  isLast: boolean
-  isDeleting: boolean
-  isMoving: boolean
-  onDelete: (moduleId: string) => void
-  onMoveDown: (moduleId: string) => void
-  onMoveUp: (moduleId: string) => void
-  children: ReactNode
-}) {
-  return (
-    <section
-      id={getProjectModuleAnchor(module)}
-      className={sectionCardClassName}
-    >
-      <div className="mb-4 flex flex-wrap justify-end gap-3">
-        <button
-          type="button"
-          onClick={() => onMoveUp(module.id)}
-          disabled={isFirst || isMoving || isDeleting}
-          className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Move Up
-        </button>
+function mapProjectMetadata(metadataRows: ProjectMetadata[]) {
+  return [...metadataRows]
+    .sort((firstMetadata, secondMetadata) => {
+      if (firstMetadata.order !== secondMetadata.order) {
+        return firstMetadata.order - secondMetadata.order
+      }
 
-        <button
-          type="button"
-          onClick={() => onMoveDown(module.id)}
-          disabled={isLast || isMoving || isDeleting}
-          className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Move Down
-        </button>
-      </div>
+      return firstMetadata.created_at.localeCompare(secondMetadata.created_at)
+    })
+    .map((metadata, metadataIndex) => ({
+      ...metadata,
+      order: metadataIndex + 1,
+    }))
+}
 
-      {children}
-
-      <div className="mt-6 flex justify-end">
-        <button
-          type="button"
-          onClick={() => onDelete(module.id)}
-          disabled={isDeleting}
-          className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isDeleting ? "Deleting..." : "Delete Module"}
-        </button>
-      </div>
-    </section>
+function createMetadataDrafts(metadataRows: ProjectMetadata[]) {
+  return mapProjectMetadata(metadataRows).map((metadata) =>
+    createMetadataDraft(metadata)
   )
+}
+
+function normalizeMetadataDrafts(metadataRows: ProjectMetadataDraft[]) {
+  return metadataRows
+    .map((metadata) => ({
+      ...metadata,
+      key: metadata.key.trim(),
+      value: metadata.value.trim(),
+    }))
+    .filter((metadata) => metadata.key || metadata.value)
+    .map((metadata, metadataIndex) => ({
+      ...metadata,
+      order: metadataIndex + 1,
+    }))
 }
 
 function CustomProjectModulePlaceholder({
@@ -500,6 +454,16 @@ function isProjectModulesSchemaMissingError(error: unknown) {
   )
 }
 
+function isProjectMetadataSchemaMissingError(error: unknown) {
+  const errorCode = (error as { code?: string } | null)?.code
+  const errorMessage = (error as { message?: string } | null)?.message || ""
+
+  return (
+    errorCode === "PGRST205" ||
+    errorMessage.includes("Could not find the table 'public.project_metadata'")
+  )
+}
+
 function logSupabaseMutationResult(
   label: string,
   result: {
@@ -535,19 +499,20 @@ export default function ProjectDetailClient({
   project: Project
 }) {
   const router = useRouter()
-  const { currentUser, logout } = useCurrentUser()
+  const { currentUser } = useCurrentUser()
 
   const [currentProject, setCurrentProject] = useState<Project>(project)
+  const [projectMetadata, setProjectMetadata] = useState<ProjectMetadata[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [workspaceModules, setWorkspaceModules] =
     useState<ProjectWorkspaceModule[]>(getDefaultProjectWorkspaceModules())
 
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [isWorkspaceEditOpen, setIsWorkspaceEditOpen] = useState(false)
+  const [isMetadataEditOpen, setIsMetadataEditOpen] = useState(false)
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isSavingWorkspace, setIsSavingWorkspace] = useState(false)
+  const [isSavingMetadata, setIsSavingMetadata] = useState(false)
   const [isSavingTask, setIsSavingTask] = useState(false)
   const [isSavingTasks, setIsSavingTasks] = useState(false)
   const [isCreatingModule, setIsCreatingModule] = useState(false)
@@ -556,7 +521,7 @@ export default function ProjectDetailClient({
   const [isResettingModules, setIsResettingModules] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
-  const [workspaceError, setWorkspaceError] = useState("")
+  const [metadataError, setMetadataError] = useState("")
   const [moduleError, setModuleError] = useState("")
   const [taskError, setTaskError] = useState("")
   const [taskSaveState, setTaskSaveState] = useState<TaskSaveState>("idle")
@@ -580,22 +545,13 @@ export default function ProjectDetailClient({
   const [editForm, setEditForm] = useState({
     name: currentProject.name,
     description: currentProject.description ?? "",
+    status: currentProject.status,
     progress: String(currentProject.progress),
     due_date: currentProject.due_date ?? "",
     visibility: currentProject.visibility,
   })
 
-  const [workspaceForm, setWorkspaceForm] = useState<ProjectWorkspaceForm>({
-    intention: currentProject.intention ?? "",
-    idea: currentProject.idea ?? "",
-    target_buyer: currentProject.target_buyer ?? "",
-    product: currentProject.product ?? "",
-    price: currentProject.price ?? "",
-    tools: currentProject.tools ?? "",
-    supplier: currentProject.supplier ?? "",
-    budget: currentProject.budget ?? "",
-    notes: currentProject.notes ?? "",
-  })
+  const [metadataForm, setMetadataForm] = useState<ProjectMetadataDraft[]>([])
   const [createModuleForm, setCreateModuleForm] =
     useState<CreateProjectModuleForm>({
       title: "",
@@ -698,6 +654,39 @@ export default function ProjectDetailClient({
     )
   }, [currentProject.id])
 
+  const loadProjectMetadata = useCallback(async () => {
+    const { data, error, status, statusText } = await supabase
+      .from("project_metadata")
+      .select("id,project_id,key,value,order,created_at")
+      .eq("project_id", currentProject.id)
+      .order("order", { ascending: true })
+      .order("created_at", { ascending: true })
+
+    logSupabaseMutationResult("Project metadata fetch", {
+      data,
+      error,
+      status,
+      statusText,
+    })
+
+    if (error) {
+      if (isProjectMetadataSchemaMissingError(error)) {
+        console.warn(
+          "Project metadata table is unavailable. Rendering without optional metadata.",
+          error
+        )
+        setProjectMetadata([])
+        return
+      }
+
+      console.error("Project metadata fetch failed:", error)
+      setProjectMetadata([])
+      return
+    }
+
+    setProjectMetadata(mapProjectMetadata((data as ProjectMetadata[]) || []))
+  }, [currentProject.id])
+
   useEffect(() => {
     async function loadProjectTasks() {
       setTaskError("")
@@ -735,6 +724,10 @@ export default function ProjectDetailClient({
   useEffect(() => {
     loadWorkspaceModules()
   }, [loadWorkspaceModules])
+
+  useEffect(() => {
+    loadProjectMetadata()
+  }, [loadProjectMetadata])
 
   useEffect(() => {
     return () => {
@@ -822,11 +815,48 @@ export default function ProjectDetailClient({
     setSaveFieldErrors({})
   }
 
-  function closeWorkspaceEditModal() {
-    if (isSavingWorkspace) return
+  function closeMetadataEditModal() {
+    if (isSavingMetadata) return
 
-    setIsWorkspaceEditOpen(false)
-    setWorkspaceError("")
+    setIsMetadataEditOpen(false)
+    setMetadataError("")
+  }
+  function handleAddMetadataField() {
+    setMetadataForm((current) => [
+      ...current,
+      createMetadataDraft({ order: current.length + 1 }),
+    ])
+  }
+
+  function handleUpdateMetadataField(
+    metadataId: string,
+    field: "key" | "value",
+    value: string
+  ) {
+    setMetadataForm((current) =>
+      current.map((metadata) =>
+        metadata.id === metadataId ? { ...metadata, [field]: value } : metadata
+      )
+    )
+
+    if (metadataError) {
+      setMetadataError("")
+    }
+  }
+
+  function handleDeleteMetadataField(metadataId: string) {
+    setMetadataForm((current) =>
+      current
+        .filter((metadata) => metadata.id !== metadataId)
+        .map((metadata, metadataIndex) => ({
+          ...metadata,
+          order: metadataIndex + 1,
+        }))
+    )
+
+    if (metadataError) {
+      setMetadataError("")
+    }
   }
 
   function closeAddModuleModal() {
@@ -1113,6 +1143,7 @@ export default function ProjectDetailClient({
     const updates = {
       name: validation.values.name,
       description: validation.values.description,
+      status: editForm.status,
       progress: validation.values.progress ?? currentProject.progress,
       due_date: validation.values.due_date,
       visibility: validation.values.visibility,
@@ -1135,61 +1166,76 @@ export default function ProjectDetailClient({
     router.refresh()
   }
 
-  async function handleUpdateWorkspace() {
-    if (isSavingWorkspace) return
+  async function handleSaveProjectMetadata() {
+    if (isSavingMetadata) return
 
-    const projectId = currentProject.id
+    const normalizedMetadata = normalizeMetadataDrafts(metadataForm)
+    const hasIncompleteMetadataField = normalizedMetadata.some(
+      (metadata) => !metadata.key || !metadata.value
+    )
 
-    console.log("Updating projectId:", projectId)
-
-    setWorkspaceError("")
-    setIsSavingWorkspace(true)
-
-    const updates = {
-      intention: workspaceForm.intention.trim() || null,
-      idea: workspaceForm.idea.trim() || null,
-      target_buyer: workspaceForm.target_buyer.trim() || null,
-      product: workspaceForm.product.trim() || null,
-      price: workspaceForm.price.trim() || null,
-      tools: workspaceForm.tools.trim() || null,
-      supplier: workspaceForm.supplier.trim() || null,
-      budget: workspaceForm.budget.trim() || null,
-      notes: workspaceForm.notes.trim() || null,
+    if (hasIncompleteMetadataField) {
+      setMetadataError("Each custom field needs both a label and a value.")
+      return
     }
 
+    setMetadataError("")
+    setIsSavingMetadata(true)
+
     try {
-      const { data, error, status, statusText } = await supabase
-        .from("projects")
-        .update(updates)
-        .eq("id", projectId)
-        .select("*")
-        .single()
+      const { error: deleteError } = await supabase
+        .from("project_metadata")
+        .delete()
+        .eq("project_id", currentProject.id)
 
-      logSupabaseMutationResult("Workspace update", {
-        data,
-        error,
-        status,
-        statusText,
-      })
-
-      if (error) {
-        throw error
+      if (deleteError) {
+        throw deleteError
       }
 
-      setCurrentProject({
-        ...(data as Project),
-      })
-      setIsWorkspaceEditOpen(false)
+      if (normalizedMetadata.length > 0) {
+        const {
+          data,
+          error,
+          status,
+          statusText,
+        } = await supabase
+          .from("project_metadata")
+          .insert(
+            normalizedMetadata.map((metadata, metadataIndex) => ({
+              project_id: currentProject.id,
+              key: metadata.key,
+              value: metadata.value,
+              order: metadataIndex + 1,
+            }))
+          )
+          .select("id,project_id,key,value,order,created_at")
+          .order("order", { ascending: true })
+          .order("created_at", { ascending: true })
+
+        logSupabaseMutationResult("Project metadata save", {
+          data,
+          error,
+          status,
+          statusText,
+        })
+
+        if (error) {
+          throw error
+        }
+      }
+
+      await loadProjectMetadata()
+      setIsMetadataEditOpen(false)
       router.refresh()
     } catch (error) {
-      console.error("Workspace update failed:", error)
+      console.error("Project metadata save failed:", error)
       console.error(
-        "Workspace update failed JSON:",
+        "Project metadata save failed JSON:",
         JSON.stringify(error, null, 2)
       )
-      setWorkspaceError("Failed to save workspace. Please try again.")
+      setMetadataError("Failed to save metadata. Please try again.")
     } finally {
-      setIsSavingWorkspace(false)
+      setIsSavingMetadata(false)
     }
   }
 
@@ -1470,6 +1516,8 @@ export default function ProjectDetailClient({
   }
 
   const deadlineStatus = getDeadlineStatus(currentProject.due_date)
+  const sortedProjectMetadata = mapProjectMetadata(projectMetadata)
+  const contextMetadata = sortedProjectMetadata.slice(0, 2)
   const sortedTasks = sortTasksByUrgency(tasks)
   const sortedWorkspaceModules = [...workspaceModules].sort(
     (firstModule, secondModule) => firstModule.order - secondModule.order
@@ -1477,19 +1525,20 @@ export default function ProjectDetailClient({
   const hasEditProjectChanges =
     editForm.name !== currentProject.name ||
     editForm.description !== (currentProject.description ?? "") ||
+    editForm.status !== currentProject.status ||
     editForm.progress !== String(currentProject.progress) ||
     editForm.due_date !== (currentProject.due_date ?? "") ||
     editForm.visibility !== currentProject.visibility
-  const hasWorkspaceChanges =
-    workspaceForm.intention !== (currentProject.intention ?? "") ||
-    workspaceForm.idea !== (currentProject.idea ?? "") ||
-    workspaceForm.target_buyer !== (currentProject.target_buyer ?? "") ||
-    workspaceForm.product !== (currentProject.product ?? "") ||
-    workspaceForm.price !== (currentProject.price ?? "") ||
-    workspaceForm.tools !== (currentProject.tools ?? "") ||
-    workspaceForm.supplier !== (currentProject.supplier ?? "") ||
-    workspaceForm.budget !== (currentProject.budget ?? "") ||
-    workspaceForm.notes !== (currentProject.notes ?? "")
+  const hasMetadataChanges =
+    JSON.stringify(normalizeMetadataDrafts(metadataForm)) !==
+    JSON.stringify(
+      sortedProjectMetadata.map((metadata, metadataIndex) => ({
+        id: metadata.id,
+        key: metadata.key,
+        value: metadata.value,
+        order: metadataIndex + 1,
+      }))
+    )
   const hasCreateModuleChanges =
     createModuleForm.title.trim() !== "" || createModuleForm.type !== "notes"
 
@@ -1506,59 +1555,46 @@ export default function ProjectDetailClient({
                 {module.title}
               </h2>
             </div>
-
-            <button
-              onClick={() => {
-                setWorkspaceForm({
-                  intention: currentProject.intention ?? "",
-                  idea: currentProject.idea ?? "",
-                  target_buyer: currentProject.target_buyer ?? "",
-                  product: currentProject.product ?? "",
-                  price: currentProject.price ?? "",
-                  tools: currentProject.tools ?? "",
-                  supplier: currentProject.supplier ?? "",
-                  budget: currentProject.budget ?? "",
-                  notes: currentProject.notes ?? "",
-                })
-                setWorkspaceError("")
-                setIsWorkspaceEditOpen(true)
-              }}
-              className="hidden rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              Edit Workspace
-            </button>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className={fieldCardClassName}>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Intention
+                Status
               </p>
-              <WorkspaceValue value={currentProject.intention} />
+              <p className="mt-2 text-sm font-medium text-slate-900">
+                {currentProject.status}
+              </p>
             </div>
             <div className={fieldCardClassName}>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Idea
+                Visibility
               </p>
-              <WorkspaceValue value={currentProject.idea} />
+              <p className="mt-2 text-sm font-medium text-slate-900">
+                {currentProject.visibility}
+              </p>
             </div>
             <div className={fieldCardClassName}>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Target Buyer
+                Due Date
               </p>
-              <WorkspaceValue value={currentProject.target_buyer} />
+              <p className="mt-2 text-sm font-medium text-slate-900">
+                {currentProject.due_date ?? "No due date"}
+              </p>
             </div>
             <div className={fieldCardClassName}>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Product
+                Progress
               </p>
-              <WorkspaceValue value={currentProject.product} />
+              <p className="mt-2 text-sm font-medium text-slate-900">
+                {currentProject.progress}%
+              </p>
             </div>
-            <div className={fieldCardClassName}>
+            <div className={`${fieldCardClassName} md:col-span-2`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Price
+                Description
               </p>
-              <WorkspaceValue value={currentProject.price} />
+              <WorkspaceValue value={currentProject.description} />
             </div>
           </div>
         </>
@@ -1572,32 +1608,22 @@ export default function ProjectDetailClient({
             {module.title}
           </p>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className={fieldCardClassName}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Tools
-              </p>
-              <WorkspaceValue value={currentProject.tools} />
+          {sortedProjectMetadata.length === 0 ? (
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              No custom metadata has been added for this project yet.
+            </p>
+          ) : (
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {sortedProjectMetadata.map((metadata) => (
+                <div key={metadata.id} className={fieldCardClassName}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {metadata.key}
+                  </p>
+                  <WorkspaceValue value={metadata.value} />
+                </div>
+              ))}
             </div>
-            <div className={fieldCardClassName}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Supplier
-              </p>
-              <WorkspaceValue value={currentProject.supplier} />
-            </div>
-            <div className={fieldCardClassName}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Budget
-              </p>
-              <WorkspaceValue value={currentProject.budget} />
-            </div>
-            <div className={`${fieldCardClassName} md:col-span-2`}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Notes
-              </p>
-              <WorkspaceValue value={currentProject.notes} />
-            </div>
-          </div>
+          )}
         </>
       )
     }
@@ -1823,186 +1849,7 @@ export default function ProjectDetailClient({
           </aside>
 
           <div className="min-w-0">
-          <div className="mb-6 hidden items-center justify-between">
-            <Link
-              href="/projects"
-              className="text-sm font-medium text-indigo-600 hover:underline"
-            >
-              Back to projects
-            </Link>
-
-            {currentUser ? (
-              <button
-                onClick={logout}
-                className="hidden rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Log out
-              </button>
-            ) : (
-              <Link
-                href="/login"
-                className="hidden text-sm font-medium text-slate-700 hover:underline"
-              >
-                Log in
-              </Link>
-            )}
-          </div>
-
-          <div className={detailCardClassName}>
-            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-              <div className="max-w-2xl">
-                <Link
-                  href="/projects"
-                  className="text-sm font-medium text-indigo-600 hover:underline"
-                >
-                  Back to projects
-                </Link>
-
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Project Detail
-                </p>
-
-                <h1 className="mt-2 text-3xl font-bold text-slate-900">
-                  {currentProject.name}
-                </h1>
-
-                <p className="mt-4 text-base leading-7 text-slate-600">
-                  {currentProject.description?.trim() ||
-                    "No description provided."}
-                </p>
-              </div>
-
-              <div className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Project ID
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-900">
-                  {currentProject.id}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 hidden gap-4 md:grid-cols-3">
-              <div className={fieldCardClassName}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Due Date
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {currentProject.due_date ?? "No due date"}
-                </p>
-              </div>
-
-              <div className={fieldCardClassName}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Progress
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {currentProject.progress}%
-                </p>
-              </div>
-
-              <div className={fieldCardClassName}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Created At
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {new Date(currentProject.created_at).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 hidden space-y-6">
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-700">
-                    Progress Bar
-                  </span>
-                  <span className="text-sm font-medium text-slate-600">
-                    {currentProject.progress}%
-                  </span>
-                </div>
-
-                <div className="h-3 rounded-full bg-slate-200">
-                  <div
-                    className="h-full rounded-full bg-green-700 transition-all"
-                    style={{ width: `${currentProject.progress}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-700">
-                    Deadline Bar
-                  </span>
-                  <span className="text-sm font-medium text-slate-600">
-                    {deadlineStatus}
-                  </span>
-                </div>
-
-                <div className="h-3 rounded-full bg-slate-200">
-                  <div
-                    className={`h-full rounded-full transition-all ${getDeadlineBarClass(
-                      deadlineStatus
-                    )}`}
-                    style={{
-                      width: `${getDeadlineFill(currentProject.due_date)}%`,
-                    }}
-                  />
-                </div>
-
-                <p className="mt-3 text-xs text-slate-500">
-                  {currentProject.due_date
-                    ? `Due ${currentProject.due_date}`
-                    : "No due date"}
-                  <span
-                    className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getDeadlineBadgeClass(
-                      deadlineStatus
-                    )}`}
-                  >
-                    {deadlineStatus}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 hidden flex-wrap gap-3">
-              <Link
-                href="/projects"
-                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Back to projects
-              </Link>
-
-              <button
-                onClick={() => {
-                  setEditForm({
-                    name: currentProject.name,
-                    description: currentProject.description ?? "",
-                    progress: String(currentProject.progress),
-                    due_date: currentProject.due_date ?? "",
-                    visibility: currentProject.visibility,
-                  })
-                  setSaveError("")
-                  setSaveFieldErrors({})
-                  setIsEditOpen(true)
-                }}
-                className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-              >
-                Edit Project
-              </button>
-
-              <button
-                onClick={() => {
-                  setDeleteError("")
-                  setIsDeleteOpen(true)
-                }}
-                className="inline-flex rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500"
-              >
-                Delete Project
-              </button>
-            </div>
-          </div>
+            <ProjectDetailHeader project={currentProject} />
 
           <div className="mt-8 space-y-8">
             <div className="flex flex-wrap justify-end gap-3">
@@ -2047,7 +1894,7 @@ export default function ProjectDetailClient({
             )}
 
             {sortedWorkspaceModules.map((module, moduleIndex) => (
-              <ProjectModule
+              <ProjectModuleSection
                 key={module.id}
                 module={module}
                 isFirst={moduleIndex === 0}
@@ -2063,465 +1910,43 @@ export default function ProjectDetailClient({
                 }
               >
                 {renderProjectModuleContent(module)}
-              </ProjectModule>
+              </ProjectModuleSection>
             ))}
           </div>
-
-          <div className="hidden">
-            <section id="overview" className={sectionCardClassName}>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    Project Overview
-                  </p>
-                  <h2 className="mt-2 text-2xl font-bold text-slate-900">
-                    Workspace Plan
-                  </h2>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setWorkspaceForm({
-                      intention: currentProject.intention ?? "",
-                      idea: currentProject.idea ?? "",
-                      target_buyer: currentProject.target_buyer ?? "",
-                      product: currentProject.product ?? "",
-                      price: currentProject.price ?? "",
-                      tools: currentProject.tools ?? "",
-                      supplier: currentProject.supplier ?? "",
-                      budget: currentProject.budget ?? "",
-                      notes: currentProject.notes ?? "",
-                    })
-                    setWorkspaceError("")
-                    setIsWorkspaceEditOpen(true)
-                  }}
-                  className="hidden rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                >
-                  Edit Workspace
-                </button>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <div className={fieldCardClassName}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Intention
-                  </p>
-                  <WorkspaceValue value={currentProject.intention} />
-                </div>
-                <div className={fieldCardClassName}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Idea
-                  </p>
-                  <WorkspaceValue value={currentProject.idea} />
-                </div>
-                <div className={fieldCardClassName}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Target Buyer
-                  </p>
-                  <WorkspaceValue value={currentProject.target_buyer} />
-                </div>
-                <div className={fieldCardClassName}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Product
-                  </p>
-                  <WorkspaceValue value={currentProject.product} />
-                </div>
-                <div className={fieldCardClassName}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Price
-                  </p>
-                  <WorkspaceValue value={currentProject.price} />
-                </div>
-              </div>
-            </section>
-
-            <section id="operations" className={sectionCardClassName}>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Planning / Operations
-              </p>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <div className={fieldCardClassName}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Tools
-                  </p>
-                  <WorkspaceValue value={currentProject.tools} />
-                </div>
-                <div className={fieldCardClassName}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Supplier
-                  </p>
-                  <WorkspaceValue value={currentProject.supplier} />
-                </div>
-                <div className={fieldCardClassName}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Budget
-                  </p>
-                  <WorkspaceValue value={currentProject.budget} />
-                </div>
-                <div className={`${fieldCardClassName} md:col-span-2`}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Notes
-                  </p>
-                  <WorkspaceValue value={currentProject.notes} />
-                </div>
-              </div>
-            </section>
-
-            <section id="tasks" className={sectionCardClassName}>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Tasks / Next Steps
-                </p>
-
-                {taskSaveState !== "idle" && (
-                  <p
-                    className={`text-xs font-semibold uppercase tracking-[0.2em] ${getTaskSaveStateClassName(
-                      taskSaveState
-                    )}`}
-                  >
-                    {getTaskSaveStateLabel(taskSaveState)}
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <input
-                  ref={newTaskInputRef}
-                  type="text"
-                  value={newTaskText}
-                  onChange={(event) => {
-                    setNewTaskText(event.target.value)
-                    if (taskInputError && event.target.value.trim()) {
-                      setTaskInputError(false)
-                    }
-                  }}
-                  onKeyDown={handleNewTaskKeyDown}
-                  placeholder="Add a new task"
-                  className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500 ${
-                    taskInputError ? "border-red-300 bg-red-50" : "border-slate-300"
-                  }`}
-                />
-                <input
-                  type="date"
-                  value={newTaskDueDate}
-                  onChange={(event) => setNewTaskDueDate(event.target.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
-                />
-                <button
-                  onClick={handleAddTask}
-                  disabled={isSavingTask || !newTaskText.trim()}
-                  className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Add Task
-                </button>
-              </div>
-
-              {taskError && (
-                <p className="mt-3 text-sm font-medium text-red-600">
-                  {taskError}
-                </p>
-              )}
-
-              <div className="mt-6 space-y-3">
-                {sortedTasks.length === 0 && (
-                  <p className="text-sm text-slate-400">Not added yet</p>
-                )}
-
-                {sortedTasks.map((task) => {
-                  const taskStatusBadge = getTaskStatusBadge(task)
-
-                  return (
-                    <div
-                      key={task.id}
-                      className={`flex flex-col gap-3 rounded-xl border border-slate-200 p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors duration-200 sm:flex-row sm:items-center sm:justify-between ${
-                        task.completed ? "bg-slate-50 opacity-80" : "bg-white opacity-100"
-                      }`}
-                    >
-                      <label className="flex flex-1 items-center gap-3 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={task.completed}
-                          onChange={() => handleToggleTask(task.id)}
-                          disabled={isSavingTasks}
-                          className="h-4 w-4 accent-indigo-600"
-                        />
-                        <span
-                          className={
-                            task.completed
-                              ? "text-slate-400 line-through transition-all duration-200"
-                              : "text-slate-700 transition-all duration-200"
-                          }
-                        >
-                          {task.text}
-                        </span>
-                      </label>
-
-                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                        <input
-                          type="date"
-                          value={getTaskDueDateValue(task.due_date)}
-                          onChange={(event) =>
-                            handleUpdateTaskDueDate(task.id, event.target.value)
-                          }
-                          disabled={isSavingTasks}
-                          className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-                        />
-
-                        <span
-                          className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskStatusBadge.className}`}
-                        >
-                          {taskStatusBadge.label}
-                        </span>
-
-                        <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          disabled={isSavingTasks}
-                          className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div
-                className={`overflow-hidden transition-all duration-300 ${
-                  pendingDeletedTask
-                    ? "mt-4 max-h-24 opacity-100"
-                    : "mt-0 max-h-0 opacity-0"
-                }`}
-              >
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 [&>button]:hidden [&>span]:hidden">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate">
-                      Deleted: {pendingDeletedTask?.text ?? ""}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleUndoDeleteTask}
-                      className="shrink-0 text-sm font-medium text-indigo-600 hover:underline"
-                    >
-                      Undo
-                    </button>
-                  </div>
-
-                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full origin-left rounded-full bg-indigo-500 transition-transform ease-linear"
-                      style={{
-                        transform: isUndoTimerRunning ? "scaleX(0)" : "scaleX(1)",
-                        transitionDuration: `${taskDeleteUndoDurationMs}ms`,
-                      }}
-                    />
-                  </div>
-                  <span>Task deleted — Undo</span>
-                  <button
-                    type="button"
-                    onClick={handleUndoDeleteTask}
-                    className="text-sm font-medium text-indigo-600 hover:underline"
-                  >
-                    Undo
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <section id="timeline" className={sectionCardClassName}>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Timeline
-              </p>
-              <p className="mt-4 text-sm leading-6 text-slate-600">
-                Timeline details can be organized here in a future pass.
-              </p>
-            </section>
-
-            <section id="assets" className={sectionCardClassName}>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Assets
-              </p>
-              <p className="mt-4 text-sm leading-6 text-slate-600">
-                Project assets can be organized here in a future pass.
-              </p>
-            </section>
-          </div>
           </div>
 
-          <aside className={`${detailCardClassName} lg:sticky lg:top-6`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Project Context
-            </p>
-
-            <div className="mt-6 space-y-4">
-              <div className={fieldCardClassName}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Status
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {getDerivedProjectStatus(currentProject)}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-700">
-                    Progress Bar
-                  </span>
-                  <span className="text-sm font-medium text-slate-600">
-                    {currentProject.progress}%
-                  </span>
-                </div>
-
-                <div className="h-3 rounded-full bg-slate-200">
-                  <div
-                    className="h-full rounded-full bg-green-700 transition-all"
-                    style={{ width: `${currentProject.progress}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-700">
-                    Deadline Bar
-                  </span>
-                  <span className="text-sm font-medium text-slate-600">
-                    {deadlineStatus}
-                  </span>
-                </div>
-
-                <div className="h-3 rounded-full bg-slate-200">
-                  <div
-                    className={`h-full rounded-full transition-all ${getDeadlineBarClass(
-                      deadlineStatus
-                    )}`}
-                    style={{
-                      width: `${getDeadlineFill(currentProject.due_date)}%`,
-                    }}
-                  />
-                </div>
-
-                <p className="mt-3 text-xs text-slate-500">
-                  {currentProject.due_date
-                    ? `Due ${currentProject.due_date}`
-                    : "No due date"}
-                  <span
-                    className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getDeadlineBadgeClass(
-                      deadlineStatus
-                    )}`}
-                  >
-                    {deadlineStatus}
-                  </span>
-                </p>
-              </div>
-
-              <div className={fieldCardClassName}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Created At
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {new Date(currentProject.created_at).toLocaleDateString()}
-                </p>
-              </div>
-
-              <div className={fieldCardClassName}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Supplier
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {currentProject.supplier?.trim() || "Not added yet"}
-                </p>
-              </div>
-
-              <div className={fieldCardClassName}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Budget
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                  {currentProject.budget?.trim() || "Not added yet"}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Primary Actions
-                </p>
-
-                <button
-                  onClick={() => {
-                    setEditForm({
-                      name: currentProject.name,
-                      description: currentProject.description ?? "",
-                      progress: String(currentProject.progress),
-                      due_date: currentProject.due_date ?? "",
-                      visibility: currentProject.visibility,
-                    })
-                    setSaveError("")
-                    setSaveFieldErrors({})
-                    setIsEditOpen(true)
-                  }}
-                  className="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                >
-                  Edit Project
-                </button>
-
-                <button
-                  onClick={() => {
-                    setWorkspaceForm({
-                      intention: currentProject.intention ?? "",
-                      idea: currentProject.idea ?? "",
-                      target_buyer: currentProject.target_buyer ?? "",
-                      product: currentProject.product ?? "",
-                      price: currentProject.price ?? "",
-                      tools: currentProject.tools ?? "",
-                      supplier: currentProject.supplier ?? "",
-                      budget: currentProject.budget ?? "",
-                      notes: currentProject.notes ?? "",
-                    })
-                    setWorkspaceError("")
-                    setIsWorkspaceEditOpen(true)
-                  }}
-                  className="inline-flex w-full justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Edit Workspace
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Secondary Action
-                </p>
-
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex w-full cursor-not-allowed justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-400 opacity-70"
-                >
-                  Archive Project
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Destructive Action
-                </p>
-
-                <button
-                  onClick={() => {
-                    setDeleteError("")
-                    setIsDeleteOpen(true)
-                  }}
-                  className="inline-flex w-full justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500"
-                >
-                  Delete Project
-                </button>
-              </div>
-            </div>
-          </aside>
+          <ProjectContextPanel
+            contextMetadata={contextMetadata}
+            currentProject={currentProject}
+            deadlineBadge={{
+              className: getDeadlineBadgeClass(deadlineStatus),
+              fillClassName: getDeadlineBarClass(deadlineStatus),
+              label: deadlineStatus,
+            }}
+            deadlineFill={getDeadlineFill(currentProject.due_date)}
+            onDeleteProject={() => {
+              setDeleteError("")
+              setIsDeleteOpen(true)
+            }}
+            onEditMetadata={() => {
+              setMetadataForm(createMetadataDrafts(sortedProjectMetadata))
+              setMetadataError("")
+              setIsMetadataEditOpen(true)
+            }}
+            onEditProject={() => {
+              setEditForm({
+                name: currentProject.name,
+                description: currentProject.description ?? "",
+                status: currentProject.status,
+                progress: String(currentProject.progress),
+                due_date: currentProject.due_date ?? "",
+                visibility: currentProject.visibility,
+              })
+              setSaveError("")
+              setSaveFieldErrors({})
+              setIsEditOpen(true)
+            }}
+          />
         </div>
       </main>
 
@@ -2585,6 +2010,27 @@ export default function ProjectDetailClient({
                     {saveFieldErrors.description}
                   </p>
                 )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Status
+                </label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      status: e.target.value as Project["status"],
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                >
+                  <option value="not_started">Not started</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="blocked">Blocked</option>
+                  <option value="completed">Completed</option>
+                </select>
               </div>
 
               <div>
@@ -2704,62 +2150,95 @@ export default function ProjectDetailClient({
         </ModalShell>
       )}
 
-      {isWorkspaceEditOpen && (
+      {isMetadataEditOpen && (
         <ModalShell
-          hasUnsavedChanges={hasWorkspaceChanges}
-          isDismissDisabled={isSavingWorkspace}
+          hasUnsavedChanges={hasMetadataChanges}
+          isDismissDisabled={isSavingMetadata}
           overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
           panelClassName="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-          onClose={closeWorkspaceEditModal}
+          onClose={closeMetadataEditModal}
         >
           {({ requestClose }) => (
             <>
             <h2 className="text-xl font-bold text-slate-900">
-              Edit Workspace
+              Edit Metadata
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Capture the project idea, buyer, tools, and operating notes.
+              Add only the custom fields that are relevant to this project.
             </p>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {(
-                [
-                  ["intention", "Intention"],
-                  ["idea", "Idea"],
-                  ["target_buyer", "Target Buyer"],
-                  ["product", "Product"],
-                  ["price", "Price"],
-                  ["tools", "Tools"],
-                  ["supplier", "Supplier"],
-                  ["budget", "Budget"],
-                  ["notes", "Notes"],
-                ] as Array<[keyof ProjectWorkspaceForm, string]>
-              ).map(([field, label]) => (
+            <div className="mt-6 space-y-4">
+              {metadataForm.length === 0 && (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+                  No custom metadata yet. Add a field to describe what matters for this project.
+                </div>
+              )}
+
+              {metadataForm.map((metadata) => (
                 <div
-                  key={field}
-                  className={field === "notes" ? "md:col-span-2" : ""}
+                  key={metadata.id}
+                  className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,220px)_1fr_auto]"
                 >
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    {label}
-                  </label>
-                  <textarea
-                    rows={field === "notes" || field === "idea" ? 4 : 2}
-                    value={workspaceForm[field]}
-                    onChange={(event) =>
-                      setWorkspaceForm((current) => ({
-                        ...current,
-                        [field]: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                  />
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Field Label
+                    </label>
+                    <input
+                      type="text"
+                      value={metadata.key}
+                      onChange={(event) =>
+                        handleUpdateMetadataField(
+                          metadata.id,
+                          "key",
+                          event.target.value
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Value
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={metadata.value}
+                      onChange={(event) =>
+                        handleUpdateMetadataField(
+                          metadata.id,
+                          "value",
+                          event.target.value
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMetadataField(metadata.id)}
+                      className="inline-flex rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
+
+              <button
+                type="button"
+                onClick={handleAddMetadataField}
+                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Add Custom Field
+              </button>
             </div>
 
-            {workspaceError && (
+            {metadataError && (
               <p className="mt-4 text-sm font-medium text-red-600">
-                {workspaceError}
+                {metadataError}
               </p>
             )}
 
@@ -2767,7 +2246,7 @@ export default function ProjectDetailClient({
               <button
                 type="button"
                 onClick={requestClose}
-                disabled={isSavingWorkspace}
+                disabled={isSavingMetadata}
                 className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
@@ -2775,11 +2254,11 @@ export default function ProjectDetailClient({
 
               <button
                 type="button"
-                onClick={handleUpdateWorkspace}
-                disabled={isSavingWorkspace}
+                onClick={handleSaveProjectMetadata}
+                disabled={isSavingMetadata}
                 className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSavingWorkspace ? "Saving..." : "Save Workspace"}
+                {isSavingMetadata ? "Saving..." : "Save Metadata"}
               </button>
             </div>
             </>

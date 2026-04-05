@@ -1,24 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { NewProjectModal } from "@/app/components/project-dashboard/NewProjectModal"
 import { ProjectCard } from "@/app/components/project-dashboard/ProjectCard"
 import { ProjectsGridSkeleton } from "@/app/components/project-dashboard/ProjectsGridSkeleton"
+import {
+  ProjectsEmptyState,
+  ProjectsNoMatchesState,
+} from "@/app/components/project-dashboard/ProjectsGridStates"
 import { ProjectToolbar } from "@/app/components/project-dashboard/ProjectToolbar"
-import type { DeadlineFilter } from "@/lib/project-deadline"
-import {
-  filterProjects,
-  sortProjects,
-  type Project,
-  type ProjectVisibility,
-  type SortOption,
-} from "@/lib/projects"
-import {
-  validateProjectForm,
-  type ProjectFormErrors,
-} from "@/lib/project-validation"
-import { supabase } from "@/lib/supabase"
+import { useCreateProjectForm } from "@/app/components/project-dashboard/use-create-project-form"
+import { useProjectsQuery } from "@/app/components/project-dashboard/use-projects-query"
 import { useCurrentUser } from "@/lib/use-current-user"
 
 export function ProjectsGrid({
@@ -32,132 +24,28 @@ export function ProjectsGrid({
 }) {
   const router = useRouter()
   const { currentUser } = useCurrentUser()
-
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isCreatingProject, setIsCreatingProject] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("")
-
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [dueDate, setDueDate] = useState("")
-  const [visibility, setVisibility] = useState<ProjectVisibility>("public")
-  const [newProjectErrors, setNewProjectErrors] = useState<ProjectFormErrors>(
-    {}
-  )
-
-  const [sortBy, setSortBy] = useState<SortOption>(() => {
-    if (typeof window === "undefined") return "due_date"
-
-    return (localStorage.getItem("sortBy") as SortOption) || "due_date"
-  })
-
-  const [searchQuery, setSearchQuery] = useState("")
-
-  const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>(() => {
-    if (typeof window === "undefined") return "All"
-
-    return (localStorage.getItem("deadlineFilter") as DeadlineFilter) || "All"
-  })
-
-  const filteredProjects = filterProjects(
+  const {
+    errorMessage,
+    loading,
     projects,
     searchQuery,
-    deadlineFilter
-  )
-  const sortedProjects = sortProjects(filteredProjects, sortBy)
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      setErrorMessage("")
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      const query = supabase.from("projects").select("*")
-      const { data, error } = user
-        ? await query
-            .or(`visibility.eq.public,user_id.eq.${user.id}`)
-            .order("due_date", { ascending: true })
-        : await query
-            .eq("visibility", "public")
-            .order("due_date", { ascending: true })
-
-      if (error) {
-        console.error("Supabase error:", error)
-        console.error("message:", error?.message)
-        console.error("details:", error?.details)
-        console.error("hint:", error?.hint)
-        setErrorMessage("Failed to load projects. Please try again.")
-      } else {
-        setProjects(data || [])
-      }
-
-      setLoading(false)
-    }
-
-    fetchProjects()
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem("deadlineFilter", deadlineFilter)
-  }, [deadlineFilter])
-
-  useEffect(() => {
-    localStorage.setItem("sortBy", sortBy)
-  }, [sortBy])
-
-  const addProject = async () => {
-    if (isCreatingProject) return
-
-    setErrorMessage("")
-
-    const validation = validateProjectForm(
-      {
-        name,
-        description,
-        due_date: dueDate,
-        progress: 0,
-        visibility,
-      },
-      Boolean(currentUser)
-    )
-
-    setNewProjectErrors(validation.errors)
-
-    if (!validation.isValid) return
-
-    setIsCreatingProject(true)
-
-    const { data, error } = await supabase
-      .rpc("create_project_with_default_modules", {
-        p_name: validation.values.name,
-        p_description: validation.values.description,
-        p_due_date: validation.values.due_date,
-        p_visibility: validation.values.visibility,
-      })
-      .single<Project>()
-
-    setIsCreatingProject(false)
-
-    if (error) {
-      console.error("Error creating project:", error)
-      setErrorMessage("Failed to create project. Please try again.")
-      return
-    }
-
-    if (data) {
-      setProjects((current) => [...current, data])
-    }
-
-    setName("")
-    setDescription("")
-    setDueDate("")
-    setVisibility("public")
-    setNewProjectErrors({})
-    onCloseCreateProject()
-  }
+    setErrorMessage,
+    setProjects,
+    setSearchQuery,
+    sortedProjects,
+    sortBy,
+    setSortBy,
+    deadlineFilter,
+    setDeadlineFilter,
+  } = useProjectsQuery()
+  const createProjectForm = useCreateProjectForm({
+    currentUser,
+    onProjectCreated: (project) => {
+      setProjects((current) => [...current, project])
+    },
+    onProjectCreateFailed: (message) => setErrorMessage(message),
+    onProjectCreatedClose: onCloseCreateProject,
+  })
 
   if (loading) {
     return <ProjectsGridSkeleton />
@@ -181,33 +69,11 @@ export function ProjectsGrid({
       )}
 
       {!errorMessage && projects.length === 0 && (
-        <div className="rounded-xl border border-slate-300 bg-slate-50 p-8 text-center shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            No projects yet
-          </h3>
-          <p className="mt-2 text-sm text-slate-600">
-            Create your first project to start building your dashboard.
-          </p>
-          <button
-            onClick={onOpenCreateProject}
-            className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
-          >
-            Create First Project
-          </button>
-        </div>
+        <ProjectsEmptyState onCreateProject={onOpenCreateProject} />
       )}
 
       {!errorMessage && projects.length > 0 && sortedProjects.length === 0 && (
-        <div className="rounded-xl border border-slate-300 bg-slate-50 p-8 text-center shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">
-            No matching projects
-          </h3>
-          <p className="mt-2 text-sm text-slate-600">
-            {searchQuery.trim()
-              ? "No projects match your current search."
-              : "No projects match your selected deadline filter."}
-          </p>
-        </div>
+        <ProjectsNoMatchesState hasSearchQuery={Boolean(searchQuery.trim())} />
       )}
 
       {sortedProjects.length > 0 && (
@@ -224,47 +90,34 @@ export function ProjectsGrid({
 
       {isCreateProjectOpen && (
         <NewProjectModal
-          name={name}
-          description={description}
-          dueDate={dueDate}
-          visibility={visibility}
+          name={createProjectForm.name}
+          description={createProjectForm.description}
+          dueDate={createProjectForm.dueDate}
+          visibility={createProjectForm.visibility}
           canCreatePrivate={Boolean(currentUser)}
-          errors={newProjectErrors}
-          isSaving={isCreatingProject}
+          errors={createProjectForm.errors}
+          isSaving={createProjectForm.isSaving}
           onNameChange={(value) => {
-            setName(value)
-            setNewProjectErrors((current) => ({ ...current, name: undefined }))
+            createProjectForm.setName(value)
+            createProjectForm.clearFieldError("name")
           }}
           onDescriptionChange={(value) => {
-            setDescription(value)
-            setNewProjectErrors((current) => ({
-              ...current,
-              description: undefined,
-            }))
+            createProjectForm.setDescription(value)
+            createProjectForm.clearFieldError("description")
           }}
           onDueDateChange={(value) => {
-            setDueDate(value)
-            setNewProjectErrors((current) => ({
-              ...current,
-              due_date: undefined,
-            }))
+            createProjectForm.setDueDate(value)
+            createProjectForm.clearFieldError("due_date")
           }}
           onVisibilityChange={(value) => {
-            setVisibility(value)
-            setNewProjectErrors((current) => ({
-              ...current,
-              visibility: undefined,
-            }))
+            createProjectForm.setVisibility(value)
+            createProjectForm.clearFieldError("visibility")
           }}
           onCancel={() => {
-            setName("")
-            setDescription("")
-            setDueDate("")
-            setVisibility("public")
+            createProjectForm.resetForm()
             onCloseCreateProject()
-            setNewProjectErrors({})
           }}
-          onCreateProject={addProject}
+          onCreateProject={createProjectForm.createProject}
         />
       )}
     </main>

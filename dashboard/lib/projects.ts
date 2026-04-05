@@ -18,6 +18,15 @@ export type ProjectTask = {
   created_at: string
 }
 
+export type ProjectMetadata = {
+  id: string
+  project_id: number
+  key: string
+  value: string
+  order: number
+  created_at: string
+}
+
 export type Project = {
   id: number
   name: string
