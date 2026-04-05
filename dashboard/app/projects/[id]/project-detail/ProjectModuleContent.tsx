@@ -1,3 +1,4 @@
+import { useState } from "react"
 import type { Project, ProjectMetadata } from "@/lib/projects"
 import {
   fieldCardClassName,
@@ -45,6 +46,94 @@ function CustomProjectModulePlaceholder({
   )
 }
 
+type TextGridRowDraft = {
+  id: string
+  field1: string
+  field2: string
+  field3: string
+}
+
+type ProjectLinkDraft = {
+  id: string
+  label: string
+  url: string
+}
+
+type ProjectMetricDraft = {
+  id: string
+  name: string
+  value: string
+}
+
+function createTextGridRowDraft(
+  overrides?: Partial<Omit<TextGridRowDraft, "id">>
+): TextGridRowDraft {
+  return {
+    id:
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `text-grid-row-${Date.now()}-${Math.random()}`,
+    field1: overrides?.field1 ?? "",
+    field2: overrides?.field2 ?? "",
+    field3: overrides?.field3 ?? "",
+  }
+}
+
+function createProjectLinkDraft(
+  overrides?: Partial<Omit<ProjectLinkDraft, "id">>
+): ProjectLinkDraft {
+  return {
+    id:
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `project-link-${Date.now()}-${Math.random()}`,
+    label: overrides?.label ?? "",
+    url: overrides?.url ?? "",
+  }
+}
+
+function createProjectMetricDraft(
+  overrides?: Partial<Omit<ProjectMetricDraft, "id">>
+): ProjectMetricDraft {
+  return {
+    id:
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `project-metric-${Date.now()}-${Math.random()}`,
+    name: overrides?.name ?? "",
+    value: overrides?.value ?? "",
+  }
+}
+
+function getProjectLinkDisplayLabel(link: ProjectLinkDraft) {
+  const trimmedLabel = link.label.trim()
+
+  return trimmedLabel || link.url.trim()
+}
+
+function getProjectLinkSecondaryText(url: string) {
+  const trimmedUrl = url.trim()
+
+  if (!trimmedUrl) return ""
+
+  try {
+    const normalizedUrl =
+      /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`
+
+    return new URL(normalizedUrl).hostname || trimmedUrl
+  } catch {
+    return trimmedUrl
+  }
+}
+
+function getOpenableProjectLinkUrl(url: string) {
+  const trimmedUrl = url.trim()
+
+  if (!trimmedUrl) return ""
+
+  return /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`
+}
+
 export function ProjectModuleContent({
   currentProject,
   module,
@@ -60,6 +149,134 @@ export function ProjectModuleContent({
     moduleId: module.id,
     projectId: currentProject.id,
   })
+  const [notesText, setNotesText] = useState("")
+  const [projectMetrics, setProjectMetrics] = useState<ProjectMetricDraft[]>([])
+  const [newProjectMetric, setNewProjectMetric] = useState<ProjectMetricDraft>(
+    () => createProjectMetricDraft()
+  )
+  const [projectLinks, setProjectLinks] = useState<ProjectLinkDraft[]>([])
+  const [newProjectLink, setNewProjectLink] = useState<ProjectLinkDraft>(() =>
+    createProjectLinkDraft()
+  )
+  const [textGridRows, setTextGridRows] = useState<TextGridRowDraft[]>([])
+  const [newTextGridRow, setNewTextGridRow] = useState<TextGridRowDraft>(() =>
+    createTextGridRowDraft()
+  )
+
+  function handleProjectLinkChange(
+    field: keyof Omit<ProjectLinkDraft, "id">,
+    value: string
+  ) {
+    setNewProjectLink((currentLink) => ({
+      ...currentLink,
+      [field]: value,
+    }))
+  }
+
+  function handleAddProjectLink() {
+    const normalizedLink = {
+      ...newProjectLink,
+      label: newProjectLink.label.trim(),
+      url: newProjectLink.url.trim(),
+    }
+
+    if (!normalizedLink.url) {
+      return
+    }
+
+    setProjectLinks((currentLinks) => [...currentLinks, normalizedLink])
+    setNewProjectLink(createProjectLinkDraft())
+  }
+
+  function handleDeleteProjectLink(linkId: string) {
+    setProjectLinks((currentLinks) =>
+      currentLinks.filter((link) => link.id !== linkId)
+    )
+  }
+
+  function handleProjectMetricChange(
+    field: keyof Omit<ProjectMetricDraft, "id">,
+    value: string
+  ) {
+    setNewProjectMetric((currentMetric) => ({
+      ...currentMetric,
+      [field]: value,
+    }))
+  }
+
+  function handleAddProjectMetric() {
+    const normalizedMetric = {
+      ...newProjectMetric,
+      name: newProjectMetric.name.trim(),
+      value: newProjectMetric.value.trim(),
+    }
+
+    if (!normalizedMetric.name) {
+      return
+    }
+
+    setProjectMetrics((currentMetrics) => [...currentMetrics, normalizedMetric])
+    setNewProjectMetric(createProjectMetricDraft())
+  }
+
+  function handleDeleteProjectMetric(metricId: string) {
+    setProjectMetrics((currentMetrics) =>
+      currentMetrics.filter((metric) => metric.id !== metricId)
+    )
+  }
+
+  function handleTextGridRowChange(
+    field: keyof Omit<TextGridRowDraft, "id">,
+    value: string
+  ) {
+    setNewTextGridRow((currentRow) => ({
+      ...currentRow,
+      [field]: value,
+    }))
+  }
+
+  function handleAddTextGridRow() {
+    const normalizedRow = {
+      ...newTextGridRow,
+      field1: newTextGridRow.field1.trim(),
+      field2: newTextGridRow.field2.trim(),
+      field3: newTextGridRow.field3.trim(),
+    }
+
+    if (
+      !normalizedRow.field1 &&
+      !normalizedRow.field2 &&
+      !normalizedRow.field3
+    ) {
+      return
+    }
+
+    setTextGridRows((currentRows) => [...currentRows, normalizedRow])
+    setNewTextGridRow(createTextGridRowDraft())
+  }
+
+  function handleDeleteTextGridRow(rowId: string) {
+    setTextGridRows((currentRows) =>
+      currentRows.filter((row) => row.id !== rowId)
+    )
+  }
+
+  function handleUpdateTextGridRow(
+    rowId: string,
+    field: keyof Omit<TextGridRowDraft, "id">,
+    value: string
+  ) {
+    setTextGridRows((currentRows) =>
+      currentRows.map((row) =>
+        row.id === rowId
+          ? {
+              ...row,
+              [field]: value,
+            }
+          : row
+      )
+    )
+  }
 
   if (module.type === "workspace_plan") {
     return (
@@ -142,6 +359,312 @@ export function ProjectModuleContent({
             ))}
           </div>
         )}
+      </>
+    )
+  }
+
+  if (module.type === "text_grid") {
+    return (
+      <>
+        <div className="px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {humanizeProjectModuleType(module.type).toUpperCase()}
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <input
+              type="text"
+              value={newTextGridRow.field1}
+              onChange={(event) =>
+                handleTextGridRowChange("field1", event.target.value)
+              }
+              placeholder="Field 1"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+            />
+            <input
+              type="text"
+              value={newTextGridRow.field2}
+              onChange={(event) =>
+                handleTextGridRowChange("field2", event.target.value)
+              }
+              placeholder="Field 2"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+            />
+            <input
+              type="text"
+              value={newTextGridRow.field3}
+              onChange={(event) =>
+                handleTextGridRowChange("field3", event.target.value)
+              }
+              placeholder="Field 3"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onClick={handleAddTextGridRow}
+              disabled={
+                !newTextGridRow.field1.trim() &&
+                !newTextGridRow.field2.trim() &&
+                !newTextGridRow.field3.trim()
+              }
+              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Add Row
+            </button>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.03)]">
+            <div className="grid gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <span>Text</span>
+              <span>Text</span>
+              <span>Text</span>
+              <span className="text-right">Delete</span>
+            </div>
+
+            {textGridRows.length === 0 ? (
+              <p className="px-4 py-5 text-sm text-slate-400">
+                No rows added yet.
+              </p>
+            ) : (
+              <div className="divide-y divide-slate-200">
+                {textGridRows.map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid gap-3 px-4 py-4 transition-colors duration-200 hover:bg-slate-50 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+                  >
+                    <input
+                      type="text"
+                      value={row.field1}
+                      onChange={(event) =>
+                        handleUpdateTextGridRow(
+                          row.id,
+                          "field1",
+                          event.target.value
+                        )
+                      }
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+                    />
+                    <input
+                      type="text"
+                      value={row.field2}
+                      onChange={(event) =>
+                        handleUpdateTextGridRow(
+                          row.id,
+                          "field2",
+                          event.target.value
+                        )
+                      }
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+                    />
+                    <input
+                      type="text"
+                      value={row.field3}
+                      onChange={(event) =>
+                        handleUpdateTextGridRow(
+                          row.id,
+                          "field3",
+                          event.target.value
+                        )
+                      }
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+                    />
+                    <div className="flex items-center md:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTextGridRow(row.id)}
+                        className="text-sm font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (module.type === "notes") {
+    return (
+      <>
+        <div className="px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {humanizeProjectModuleType(module.type).toUpperCase()}
+          </p>
+        </div>
+
+        <div className="mt-6">
+          <textarea
+            value={notesText}
+            onChange={(event) => setNotesText(event.target.value)}
+            placeholder="Write notes here..."
+            rows={12}
+            className="min-h-[280px] w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+          />
+        </div>
+      </>
+    )
+  }
+
+  if (module.type === "links") {
+    return (
+      <>
+        <div className="px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {humanizeProjectModuleType(module.type).toUpperCase()}
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div className="grid gap-3 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto]">
+            <input
+              type="text"
+              value={newProjectLink.label}
+              onChange={(event) =>
+                handleProjectLinkChange("label", event.target.value)
+              }
+              placeholder="Label"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+            />
+            <input
+              type="text"
+              value={newProjectLink.url}
+              onChange={(event) =>
+                handleProjectLinkChange("url", event.target.value)
+              }
+              placeholder="URL"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onClick={handleAddProjectLink}
+              disabled={!newProjectLink.url.trim()}
+              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Add Link
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {projectLinks.length === 0 ? (
+              <p className="text-sm text-slate-400">No links added yet.</p>
+            ) : (
+              projectLinks.map((link) => (
+                <div
+                  key={link.id}
+                  className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors duration-200 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900">
+                      {getProjectLinkDisplayLabel(link)}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-slate-500">
+                      {getProjectLinkSecondaryText(link.url)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 sm:shrink-0">
+                    <a
+                      href={getOpenableProjectLinkUrl(link.url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium text-indigo-600 hover:underline"
+                    >
+                      Open
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProjectLink(link.id)}
+                      className="text-sm font-medium text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  if (module.type === "metrics") {
+    return (
+      <>
+        <div className="px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {humanizeProjectModuleType(module.type).toUpperCase()}
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,220px)_auto]">
+            <input
+              type="text"
+              value={newProjectMetric.name}
+              onChange={(event) =>
+                handleProjectMetricChange("name", event.target.value)
+              }
+              placeholder="Metric Name"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+            />
+            <input
+              type="text"
+              value={newProjectMetric.value}
+              onChange={(event) =>
+                handleProjectMetricChange("value", event.target.value)
+              }
+              placeholder="Value"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onClick={handleAddProjectMetric}
+              disabled={!newProjectMetric.name.trim()}
+              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Add Metric
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {projectMetrics.length === 0 ? (
+              <p className="text-sm text-slate-400">No metrics added yet.</p>
+            ) : (
+              projectMetrics.map((metric) => (
+                <div
+                  key={metric.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors duration-200 hover:bg-slate-50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {metric.name}
+                      </p>
+                      <p className="mt-2 break-words text-2xl font-semibold text-slate-900">
+                        {metric.value || "Not added yet"}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProjectMetric(metric.id)}
+                      className="shrink-0 text-sm font-medium text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </>
     )
   }
