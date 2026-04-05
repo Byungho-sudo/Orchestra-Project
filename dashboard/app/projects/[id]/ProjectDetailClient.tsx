@@ -32,6 +32,8 @@ import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
+import { ProjectMobileContext } from "./project-detail/ProjectMobileContext"
+import { ProjectMobileNavigation } from "./project-detail/ProjectMobileNavigation"
 import { ProjectModuleContent } from "./project-detail/ProjectModuleContent"
 import {
   customProjectModuleOptions,
@@ -87,6 +89,7 @@ export default function ProjectDetailClient({
   const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
   const [deleteError, setDeleteError] = useState("")
   const [activeSection, setActiveSection] = useState("")
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
@@ -912,6 +915,10 @@ export default function ProjectDetailClient({
     navigateToSection(targetId, href)
   }
 
+  function handleSelectSection(targetId: string) {
+    navigateToSection(targetId, `#${targetId}`)
+  }
+
   function openAddModuleModal() {
     setModuleError("")
     setCreateModuleForm({
@@ -955,6 +962,9 @@ export default function ProjectDetailClient({
     ? editModuleForm.title.trim() !== editingModule.title.trim() ||
       editModuleForm.type !== editingModule.type
     : false
+  const activeNavigationLabel =
+    projectWorkspaceNavigation.find((item) => item.id === activeSection)?.label ??
+    fixedProjectDetailsNavigationItem.label
 
   return (
     <>
@@ -969,35 +979,37 @@ export default function ProjectDetailClient({
         onLogout={logout}
       >
         <div className="grid gap-[var(--layout-gap)] lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
-          <ProjectSidebarNav
-            activeSection={activeSection}
-            activeDragSurface={activeDragSurface}
-            draggedModuleId={draggedModuleId}
-            draggedNavItemFrame={draggedNavItemFrame}
-            fixedItem={fixedProjectDetailsNavigationItem}
-            isAddDisabled={
-              isResettingModules ||
-              isCreatingModule ||
-              Boolean(deletingModuleId) ||
-              Boolean(movingModuleId)
-            }
-            moduleDropSlotIndex={moduleDropSlotIndex}
-            navDropSlotIndex={navDropSlotIndex}
-            projectedDropSurface={projectedDropSurface}
-            navListRef={navListRef}
-            onAddModule={openAddModuleModal}
-            onFixedItemClick={(event) =>
-              handleNavigationClick(event, `#${fixedProjectDetailsNavigationItem.id}`)
-            }
-            onModuleItemClick={(event, itemId, href) =>
-              handleNavItemClick(event, itemId, () =>
-                handleNavigationClick(event, href)
-              )
-            }
-            onModuleItemPointerDown={handleNavItemPointerDown}
-            onModuleItemRefChange={handleNavItemRefChange}
-            sortableItems={sortableProjectWorkspaceNavigation}
-          />
+          <div className="hidden lg:block">
+            <ProjectSidebarNav
+              activeSection={activeSection}
+              activeDragSurface={activeDragSurface}
+              draggedModuleId={draggedModuleId}
+              draggedNavItemFrame={draggedNavItemFrame}
+              fixedItem={fixedProjectDetailsNavigationItem}
+              isAddDisabled={
+                isResettingModules ||
+                isCreatingModule ||
+                Boolean(deletingModuleId) ||
+                Boolean(movingModuleId)
+              }
+              moduleDropSlotIndex={moduleDropSlotIndex}
+              navDropSlotIndex={navDropSlotIndex}
+              projectedDropSurface={projectedDropSurface}
+              navListRef={navListRef}
+              onAddModule={openAddModuleModal}
+              onFixedItemClick={(event) =>
+                handleNavigationClick(event, `#${fixedProjectDetailsNavigationItem.id}`)
+              }
+              onModuleItemClick={(event, itemId, href) =>
+                handleNavItemClick(event, itemId, () =>
+                  handleNavigationClick(event, href)
+                )
+              }
+              onModuleItemPointerDown={handleNavItemPointerDown}
+              onModuleItemRefChange={handleNavItemRefChange}
+              sortableItems={sortableProjectWorkspaceNavigation}
+            />
+          </div>
 
           <div className="min-w-0">
             <section
@@ -1009,6 +1021,57 @@ export default function ProjectDetailClient({
             >
               <ProjectDetailHeader project={currentProject} />
             </section>
+
+            <div className="mt-5 space-y-4 lg:hidden">
+              <button
+                type="button"
+                onClick={() => setIsMobileNavOpen(true)}
+                className="flex w-full items-center justify-between rounded-xl border border-slate-300 bg-slate-50 px-5 py-4 text-left shadow-sm"
+              >
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Modules
+                  </p>
+                  <p className="mt-2 text-base font-semibold text-slate-900">
+                    {activeNavigationLabel}
+                  </p>
+                </div>
+                <span className="text-sm font-medium text-slate-500">
+                  Open
+                </span>
+              </button>
+
+              <ProjectMobileContext
+                currentProject={currentProject}
+                deadlineBadge={{
+                  className: getDeadlineBadgeClass(deadlineStatus),
+                  fillClassName: getDeadlineBarClass(deadlineStatus),
+                  label: deadlineStatus,
+                }}
+                deadlineFill={getDeadlineFill(currentProject.due_date)}
+                onDeleteProject={() => {
+                  setDeleteError("")
+                  setIsDeleteOpen(true)
+                }}
+                onEditMetadata={() => {
+                  beginEditingMetadata()
+                  setIsMetadataEditOpen(true)
+                }}
+                onEditProject={() => {
+                  setEditForm({
+                    name: currentProject.name,
+                    description: currentProject.description ?? "",
+                    status: currentProject.status,
+                    progress: String(currentProject.progress),
+                    due_date: currentProject.due_date ?? "",
+                    visibility: currentProject.visibility,
+                  })
+                  setSaveError("")
+                  setSaveFieldErrors({})
+                  setIsEditOpen(true)
+                }}
+              />
+            </div>
 
               <ProjectModuleList
                 activeDragSurface={activeDragSurface}
@@ -1039,38 +1102,59 @@ export default function ProjectDetailClient({
               />
           </div>
 
-          <ProjectContextPanel
-            currentProject={currentProject}
-            deadlineBadge={{
-              className: getDeadlineBadgeClass(deadlineStatus),
-              fillClassName: getDeadlineBarClass(deadlineStatus),
-              label: deadlineStatus,
-            }}
-            deadlineFill={getDeadlineFill(currentProject.due_date)}
-            onDeleteProject={() => {
-              setDeleteError("")
-              setIsDeleteOpen(true)
-            }}
-            onEditMetadata={() => {
-              beginEditingMetadata()
-              setIsMetadataEditOpen(true)
-            }}
-            onEditProject={() => {
-              setEditForm({
-                name: currentProject.name,
-                description: currentProject.description ?? "",
-                status: currentProject.status,
-                progress: String(currentProject.progress),
-                due_date: currentProject.due_date ?? "",
-                visibility: currentProject.visibility,
-              })
-              setSaveError("")
-              setSaveFieldErrors({})
-              setIsEditOpen(true)
-            }}
-          />
+          <div className="hidden lg:block">
+            <ProjectContextPanel
+              currentProject={currentProject}
+              deadlineBadge={{
+                className: getDeadlineBadgeClass(deadlineStatus),
+                fillClassName: getDeadlineBarClass(deadlineStatus),
+                label: deadlineStatus,
+              }}
+              deadlineFill={getDeadlineFill(currentProject.due_date)}
+              onDeleteProject={() => {
+                setDeleteError("")
+                setIsDeleteOpen(true)
+              }}
+              onEditMetadata={() => {
+                beginEditingMetadata()
+                setIsMetadataEditOpen(true)
+              }}
+              onEditProject={() => {
+                setEditForm({
+                  name: currentProject.name,
+                  description: currentProject.description ?? "",
+                  status: currentProject.status,
+                  progress: String(currentProject.progress),
+                  due_date: currentProject.due_date ?? "",
+                  visibility: currentProject.visibility,
+                })
+                setSaveError("")
+                setSaveFieldErrors({})
+                setIsEditOpen(true)
+              }}
+            />
+          </div>
         </div>
       </AppLayout>
+
+      <ProjectMobileNavigation
+        activeSection={activeSection}
+        fixedItem={fixedProjectDetailsNavigationItem}
+        isAddDisabled={
+          isResettingModules ||
+          isCreatingModule ||
+          Boolean(deletingModuleId) ||
+          Boolean(movingModuleId)
+        }
+        isOpen={isMobileNavOpen}
+        onAddModule={openAddModuleModal}
+        onClose={() => setIsMobileNavOpen(false)}
+        onSelectSection={(sectionId) => {
+          handleSelectSection(sectionId)
+          setIsMobileNavOpen(false)
+        }}
+        sortableItems={sortableProjectWorkspaceNavigation}
+      />
 
       {isEditOpen && (
         <ModalShell

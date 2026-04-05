@@ -22,8 +22,11 @@ export function AppLayout({
   onLogout?: () => void
   children: ReactNode
 }) {
-  const { currentUser: fallbackCurrentUser, logout: fallbackLogout } =
-    useCurrentUser()
+  const {
+    currentUser: fallbackCurrentUser,
+    isLoading: isAuthLoading,
+    logout: fallbackLogout,
+  } = useCurrentUser()
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-900">
@@ -31,6 +34,7 @@ export function AppLayout({
         breadcrumb={breadcrumb}
         title={title}
         currentUser={currentUser ?? fallbackCurrentUser}
+        isAuthLoading={isAuthLoading}
         onLogout={onLogout ?? fallbackLogout}
       />
 

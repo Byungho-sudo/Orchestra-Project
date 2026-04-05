@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 export function useCurrentUser() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadCurrentUser = async () => {
@@ -16,12 +17,14 @@ export function useCurrentUser() {
       } = await supabase.auth.getUser()
 
       setCurrentUser(user)
+      setIsLoading(false)
     }
 
     loadCurrentUser()
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUser(session?.user ?? null)
+      setIsLoading(false)
     })
 
     return () => {
@@ -35,5 +38,5 @@ export function useCurrentUser() {
     router.push("/login")
   }
 
-  return { currentUser, logout }
+  return { currentUser, isLoading, logout }
 }
