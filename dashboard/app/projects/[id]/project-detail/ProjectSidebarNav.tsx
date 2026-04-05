@@ -1,5 +1,10 @@
 import Link from "next/link"
 import type { MouseEvent, PointerEvent, RefObject } from "react"
+import {
+  Sidebar,
+  SidebarItem,
+  getSidebarItemClassName,
+} from "@/app/components/layout/Sidebar"
 import type { DragSurface } from "./hooks/useModuleDnD"
 import { NavDropPlaceholder } from "./NavDropPlaceholder"
 
@@ -48,6 +53,7 @@ export function ProjectSidebarNav({
   onModuleItemClick,
   onModuleItemPointerDown,
   onModuleItemRefChange,
+  selectedSectionId,
   sortableItems,
 }: {
   activeSection: string
@@ -82,6 +88,7 @@ export function ProjectSidebarNav({
     moduleId: string,
     element: HTMLDivElement | null
   ) => void
+  selectedSectionId: string
   sortableItems: NavigationItem[]
 }) {
   const visibleDropSlotIndex =
@@ -92,7 +99,8 @@ export function ProjectSidebarNav({
     draggedModuleId && activeDragSurface
       ? sortableItems.find((item) => item.moduleId === draggedModuleId)?.id ?? null
       : null
-  const highlightedSectionId = dragHighlightedSectionId ?? activeSection
+  const highlightedSectionId =
+    dragHighlightedSectionId ?? selectedSectionId ?? activeSection
   const renderedSortableItems = isNavDragging
     ? sortableItems.filter((item) => item.moduleId !== draggedModuleId)
     : isModuleDragging && draggedModuleId
@@ -108,27 +116,19 @@ export function ProjectSidebarNav({
       : null
 
   return (
-    <aside className="rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm lg:sticky lg:top-6">
-      <h2 className="mb-4 px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Navigation
-      </h2>
-
+    <Sidebar className="lg:sticky lg:top-24" title="Navigation">
       <nav className="text-sm">
         <div className="space-y-2">
-          <Link
+          <SidebarItem
             href={`#${fixedItem.id}`}
-            aria-current={
+            ariaCurrent={
               highlightedSectionId === fixedItem.id ? "location" : undefined
             }
             onClick={onFixedItemClick}
-            className={`block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color] duration-150 ${
-              highlightedSectionId === fixedItem.id
-                ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
-                : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
-            }`}
+            isActive={highlightedSectionId === fixedItem.id}
           >
             {fixedItem.label}
-          </Link>
+          </SidebarItem>
         </div>
 
         <div ref={navListRef} className="mt-2">
@@ -180,11 +180,9 @@ export function ProjectSidebarNav({
                     onClick={(event) =>
                       onModuleItemClick(event, item.id, `#${item.id}`)
                     }
-                    className={`block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color,transform,opacity] duration-150 ${
+                    className={`${getSidebarItemClassName(
                       highlightedSectionId === item.id
-                        ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
-                        : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
-                    } ${
+                    )} ${
                       activeDragSurface === "nav" &&
                       draggedModuleId === item.moduleId
                         ? "border-indigo-200 bg-indigo-50/95 font-medium text-indigo-900 shadow-md ring-1 ring-indigo-100 opacity-90"
@@ -228,17 +226,15 @@ export function ProjectSidebarNav({
         </div>
 
         <div className="mt-2">
-          <button
-            type="button"
-            onClick={onAddModule}
+          <SidebarItem
             disabled={isAddDisabled}
-            className="flex h-11 w-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/70 text-lg font-medium text-slate-600 transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
-            aria-label="Add Module"
+            onClick={onAddModule}
+            className="flex h-11 w-full items-center justify-center border-dashed text-lg font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
           >
             +
-          </button>
+          </SidebarItem>
         </div>
       </nav>
-    </aside>
+    </Sidebar>
   )
 }

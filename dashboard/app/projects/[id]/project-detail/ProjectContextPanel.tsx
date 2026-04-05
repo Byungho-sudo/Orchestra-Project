@@ -24,7 +24,7 @@ export function ProjectContextPanel({
   onEditProject: () => void
 }) {
   return (
-    <aside className={`${detailCardClassName} lg:sticky lg:top-6`}>
+    <aside className={`${detailCardClassName} lg:sticky lg:top-24`}>
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
         Project Context
       </p>

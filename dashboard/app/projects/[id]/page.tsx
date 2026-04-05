@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { AppLayout } from "@/app/components/layout/AppLayout"
 import { createSupabaseServerClient } from "@/lib/supabase-server"
 import type { Project } from "@/lib/projects"
 import ProjectDetailClient from "./ProjectDetailClient"
@@ -21,7 +22,7 @@ export default async function ProjectDetailPage({
     console.error("Error fetching project:", error)
 
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-10">
+      <AppLayout title="Project">
         <div className="mx-auto max-w-3xl">
           <Link
             href="/projects"
@@ -48,13 +49,13 @@ export default async function ProjectDetailPage({
             </div>
           </div>
         </div>
-      </main>
+      </AppLayout>
     )
   }
 
   if (!project) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-10">
+      <AppLayout title="Project">
         <div className="mx-auto max-w-3xl">
           <Link
             href="/projects"
@@ -81,7 +82,7 @@ export default async function ProjectDetailPage({
             </div>
           </div>
         </div>
-      </main>
+      </AppLayout>
     )
   }
 

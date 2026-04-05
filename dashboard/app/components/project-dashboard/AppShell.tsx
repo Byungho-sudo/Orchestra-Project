@@ -2,9 +2,8 @@
 
 import type { ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
-import { DashboardHeader } from "@/app/components/project-dashboard/DashboardHeader"
+import { AppLayout } from "@/app/components/layout/AppLayout"
 import { DashboardSidebar } from "@/app/components/project-dashboard/DashboardSidebar"
-import { useCurrentUser } from "@/lib/use-current-user"
 
 export function AppShell({
   title,
@@ -19,21 +18,17 @@ export function AppShell({
   onCreateProject?: () => void
   children: ReactNode
 }) {
-  const { currentUser: fallbackCurrentUser, logout } = useCurrentUser()
-
   return (
-    <div className="min-h-screen bg-gray-50 text-slate-900">
-      <DashboardHeader
+    <AppLayout
         title={title}
-        currentUser={currentUser ?? fallbackCurrentUser}
-        onLogout={onLogout ?? logout}
+        currentUser={currentUser}
+        onLogout={onLogout}
         onCreateProject={onCreateProject}
-      />
-
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 p-6 md:grid-cols-[240px_1fr]">
+    >
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
         <DashboardSidebar />
         {children}
       </div>
-    </div>
+    </AppLayout>
   )
 }

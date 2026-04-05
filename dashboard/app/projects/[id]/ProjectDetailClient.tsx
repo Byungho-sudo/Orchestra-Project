@@ -8,6 +8,7 @@ import {
   type MouseEvent,
 } from "react"
 import { useRouter } from "next/navigation"
+import { AppLayout } from "@/app/components/layout/AppLayout"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 import {
   getDeadlineBadgeClass,
@@ -63,7 +64,7 @@ export default function ProjectDetailClient({
   project: Project
 }) {
   const router = useRouter()
-  const { currentUser } = useCurrentUser()
+  const { currentUser, logout } = useCurrentUser()
 
   const [currentProject, setCurrentProject] = useState<Project>(project)
   const [workspaceModules, setWorkspaceModules] =
@@ -86,6 +87,7 @@ export default function ProjectDetailClient({
   const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
   const [deleteError, setDeleteError] = useState("")
   const [activeSection, setActiveSection] = useState("")
+  const [selectedSectionId, setSelectedSectionId] = useState("")
   const pendingNavigationSectionRef = useRef<string | null>(null)
   const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -391,6 +393,7 @@ export default function ProjectDetailClient({
   useEffect(() => {
     if (projectWorkspaceNavigationIds.length === 0) {
       setActiveSection("")
+      setSelectedSectionId("")
       return
     }
 
@@ -399,7 +402,25 @@ export default function ProjectDetailClient({
         ? currentSection
         : projectWorkspaceNavigationIds[0]
     )
+    setSelectedSectionId((currentSection) =>
+      projectWorkspaceNavigationIds.includes(currentSection)
+        ? currentSection
+        : projectWorkspaceNavigationIds[0]
+    )
   }, [projectWorkspaceNavigationIds])
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !selectedSectionId) return
+
+    const targetElement = document.getElementById(selectedSectionId)
+
+    if (!targetElement) return
+
+    targetElement.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    })
+  }, [selectedSectionId])
 
   function closeEditProjectModal() {
     if (isSaving) return
@@ -839,11 +860,8 @@ export default function ProjectDetailClient({
 
     if (!targetId) return
 
-    const targetElement = document.getElementById(targetId)
-
-    if (!targetElement) return
-
     setActiveSection(targetId)
+    setSelectedSectionId(targetId)
     pendingNavigationSectionRef.current = targetId
 
     if (pendingNavigationTimeoutRef.current) {
@@ -856,10 +874,6 @@ export default function ProjectDetailClient({
     }, 1200)
 
     window.history.replaceState(null, "", href)
-    targetElement.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    })
   }
 
   function handleNavigationClick(
@@ -920,8 +934,17 @@ export default function ProjectDetailClient({
 
   return (
     <>
-      <main className="min-h-screen bg-gray-50 px-6 py-10">
-        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
+      <AppLayout
+        breadcrumb={{
+          current: currentProject.name,
+          href: "/projects",
+          label: "Projects",
+        }}
+        title={currentProject.name}
+        currentUser={currentUser}
+        onLogout={logout}
+      >
+        <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
           <ProjectSidebarNav
             activeSection={activeSection}
             activeDragSurface={activeDragSurface}
@@ -949,6 +972,7 @@ export default function ProjectDetailClient({
             }
             onModuleItemPointerDown={handleNavItemPointerDown}
             onModuleItemRefChange={handleNavItemRefChange}
+            selectedSectionId={selectedSectionId}
             sortableItems={sortableProjectWorkspaceNavigation}
           />
 
@@ -1020,7 +1044,7 @@ export default function ProjectDetailClient({
             }}
           />
         </div>
-      </main>
+      </AppLayout>
 
       {isEditOpen && (
         <ModalShell
