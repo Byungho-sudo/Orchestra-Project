@@ -28,14 +28,6 @@ export const fieldCardClassName =
 export const taskDeleteUndoDurationMs = 8000
 export const projectSectionAnchorOffsetPx = 24
 
-export const projectWorkspaceNavigation = [
-  { href: "#overview", label: "Overview" },
-  { href: "#operations", label: "Operations" },
-  { href: "#tasks", label: "Task Board" },
-  { href: "#timeline", label: "Timeline" },
-  { href: "#assets", label: "Assets" },
-]
-
 export const customProjectModuleOptions: Array<{
   label: string
   value: ProjectModuleType

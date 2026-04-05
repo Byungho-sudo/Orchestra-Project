@@ -36,7 +36,10 @@ import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
-import { projectSectionAnchorOffsetPx } from "./project-detail/helpers"
+import {
+  getProjectModuleAnchor,
+  projectSectionAnchorOffsetPx,
+} from "./project-detail/helpers"
 import { ModuleStackFooter } from "./project-detail/ModuleStackFooter"
 import { ProjectModuleSection } from "./project-detail/ProjectModuleSection"
 
@@ -87,16 +90,6 @@ type ProjectMetadataDraft = {
 const fieldCardClassName =
   "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
 const taskDeleteUndoDurationMs = 8000
-const projectWorkspaceNavigation = [
-  { href: "#overview", label: "Overview" },
-  { href: "#operations", label: "Operations" },
-  { href: "#tasks", label: "Task Board" },
-  { href: "#timeline", label: "Timeline" },
-  { href: "#assets", label: "Assets" },
-]
-const projectWorkspaceNavigationIds = projectWorkspaceNavigation.map((item) =>
-  item.href.replace("#", "")
-)
 const customProjectModuleOptions: Array<{
   label: string
   value: ProjectModuleType
@@ -539,9 +532,7 @@ export default function ProjectDetailClient({
   const [pendingDeletedTask, setPendingDeletedTask] =
     useState<ProjectTask | null>(null)
   const [isUndoTimerRunning, setIsUndoTimerRunning] = useState(false)
-  const [activeSection, setActiveSection] = useState(
-    projectWorkspaceNavigationIds[0] ?? "overview"
-  )
+  const [activeSection, setActiveSection] = useState("")
   const newTaskInputRef = useRef<HTMLInputElement | null>(null)
   const pendingNavigationSectionRef = useRef<string | null>(null)
   const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -570,6 +561,19 @@ export default function ProjectDetailClient({
       title: "",
       type: "notes",
     })
+  const sortedWorkspaceModules = [...workspaceModules].sort(
+    (firstModule, secondModule) => firstModule.order - secondModule.order
+  )
+  const projectWorkspaceNavigation = [
+    { id: "project-details", label: "Project Details" },
+    ...sortedWorkspaceModules.map((module) => ({
+      id: getProjectModuleAnchor(module),
+      label: module.title,
+    })),
+  ]
+  const projectWorkspaceNavigationIds = projectWorkspaceNavigation.map(
+    (item) => item.id
+  )
 
   const loadWorkspaceModules = useCallback(async () => {
     const { data, error, status, statusText } = await supabase
@@ -833,7 +837,20 @@ export default function ProjectDetailClient({
       window.removeEventListener("resize", updateActiveSection)
       window.removeEventListener("hashchange", updateActiveSection)
     }
-  }, [workspaceModules])
+  }, [projectWorkspaceNavigationIds])
+
+  useEffect(() => {
+    if (projectWorkspaceNavigationIds.length === 0) {
+      setActiveSection("")
+      return
+    }
+
+    setActiveSection((currentSection) =>
+      projectWorkspaceNavigationIds.includes(currentSection)
+        ? currentSection
+        : projectWorkspaceNavigationIds[0]
+    )
+  }, [projectWorkspaceNavigationIds])
 
   function updateTaskSaveState(nextState: TaskSaveState) {
     if (taskSaveResetTimeoutRef.current) {
@@ -1642,12 +1659,18 @@ export default function ProjectDetailClient({
     })
   }
 
+  function openAddModuleModal() {
+    setModuleError("")
+    setCreateModuleForm({
+      title: "",
+      type: "notes",
+    })
+    setIsAddModuleOpen(true)
+  }
+
   const deadlineStatus = getDeadlineStatus(currentProject.due_date)
   const sortedProjectMetadata = mapProjectMetadata(projectMetadata)
   const sortedTasks = sortTasksByUrgency(tasks)
-  const sortedWorkspaceModules = [...workspaceModules].sort(
-    (firstModule, secondModule) => firstModule.order - secondModule.order
-  )
   const hasEditProjectChanges =
     editForm.name !== currentProject.name ||
     editForm.description !== (currentProject.description ?? "") ||
@@ -1964,16 +1987,18 @@ export default function ProjectDetailClient({
             <nav className="flex flex-wrap gap-2 text-sm lg:block lg:space-y-2">
               {projectWorkspaceNavigation.map((item) => (
                 <Link
-                  key={item.href}
-                  href={item.href}
+                  key={item.id}
+                  href={`#${item.id}`}
                   aria-current={
-                    activeSection === item.href.replace("#", "")
+                    activeSection === item.id
                       ? "location"
                       : undefined
                   }
-                  onClick={(event) => handleNavigationClick(event, item.href)}
+                  onClick={(event) =>
+                    handleNavigationClick(event, `#${item.id}`)
+                  }
                   className={`block rounded-md px-3 py-2 transition-colors ${
-                    activeSection === item.href.replace("#", "")
+                    activeSection === item.id
                       ? "bg-indigo-50 font-medium text-indigo-700"
                       : "text-slate-700 hover:bg-slate-100"
                   }`}
@@ -1981,11 +2006,31 @@ export default function ProjectDetailClient({
                   {item.label}
                 </Link>
               ))}
+
+              <button
+                type="button"
+                onClick={openAddModuleModal}
+                disabled={
+                  isResettingModules ||
+                  isCreatingModule ||
+                  Boolean(deletingModuleId) ||
+                  Boolean(movingModuleId)
+                }
+                className="flex h-10 w-full items-center justify-center rounded-md border border-dashed border-slate-300 text-lg font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="Add Module"
+              >
+                +
+              </button>
             </nav>
           </aside>
 
           <div className="min-w-0">
-            <ProjectDetailHeader project={currentProject} />
+            <section
+              id="project-details"
+              style={{ scrollMarginTop: `${projectSectionAnchorOffsetPx}px` }}
+            >
+              <ProjectDetailHeader project={currentProject} />
+            </section>
 
           <div className="mt-9 space-y-8">
             {moduleError && (
@@ -2021,14 +2066,7 @@ export default function ProjectDetailClient({
               }
               isCreatingModule={isCreatingModule}
               isResettingModules={isResettingModules}
-              onAddModule={() => {
-                setModuleError("")
-                setCreateModuleForm({
-                  title: "",
-                  type: "notes",
-                })
-                setIsAddModuleOpen(true)
-              }}
+              onAddModule={openAddModuleModal}
               onResetModules={handleResetWorkspaceModules}
             />
           </div>
