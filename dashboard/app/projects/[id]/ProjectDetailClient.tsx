@@ -991,7 +991,7 @@ export default function ProjectDetailClient({
         onLogout={logout}
       >
         <div className="grid gap-[var(--layout-gap)] lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
-          <div className="hidden lg:block">
+          <div className="hidden lg:block lg:sticky lg:top-[var(--sticky-panel-top)] lg:self-start lg:h-fit">
             <ProjectSidebarNav
               activeSection={activeSection}
               activeDragSurface={activeDragSurface}
@@ -1096,7 +1096,7 @@ export default function ProjectDetailClient({
               />
           </div>
 
-          <div className="hidden lg:block">
+          <div className="hidden lg:block lg:sticky lg:top-[var(--sticky-panel-top)] lg:self-start lg:h-fit">
             <ProjectContextPanel
               currentProject={currentProject}
               deadlineBadge={{

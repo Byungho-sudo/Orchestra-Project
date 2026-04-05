@@ -113,7 +113,7 @@ export function ProjectSidebarNav({
       : null
 
   return (
-    <Sidebar className="lg:sticky lg:top-[var(--sticky-panel-top)]" title="Navigation">
+    <Sidebar title="Navigation">
       <nav className="text-sm">
         <div className="space-y-2">
           <SidebarItem

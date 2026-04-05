@@ -25,7 +25,7 @@ export function ProjectContextPanel({
 }) {
   return (
     <aside
-      className={`${detailCardClassName} lg:sticky lg:top-[var(--sticky-panel-top)]`}
+      className={`${detailCardClassName} h-fit self-start`}
     >
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
         Project Context

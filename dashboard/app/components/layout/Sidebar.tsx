@@ -22,7 +22,7 @@ export function Sidebar({
 }) {
   return (
     <aside
-      className={`rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm ${className}`.trim()}
+      className={`h-fit self-start rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm ${className}`.trim()}
     >
       {title ? (
         <h2 className="mb-4 px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
