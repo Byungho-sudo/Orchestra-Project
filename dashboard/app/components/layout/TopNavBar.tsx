@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
 
@@ -9,6 +9,7 @@ export function TopNavBar({
   title = "Orchestra",
   currentUser,
   isAuthLoading = false,
+  mobileNavTrigger,
   onLogout,
 }: {
   breadcrumb?: {
@@ -19,6 +20,7 @@ export function TopNavBar({
   title?: string
   currentUser: User | null
   isAuthLoading?: boolean
+  mobileNavTrigger?: ReactNode
   onLogout?: () => void
 }) {
   const [isMobileAccountMenuOpen, setIsMobileAccountMenuOpen] = useState(false)
@@ -55,19 +57,23 @@ export function TopNavBar({
   return (
     <header className="sticky top-0 z-50 h-[var(--header-height)] border-b border-slate-300 bg-slate-50 px-6 shadow-sm">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-3">
+          {mobileNavTrigger ? (
+            <div className="lg:hidden">{mobileNavTrigger}</div>
+          ) : null}
+
           {breadcrumb ? (
             <nav
               aria-label="Breadcrumb"
-              className="flex items-center gap-2 text-lg font-semibold text-slate-900"
+              className="flex min-w-0 items-center gap-2 text-lg font-semibold text-slate-900"
             >
               <Link
                 href={breadcrumb.href}
-                className="truncate text-slate-700 transition-colors hover:text-slate-900"
+                className="hidden truncate text-slate-700 transition-colors hover:text-slate-900 sm:inline"
               >
                 {breadcrumb.label}
               </Link>
-              <span className="text-slate-300">/</span>
+              <span className="hidden text-slate-300 sm:inline">/</span>
               <span className="truncate text-slate-900">{breadcrumb.current}</span>
             </nav>
           ) : (
@@ -77,7 +83,7 @@ export function TopNavBar({
           )}
         </div>
 
-        <div className="flex min-w-[240px] items-center justify-end gap-3">
+        <div className="flex min-w-[120px] sm:min-w-[240px] items-center justify-end gap-3">
           {isAuthLoading ? (
             <>
               <span

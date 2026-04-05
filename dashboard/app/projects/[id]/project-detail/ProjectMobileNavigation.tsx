@@ -1,5 +1,4 @@
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
-import { SidebarItem } from "@/app/components/layout/Sidebar"
 
 type NavigationItem = {
   id: string
@@ -31,12 +30,12 @@ export function ProjectMobileNavigation({
   return (
     <ModalShell
       overlayClassName="fixed inset-0 z-50 bg-slate-900/40 lg:hidden"
-      panelClassName="absolute left-0 top-0 h-full w-full max-w-sm overflow-y-auto bg-slate-50 p-5 shadow-xl"
+      panelClassName="absolute left-0 top-0 h-full w-full max-w-sm overflow-y-auto rounded-r-2xl bg-slate-50 p-5 shadow-xl"
       onClose={onClose}
     >
       {({ requestClose }) => (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Modules
@@ -55,40 +54,51 @@ export function ProjectMobileNavigation({
             </button>
           </div>
 
-          <nav className="mt-6 space-y-2 text-sm">
-            <SidebarItem
-              isActive={activeSection === fixedItem.id}
+          <nav className="mt-4 text-sm">
+            <button
+              type="button"
               onClick={() => {
                 onSelectSection(fixedItem.id)
                 requestClose()
               }}
+              className={`flex w-full items-center rounded-lg px-3 py-3 text-left transition-colors ${
+                activeSection === fixedItem.id
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-slate-700 hover:bg-white/80 hover:text-slate-900"
+              }`}
             >
               {fixedItem.label}
-            </SidebarItem>
+            </button>
 
             {sortableItems.map((item) => (
-              <SidebarItem
+              <button
+                type="button"
                 key={item.id}
-                isActive={activeSection === item.id}
                 onClick={() => {
                   onSelectSection(item.id)
                   requestClose()
                 }}
+                className={`mt-1.5 flex w-full items-center rounded-lg px-3 py-3 text-left transition-colors ${
+                  activeSection === item.id
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-slate-700 hover:bg-white/80 hover:text-slate-900"
+                }`}
               >
                 {item.label}
-              </SidebarItem>
+              </button>
             ))}
 
-            <SidebarItem
+            <button
+              type="button"
               disabled={isAddDisabled}
               onClick={() => {
                 onAddModule()
                 requestClose()
               }}
-              className="flex h-11 w-full items-center justify-center border-dashed text-lg font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-4 flex h-11 w-full items-center justify-center rounded-lg border border-dashed border-slate-300 text-base font-medium text-slate-600 transition-colors hover:border-slate-400 hover:bg-white/80 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              +
-            </SidebarItem>
+              Add Module
+            </button>
           </nav>
         </>
       )}

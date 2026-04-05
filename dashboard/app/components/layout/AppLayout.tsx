@@ -10,6 +10,7 @@ export function AppLayout({
   title,
   currentUser,
   onLogout,
+  mobileNavTrigger,
   children,
 }: {
   breadcrumb?: {
@@ -20,6 +21,7 @@ export function AppLayout({
   title: string
   currentUser?: User | null
   onLogout?: () => void
+  mobileNavTrigger?: ReactNode
   children: ReactNode
 }) {
   const {
@@ -35,6 +37,7 @@ export function AppLayout({
         title={title}
         currentUser={currentUser ?? fallbackCurrentUser}
         isAuthLoading={isAuthLoading}
+        mobileNavTrigger={mobileNavTrigger}
         onLogout={onLogout ?? fallbackLogout}
       />
 

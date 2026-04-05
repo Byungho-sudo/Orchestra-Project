@@ -962,10 +962,6 @@ export default function ProjectDetailClient({
     ? editModuleForm.title.trim() !== editingModule.title.trim() ||
       editModuleForm.type !== editingModule.type
     : false
-  const activeNavigationLabel =
-    projectWorkspaceNavigation.find((item) => item.id === activeSection)?.label ??
-    fixedProjectDetailsNavigationItem.label
-
   return (
     <>
       <AppLayout
@@ -976,6 +972,22 @@ export default function ProjectDetailClient({
         }}
         title={currentProject.name}
         currentUser={currentUser}
+        mobileNavTrigger={
+          <button
+            type="button"
+            aria-label="Open module navigation"
+            aria-expanded={isMobileNavOpen}
+            onClick={() => setIsMobileNavOpen(true)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
+          >
+            <span className="sr-only">Open module navigation</span>
+            <span className="flex flex-col gap-1">
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+            </span>
+          </button>
+        }
         onLogout={logout}
       >
         <div className="grid gap-[var(--layout-gap)] lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
@@ -1023,24 +1035,6 @@ export default function ProjectDetailClient({
             </section>
 
             <div className="mt-5 space-y-4 lg:hidden">
-              <button
-                type="button"
-                onClick={() => setIsMobileNavOpen(true)}
-                className="flex w-full items-center justify-between rounded-xl border border-slate-300 bg-slate-50 px-5 py-4 text-left shadow-sm"
-              >
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    Modules
-                  </p>
-                  <p className="mt-2 text-base font-semibold text-slate-900">
-                    {activeNavigationLabel}
-                  </p>
-                </div>
-                <span className="text-sm font-medium text-slate-500">
-                  Open
-                </span>
-              </button>
-
               <ProjectMobileContext
                 currentProject={currentProject}
                 deadlineBadge={{
