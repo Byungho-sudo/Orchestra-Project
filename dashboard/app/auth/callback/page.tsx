@@ -13,11 +13,19 @@ export default function AuthCallbackPage() {
       const searchParams = new URLSearchParams(window.location.search);
       const code = searchParams.get("code");
       const nextPath = getSafeNextPath(searchParams);
+      const type = searchParams.get("type");
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const hashType = hashParams.get("type");
 
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
 
         router.replace(error ? "/login" : nextPath);
+        return;
+      }
+
+      if (type === "email_change" || hashType === "email_change") {
+        router.replace(nextPath || "/settings/account?email-change=confirmed");
         return;
       }
 

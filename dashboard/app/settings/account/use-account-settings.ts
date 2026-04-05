@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import type { User } from "@supabase/supabase-js"
+import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 
 export function useAccountSettings(user: User | null) {
@@ -11,11 +11,16 @@ export function useAccountSettings(user: User | null) {
     () => String(user?.user_metadata?.display_name ?? ""),
     [user]
   )
+  const initialEmail = useMemo(() => String(user?.email ?? ""), [user])
 
   const [displayName, setDisplayName] = useState(initialDisplayName)
+  const [newEmail, setNewEmail] = useState(initialEmail)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [profileMessage, setProfileMessage] = useState("")
   const [profileError, setProfileError] = useState("")
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false)
+  const [emailMessage, setEmailMessage] = useState("")
+  const [emailError, setEmailError] = useState("")
 
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -23,10 +28,37 @@ export function useAccountSettings(user: User | null) {
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState("")
   const [passwordError, setPasswordError] = useState("")
+  const [currentSession, setCurrentSession] = useState<Session | null>(null)
 
   useEffect(() => {
     setDisplayName(initialDisplayName)
   }, [initialDisplayName])
+
+  useEffect(() => {
+    setNewEmail(initialEmail)
+  }, [initialEmail])
+
+  useEffect(() => {
+    const loadCurrentSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      setCurrentSession(session)
+    }
+
+    loadCurrentSession()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentSession(session)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
   async function saveProfile() {
     if (!user || isSavingProfile) return
@@ -53,6 +85,47 @@ export function useAccountSettings(user: User | null) {
     setDisplayName(trimmedDisplayName)
     setProfileMessage("Profile updated successfully.")
     router.refresh()
+  }
+
+  async function updateEmail() {
+    if (!user || isUpdatingEmail) return
+
+    const trimmedEmail = newEmail.trim().toLowerCase()
+
+    setEmailError("")
+    setEmailMessage("")
+
+    if (!trimmedEmail) {
+      setEmailError("Enter a new email address.")
+      return
+    }
+
+    if (trimmedEmail === initialEmail.toLowerCase()) {
+      setEmailError("Enter a different email address to update it.")
+      return
+    }
+
+    setIsUpdatingEmail(true)
+
+    const { error } = await supabase.auth.updateUser(
+      { email: trimmedEmail },
+      {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+          "/settings/account?email-change=confirmed"
+        )}`,
+      }
+    )
+
+    setIsUpdatingEmail(false)
+
+    if (error) {
+      setEmailError("Failed to start the email change flow. Please try again.")
+      return
+    }
+
+    setEmailMessage(
+      "Check your inbox to confirm the new email address and complete the change."
+    )
   }
 
   async function changePassword() {
@@ -113,10 +186,15 @@ export function useAccountSettings(user: User | null) {
   return {
     changePassword,
     confirmPassword,
+    currentSession,
     currentPassword,
     displayName,
+    emailError,
+    emailMessage,
     isChangingPassword,
     isSavingProfile,
+    isUpdatingEmail,
+    newEmail,
     passwordError,
     passwordMessage,
     profileError,
@@ -125,7 +203,9 @@ export function useAccountSettings(user: User | null) {
     setConfirmPassword,
     setCurrentPassword,
     setDisplayName,
+    setNewEmail,
     setNewPassword,
+    updateEmail,
     newPassword,
   }
 }
