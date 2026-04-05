@@ -5,12 +5,9 @@ import {
   useEffect,
   useRef,
   useState,
-  type DragEvent,
   type KeyboardEvent,
   type MouseEvent,
-  type PointerEvent,
 } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 import {
@@ -32,85 +29,33 @@ import {
 import {
   getDefaultProjectModuleRows,
   getDefaultProjectWorkspaceModules,
-  type DefaultProjectModuleType,
 } from "@/lib/project-modules"
 import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
 import {
+  customProjectModuleOptions,
+  fieldCardClassName,
   getProjectModuleAnchor,
+  getTaskDueDateValue,
   normalizeWorkspaceModuleOrder,
   projectSectionAnchorOffsetPx,
-  reorderWorkspaceModulesByDrop,
+  taskDeleteUndoDurationMs,
 } from "./project-detail/helpers"
-import { ModuleStackFooter } from "./project-detail/ModuleStackFooter"
-import { ModuleDropPlaceholder } from "./project-detail/ModuleDropPlaceholder"
-import { NavDropPlaceholder } from "./project-detail/NavDropPlaceholder"
-import { ProjectModuleSection } from "./project-detail/ProjectModuleSection"
-import type { ModuleDropPosition } from "./project-detail/types"
-
-type TaskDueStatus =
-  | "completed"
-  | "overdue"
-  | "due_today"
-  | "due_soon"
-  | "future"
-  | "no_deadline"
-
-type TaskSaveState = "idle" | "saving" | "saved" | "error"
-
-type ProjectModuleType =
-  | DefaultProjectModuleType
-  | "text_grid"
-  | "notes"
-  | "checklist"
-  | "metrics"
-  | "links"
-
-type ProjectWorkspaceModule = {
-  id: string
-  title: string
-  type: ProjectModuleType
-  order: number
-}
-
-type ProjectModuleRecord = {
-  id: string
-  title: string
-  type: ProjectModuleType
-  order: number
-}
-
-type CreateProjectModuleForm = {
-  title: string
-  type: ProjectModuleType
-}
-
-type ProjectMetadataDraft = {
-  id: string
-  key: string
-  value: string
-  order: number
-}
-
-const fieldCardClassName =
-  "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
-const taskDeleteUndoDurationMs = 8000
-const customProjectModuleOptions: Array<{
-  label: string
-  value: ProjectModuleType
-}> = [
-  { label: "Text Grid", value: "text_grid" },
-  { label: "Notes", value: "notes" },
-  { label: "Checklist", value: "checklist" },
-  { label: "Metrics", value: "metrics" },
-  { label: "Links", value: "links" },
-]
-
-function getTaskDueDateValue(dueDate: string | null) {
-  return dueDate ? dueDate.slice(0, 10) : ""
-}
+import type { TaskDueStatus } from "./project-detail/helpers"
+import { ProjectModuleList } from "./project-detail/ProjectModuleList"
+import { ProjectSidebarNav } from "./project-detail/ProjectSidebarNav"
+import { useModuleDnD } from "./project-detail/hooks/useModuleDnD"
+import { useNavDnD } from "./project-detail/hooks/useNavDnD"
+import type {
+  CreateProjectModuleForm,
+  ProjectMetadataDraft,
+  ProjectModuleRecord,
+  ProjectModuleType,
+  ProjectWorkspaceModule,
+  TaskSaveState,
+} from "./project-detail/types"
 
 function getTaskCompletedDateValue(completedAt: string | null) {
   return completedAt ? completedAt.slice(0, 10) : ""
@@ -540,66 +485,11 @@ export default function ProjectDetailClient({
     useState<ProjectTask | null>(null)
   const [isUndoTimerRunning, setIsUndoTimerRunning] = useState(false)
   const [activeSection, setActiveSection] = useState("")
-  const [draggedModuleId, setDraggedModuleId] = useState<string | null>(null)
-  const [moduleDropTarget, setModuleDropTarget] = useState<{
-    moduleId: string
-    position: ModuleDropPosition
-  } | null>(null)
-  const [draggedNavItemFrame, setDraggedNavItemFrame] = useState<{
-    moduleId: string
-    left: number
-    top: number
-    width: number
-    height: number
-  } | null>(null)
-  const [draggedModuleFrame, setDraggedModuleFrame] = useState<{
-    moduleId: string
-    left: number
-    top: number
-    width: number
-    height: number
-  } | null>(null)
   const newTaskInputRef = useRef<HTMLInputElement | null>(null)
   const pendingNavigationSectionRef = useRef<string | null>(null)
   const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
-  const dragAutoScrollFrameRef = useRef<number | null>(null)
-  const dragAutoScrollVelocityRef = useRef(0)
-  const dragUsesTouchScrollRef = useRef(false)
-  const moduleDropTargetRef = useRef<{
-    moduleId: string
-    position: ModuleDropPosition
-  } | null>(null)
-  const pointerDragContextRef = useRef<{
-    moduleId: string
-    grabOffsetX: number
-    grabOffsetY: number
-    pointerType: string
-  } | null>(null)
-  const pointerPositionRef = useRef<{ x: number; y: number } | null>(null)
-  const navDragContextRef = useRef<{
-    moduleId: string
-    itemId: string
-    startX: number
-    startY: number
-    grabOffsetY: number
-    itemHeight: number
-    startedDragging: boolean
-  } | null>(null)
-  const navPointerPositionRef = useRef<{ y: number } | null>(null)
-  const navPointerListenersRef = useRef<{
-    move: (event: globalThis.PointerEvent) => void
-    up: () => void
-  } | null>(null)
-  const navItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const navListRef = useRef<HTMLDivElement | null>(null)
-  const suppressNavClickRef = useRef<string | null>(null)
-  const pointerDragListenersRef = useRef<{
-    move: (event: globalThis.PointerEvent) => void
-    up: (event: globalThis.PointerEvent) => void
-  } | null>(null)
-  const moduleSectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const taskSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
@@ -639,37 +529,39 @@ export default function ProjectDetailClient({
   const projectWorkspaceNavigationIds = projectWorkspaceNavigation.map(
     (item) => item.id
   )
-
-  useEffect(() => {
-    moduleDropTargetRef.current = moduleDropTarget
-  }, [moduleDropTarget])
-
-  useEffect(() => {
-    return () => {
-      stopDragAutoScroll()
-
-      if (pointerDragListenersRef.current && typeof window !== "undefined") {
-        window.removeEventListener(
-          "pointermove",
-          pointerDragListenersRef.current.move
-        )
-        window.removeEventListener(
-          "pointerup",
-          pointerDragListenersRef.current.up
-        )
-        pointerDragListenersRef.current = null
-      }
-
-      if (navPointerListenersRef.current && typeof window !== "undefined") {
-        window.removeEventListener(
-          "pointermove",
-          navPointerListenersRef.current.move
-        )
-        window.removeEventListener("pointerup", navPointerListenersRef.current.up)
-        navPointerListenersRef.current = null
-      }
-    }
-  }, [])
+  const isModuleDragDisabled =
+    Boolean(movingModuleId) ||
+    Boolean(deletingModuleId) ||
+    isResettingModules ||
+    isCreatingModule
+  const {
+    commitModuleDrop,
+    draggedModuleFrame,
+    draggedModuleId,
+    handleModulePointerDragStart,
+    handleModuleSectionRefChange,
+    moduleDropTarget,
+    startSharedDrag,
+    updateSharedDropTarget,
+  } = useModuleDnD({
+    isDragDisabled: isModuleDragDisabled,
+    persistWorkspaceModuleOrder,
+    sortedWorkspaceModules,
+  })
+  const {
+    draggedNavItemFrame,
+    handleNavItemClick,
+    handleNavItemPointerDown,
+    handleNavItemRefChange,
+    navListRef,
+  } = useNavDnD({
+    activeDragModuleId: draggedModuleId,
+    commitModuleDrop,
+    isDragDisabled: isModuleDragDisabled,
+    sortedWorkspaceModules,
+    startSharedDrag,
+    updateSharedDropTarget,
+  })
 
   const loadWorkspaceModules = useCallback(async () => {
     const { data, error, status, statusText } = await supabase
@@ -877,11 +769,6 @@ export default function ProjectDetailClient({
       if (pendingNavigationTimeoutRef.current) {
         clearTimeout(pendingNavigationTimeoutRef.current)
       }
-
-      if (dragAutoScrollFrameRef.current) {
-        cancelAnimationFrame(dragAutoScrollFrameRef.current)
-      }
-
     }
   }, [])
 
@@ -1375,558 +1262,6 @@ export default function ProjectDetailClient({
 
     await loadWorkspaceModules()
     setIsResettingModules(false)
-  }
-
-  function stopDragAutoScroll() {
-    dragAutoScrollVelocityRef.current = 0
-
-    if (dragAutoScrollFrameRef.current) {
-      cancelAnimationFrame(dragAutoScrollFrameRef.current)
-      dragAutoScrollFrameRef.current = null
-    }
-  }
-
-  function startDragAutoScroll() {
-    if (dragAutoScrollFrameRef.current || typeof window === "undefined") {
-      return
-    }
-
-    const step = () => {
-      const velocity = dragAutoScrollVelocityRef.current
-
-      if (!velocity) {
-        dragAutoScrollFrameRef.current = null
-        return
-      }
-
-      const maxScrollTop =
-        document.documentElement.scrollHeight - window.innerHeight
-      const remainingScrollDown = Math.max(0, maxScrollTop - window.scrollY)
-      const remainingScrollUp = Math.max(0, window.scrollY)
-      const boundedVelocity =
-        velocity > 0
-          ? Math.min(velocity, remainingScrollDown)
-          : -1 * Math.min(Math.abs(velocity), remainingScrollUp)
-
-      if (!boundedVelocity) {
-        stopDragAutoScroll()
-        return
-      }
-
-      window.scrollBy({
-        top: boundedVelocity,
-        left: 0,
-        behavior: "auto",
-      })
-
-      dragAutoScrollFrameRef.current = window.requestAnimationFrame(step)
-    }
-
-    dragAutoScrollFrameRef.current = window.requestAnimationFrame(step)
-  }
-
-  function updateDragAutoScroll(clientY: number) {
-    if (typeof window === "undefined") return
-    if (!dragUsesTouchScrollRef.current) {
-      stopDragAutoScroll()
-      return
-    }
-
-    const edgeZone = 96
-    const maxVelocity = 10
-    const viewportHeight = window.innerHeight
-    let velocity = 0
-
-    if (clientY < edgeZone) {
-      const edgeProgress = (edgeZone - clientY) / edgeZone
-      velocity = -1 * Math.max(1.5, edgeProgress * edgeProgress * maxVelocity)
-    } else if (clientY > viewportHeight - edgeZone) {
-      const edgeProgress =
-        (clientY - (viewportHeight - edgeZone)) / edgeZone
-      velocity = Math.max(1.5, edgeProgress * edgeProgress * maxVelocity)
-    }
-
-    dragAutoScrollVelocityRef.current = velocity
-
-    if (velocity) {
-      startDragAutoScroll()
-      return
-    }
-
-    stopDragAutoScroll()
-  }
-
-  async function commitModuleDrop(
-    draggedId: string | null,
-    targetModuleId: string,
-    dropPosition: ModuleDropPosition | null
-  ) {
-    setDraggedNavItemFrame(null)
-    setDraggedModuleId(null)
-    setDraggedModuleFrame(null)
-    moduleDropTargetRef.current = null
-    setModuleDropTarget(null)
-    dragUsesTouchScrollRef.current = false
-    pointerPositionRef.current = null
-
-    if (!draggedId || !dropPosition || draggedId === targetModuleId) {
-      return
-    }
-
-    const reorderedModules = reorderWorkspaceModulesByDrop(
-      workspaceModules,
-      draggedId,
-      targetModuleId,
-      dropPosition
-    )
-
-    await persistWorkspaceModuleOrder(reorderedModules, draggedId)
-  }
-
-  function detachPointerDragListeners() {
-    if (!pointerDragListenersRef.current || typeof window === "undefined") {
-      return
-    }
-
-    window.removeEventListener(
-      "pointermove",
-      pointerDragListenersRef.current.move
-    )
-    window.removeEventListener("pointerup", pointerDragListenersRef.current.up)
-    pointerDragListenersRef.current = null
-  }
-
-  function detachNavPointerListeners() {
-    if (!navPointerListenersRef.current || typeof window === "undefined") {
-      return
-    }
-
-    window.removeEventListener("pointermove", navPointerListenersRef.current.move)
-    window.removeEventListener("pointerup", navPointerListenersRef.current.up)
-    navPointerListenersRef.current = null
-  }
-
-  function getModuleDropTargetFromPointer(
-    clientY: number,
-    draggedId: string
-  ) {
-    let closestTarget: {
-      moduleId: string
-      position: ModuleDropPosition
-      distance: number
-    } | null = null
-
-    for (const workspaceModule of sortedWorkspaceModules) {
-      if (workspaceModule.id === draggedId) continue
-
-      const sectionElement = moduleSectionRefs.current[workspaceModule.id]
-
-      if (!sectionElement) continue
-
-      const bounds = sectionElement.getBoundingClientRect()
-      const beforeDistance = Math.abs(clientY - bounds.top)
-      const afterDistance = Math.abs(clientY - bounds.bottom)
-
-      if (!closestTarget || beforeDistance < closestTarget.distance) {
-        closestTarget = {
-          moduleId: workspaceModule.id,
-          position: "before",
-          distance: beforeDistance,
-        }
-      }
-
-      if (!closestTarget || afterDistance < closestTarget.distance) {
-        closestTarget = {
-          moduleId: workspaceModule.id,
-          position: "after",
-          distance: afterDistance,
-        }
-      }
-    }
-
-    if (!closestTarget) return null
-
-    return {
-      moduleId: closestTarget.moduleId,
-      position: closestTarget.position,
-    }
-  }
-
-  function updateDraggedModuleVisualPosition(moduleId: string) {
-    const dragContext = pointerDragContextRef.current
-    const pointerPosition = pointerPositionRef.current
-    const sectionElement = moduleSectionRefs.current[moduleId]
-
-    if (
-      !dragContext ||
-      dragContext.moduleId !== moduleId ||
-      !pointerPosition ||
-      !sectionElement
-    ) {
-      return
-    }
-
-    const desiredLeft = pointerPosition.x - dragContext.grabOffsetX
-    const desiredTop = pointerPosition.y - dragContext.grabOffsetY
-
-    sectionElement.style.left = `${desiredLeft}px`
-    sectionElement.style.top = `${desiredTop}px`
-  }
-
-  function handleModulePointerDragStart(
-    event: PointerEvent<HTMLElement>,
-    moduleId: string
-  ) {
-    if (event.button !== 0 && event.pointerType !== "touch") {
-      return
-    }
-
-    if (movingModuleId || deletingModuleId || isResettingModules || isCreatingModule) {
-      return
-    }
-
-    event.preventDefault()
-
-    const sectionElement = moduleSectionRefs.current[moduleId]
-    const sectionBounds = sectionElement?.getBoundingClientRect()
-
-    pointerDragContextRef.current = {
-      moduleId,
-      grabOffsetX: sectionBounds ? event.clientX - sectionBounds.left : 0,
-      grabOffsetY: sectionBounds ? event.clientY - sectionBounds.top : 0,
-      pointerType: event.pointerType,
-    }
-    pointerPositionRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-    }
-    dragUsesTouchScrollRef.current = event.pointerType !== "mouse"
-    setDraggedModuleId(moduleId)
-    setDraggedModuleFrame(
-      sectionBounds
-        ? {
-            moduleId,
-            left: sectionBounds.left,
-            top: sectionBounds.top,
-            width: sectionBounds.width,
-            height: sectionBounds.height,
-          }
-        : null
-    )
-    moduleDropTargetRef.current = null
-    setModuleDropTarget(null)
-    detachPointerDragListeners()
-
-    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const dragContext = pointerDragContextRef.current
-
-      if (!dragContext || dragContext.moduleId !== moduleId) {
-        return
-      }
-
-      pointerPositionRef.current = {
-        x: moveEvent.clientX,
-        y: moveEvent.clientY,
-      }
-      updateDraggedModuleVisualPosition(moduleId)
-
-      updateDragAutoScroll(moveEvent.clientY)
-
-      const nextDropTarget = getModuleDropTargetFromPointer(
-        moveEvent.clientY,
-        moduleId
-      )
-
-      if (
-        moduleDropTargetRef.current?.moduleId !== nextDropTarget?.moduleId ||
-        moduleDropTargetRef.current?.position !== nextDropTarget?.position
-      ) {
-        moduleDropTargetRef.current = nextDropTarget
-        setModuleDropTarget(nextDropTarget)
-      }
-    }
-
-    const handlePointerUp = async () => {
-      const dragContext = pointerDragContextRef.current
-
-      pointerDragContextRef.current = null
-      detachPointerDragListeners()
-      stopDragAutoScroll()
-
-      await commitModuleDrop(
-        dragContext?.moduleId ?? null,
-        moduleDropTargetRef.current?.moduleId ?? moduleId,
-        moduleDropTargetRef.current?.position ?? null
-      )
-    }
-
-    pointerDragListenersRef.current = {
-      move: handlePointerMove,
-      up: handlePointerUp,
-    }
-
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", handlePointerUp, { once: true })
-  }
-
-  function handleModuleSectionRefChange(
-    moduleId: string,
-    element: HTMLElement | null
-  ) {
-    moduleSectionRefs.current[moduleId] = element
-
-    if (draggedModuleId === moduleId) {
-      updateDraggedModuleVisualPosition(moduleId)
-    }
-  }
-
-  function updateDraggedNavItemVisualPosition(moduleId: string) {
-    const dragContext = navDragContextRef.current
-    const pointerPosition = navPointerPositionRef.current
-    const navItemElement = navItemRefs.current[moduleId]
-    const navListElement = navListRef.current
-
-    if (
-      !dragContext ||
-      dragContext.moduleId !== moduleId ||
-      !pointerPosition ||
-      !navItemElement ||
-      !navListElement
-    ) {
-      return
-    }
-
-    const navListBounds = navListElement.getBoundingClientRect()
-    const navItemHeight = dragContext.itemHeight
-    const unclampedTop = pointerPosition.y - dragContext.grabOffsetY
-    const clampedTop = Math.min(
-      Math.max(unclampedTop, navListBounds.top),
-      navListBounds.bottom - navItemHeight
-    )
-
-    navItemElement.style.left = `${navListBounds.left}px`
-    navItemElement.style.top = `${clampedTop}px`
-  }
-
-  function getNavDropTargetFromPointer(clientY: number, draggedId: string) {
-    let closestTarget: {
-      moduleId: string
-      position: ModuleDropPosition
-      distance: number
-    } | null = null
-
-    for (const workspaceModule of sortedWorkspaceModules) {
-      if (workspaceModule.id === draggedId) continue
-
-      const navItemElement = navItemRefs.current[workspaceModule.id]
-
-      if (!navItemElement) continue
-
-      const bounds = navItemElement.getBoundingClientRect()
-      const beforeDistance = Math.abs(clientY - bounds.top)
-      const afterDistance = Math.abs(clientY - bounds.bottom)
-
-      if (!closestTarget || beforeDistance < closestTarget.distance) {
-        closestTarget = {
-          moduleId: workspaceModule.id,
-          position: "before",
-          distance: beforeDistance,
-        }
-      }
-
-      if (!closestTarget || afterDistance < closestTarget.distance) {
-        closestTarget = {
-          moduleId: workspaceModule.id,
-          position: "after",
-          distance: afterDistance,
-        }
-      }
-    }
-
-    if (!closestTarget) return null
-
-    return {
-      moduleId: closestTarget.moduleId,
-      position: closestTarget.position,
-    }
-  }
-
-  function handleNavItemPointerDown(
-    event: PointerEvent<HTMLDivElement>,
-    moduleId: string,
-    itemId: string
-  ) {
-    if (event.button !== 0) return
-    if (movingModuleId || deletingModuleId || isResettingModules || isCreatingModule) {
-      return
-    }
-
-    const navItemElement = navItemRefs.current[moduleId]
-    const navItemBounds = navItemElement?.getBoundingClientRect()
-
-    if (!navItemBounds) return
-
-    navDragContextRef.current = {
-      moduleId,
-      itemId,
-      startX: event.clientX,
-      startY: event.clientY,
-      grabOffsetY: event.clientY - navItemBounds.top,
-      itemHeight: navItemBounds.height,
-      startedDragging: false,
-    }
-    navPointerPositionRef.current = { y: event.clientY }
-    suppressNavClickRef.current = null
-    detachNavPointerListeners()
-
-    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const dragContext = navDragContextRef.current
-
-      if (!dragContext || dragContext.moduleId !== moduleId) {
-        return
-      }
-
-      const moveDistanceY = Math.abs(moveEvent.clientY - dragContext.startY)
-
-      if (!dragContext.startedDragging) {
-        if (moveDistanceY < 7) {
-          return
-        }
-
-        dragContext.startedDragging = true
-        suppressNavClickRef.current = dragContext.itemId
-        navPointerPositionRef.current = { y: moveEvent.clientY }
-        setDraggedModuleId(moduleId)
-        setDraggedNavItemFrame({
-          moduleId,
-          left: navItemBounds.left,
-          top: navItemBounds.top,
-          width: navItemBounds.width,
-          height: navItemBounds.height,
-        })
-        moduleDropTargetRef.current = null
-        setModuleDropTarget(null)
-      }
-
-      navPointerPositionRef.current = { y: moveEvent.clientY }
-      updateDraggedNavItemVisualPosition(moduleId)
-
-      const nextDropTarget = getNavDropTargetFromPointer(moveEvent.clientY, moduleId)
-
-      if (
-        moduleDropTargetRef.current?.moduleId !== nextDropTarget?.moduleId ||
-        moduleDropTargetRef.current?.position !== nextDropTarget?.position
-      ) {
-        moduleDropTargetRef.current = nextDropTarget
-        setModuleDropTarget(nextDropTarget)
-      }
-    }
-
-    const handlePointerUp = async () => {
-      const dragContext = navDragContextRef.current
-      navDragContextRef.current = null
-      navPointerPositionRef.current = null
-      detachNavPointerListeners()
-
-      if (!dragContext) {
-        return
-      }
-
-      if (!dragContext.startedDragging) {
-        return
-      }
-
-      await commitModuleDrop(
-        dragContext.moduleId,
-        moduleDropTargetRef.current?.moduleId ?? dragContext.moduleId,
-        moduleDropTargetRef.current?.position ?? null
-      )
-
-       window.setTimeout(() => {
-        if (suppressNavClickRef.current === dragContext.itemId) {
-          suppressNavClickRef.current = null
-        }
-      }, 0)
-    }
-
-    navPointerListenersRef.current = {
-      move: handlePointerMove,
-      up: handlePointerUp,
-    }
-
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", handlePointerUp, { once: true })
-  }
-
-  function handleNavItemRefChange(moduleId: string, element: HTMLDivElement | null) {
-    navItemRefs.current[moduleId] = element
-
-    if (draggedNavItemFrame?.moduleId === moduleId) {
-      updateDraggedNavItemVisualPosition(moduleId)
-    }
-  }
-
-  function handleModuleDragOver(
-    event: DragEvent<HTMLElement>,
-    moduleId: string,
-    forcedPosition?: ModuleDropPosition
-  ) {
-    if (!draggedModuleId || draggedModuleId === moduleId) {
-      if (moduleDropTargetRef.current !== null) {
-        moduleDropTargetRef.current = null
-        setModuleDropTarget(null)
-      }
-      return
-    }
-
-    event.preventDefault()
-    updateDragAutoScroll(event.clientY)
-
-    const dropPosition =
-      forcedPosition ??
-      (() => {
-        const targetBounds = event.currentTarget.getBoundingClientRect()
-
-        return event.clientY < targetBounds.top + targetBounds.height / 2
-          ? "before"
-          : "after"
-      })()
-
-    setModuleDropTarget((currentTarget) => {
-      if (
-        currentTarget?.moduleId === moduleId &&
-        currentTarget.position === dropPosition
-      ) {
-        return currentTarget
-      }
-
-      const nextTarget = {
-        moduleId,
-        position: dropPosition,
-      }
-      moduleDropTargetRef.current = nextTarget
-
-      return nextTarget
-    })
-  }
-
-  async function handleModuleDrop(
-    event: DragEvent<HTMLElement>,
-    moduleId: string,
-    forcedPosition?: ModuleDropPosition
-  ) {
-    event.preventDefault()
-    stopDragAutoScroll()
-
-    const draggedId =
-      draggedModuleId || event.dataTransfer.getData("text/plain") || null
-    const dropPosition =
-      forcedPosition ||
-      (moduleDropTarget?.moduleId === moduleId
-        ? moduleDropTarget.position
-        : null)
-
-    await commitModuleDrop(draggedId, moduleId, dropPosition)
   }
 
   async function handleUpdateProject() {
@@ -2686,140 +2021,32 @@ export default function ProjectDetailClient({
     <>
       <main className="min-h-screen bg-gray-50 px-6 py-10">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
-          <aside className="rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm lg:sticky lg:top-6">
-            <h2 className="mb-4 px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Navigation
-            </h2>
-
-            <nav className="text-sm">
-              <div className="space-y-2">
-                <Link
-                  href={`#${fixedProjectDetailsNavigationItem.id}`}
-                  aria-current={
-                    activeSection === fixedProjectDetailsNavigationItem.id
-                      ? "location"
-                      : undefined
-                  }
-                  onClick={(event) =>
-                    handleNavigationClick(
-                      event,
-                      `#${fixedProjectDetailsNavigationItem.id}`
-                    )
-                  }
-                  className={`block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color] duration-150 ${
-                    activeSection === fixedProjectDetailsNavigationItem.id
-                      ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
-                      : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
-                  }`}
-                >
-                  {fixedProjectDetailsNavigationItem.label}
-                </Link>
-              </div>
-
-              <div
-                ref={navListRef}
-                className="mt-2 space-y-2"
-              >
-              {sortableProjectWorkspaceNavigation.map((item) => {
-                const isReorderableModule =
-                  item.moduleId !== null
-                const dropIndicator =
-                  item.moduleId && moduleDropTarget?.moduleId === item.moduleId
-                    ? moduleDropTarget.position
-                    : null
-
-                return (
-                  <div
-                    key={item.id}
-                  >
-                    <NavDropPlaceholder
-                      isVisible={dropIndicator === "before"}
-                    />
-                    <div
-                      ref={(element) =>
-                        item.moduleId
-                          ? handleNavItemRefChange(item.moduleId, element)
-                          : undefined
-                      }
-                      onPointerDown={(event) =>
-                        isReorderableModule
-                          ? handleNavItemPointerDown(event, item.moduleId!, item.id)
-                          : undefined
-                      }
-                      className={`relative transition-transform duration-150 ${
-                        isReorderableModule ? "cursor-grab active:cursor-grabbing" : ""
-                      } ${
-                        draggedModuleId === item.moduleId ? "scale-[0.985]" : ""
-                      }`}
-                      style={
-                        draggedNavItemFrame?.moduleId === item.moduleId
-                          ? {
-                              position: "fixed",
-                              left: `${draggedNavItemFrame.left}px`,
-                              top: `${draggedNavItemFrame.top}px`,
-                              width: `${draggedNavItemFrame.width}px`,
-                              zIndex: 20,
-                            }
-                          : undefined
-                      }
-                    >
-                      <Link
-                        href={`#${item.id}`}
-                        draggable={false}
-                        aria-current={
-                          activeSection === item.id
-                            ? "location"
-                            : undefined
-                        }
-                        onDragStart={(event) => event.preventDefault()}
-                        onClick={(event) => {
-                          if (suppressNavClickRef.current === item.id) {
-                            event.preventDefault()
-                            suppressNavClickRef.current = null
-                            return
-                          }
-
-                          handleNavigationClick(event, `#${item.id}`)
-                        }}
-                        className={`block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color,transform,opacity] duration-150 ${
-                          activeSection === item.id
-                            ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
-                            : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
-                        } ${
-                          draggedModuleId === item.moduleId
-                            ? "border-indigo-200 bg-white shadow-md ring-1 ring-indigo-100 opacity-80"
-                            : ""
-                        }`}
-                      >
-                        {item.label}
-                      </Link>
-                    </div>
-                    <NavDropPlaceholder
-                      isVisible={dropIndicator === "after"}
-                    />
-                  </div>
-                )
-              })}
-              </div>
-
-              <div className="mt-2">
-              <button
-                type="button"
-                onClick={openAddModuleModal}
-                disabled={
-                  isResettingModules ||
-                  isCreatingModule ||
-                  Boolean(deletingModuleId) ||
-                  Boolean(movingModuleId)
-                }
-                className="flex h-11 w-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/70 text-lg font-medium text-slate-600 transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
-                aria-label="Add Module"
-              >
-                +
-              </button>
-              </div>
-            </nav>
-          </aside>
+          <ProjectSidebarNav
+            activeSection={activeSection}
+            draggedModuleId={draggedModuleId}
+            draggedNavItemFrame={draggedNavItemFrame}
+            fixedItem={fixedProjectDetailsNavigationItem}
+            isAddDisabled={
+              isResettingModules ||
+              isCreatingModule ||
+              Boolean(deletingModuleId) ||
+              Boolean(movingModuleId)
+            }
+            moduleDropTarget={moduleDropTarget}
+            navListRef={navListRef}
+            onAddModule={openAddModuleModal}
+            onFixedItemClick={(event) =>
+              handleNavigationClick(event, `#${fixedProjectDetailsNavigationItem.id}`)
+            }
+            onModuleItemClick={(event, itemId, href) =>
+              handleNavItemClick(event, itemId, () =>
+                handleNavigationClick(event, href)
+              )
+            }
+            onModuleItemPointerDown={handleNavItemPointerDown}
+            onModuleItemRefChange={handleNavItemRefChange}
+            sortableItems={sortableProjectWorkspaceNavigation}
+          />
 
           <div className="min-w-0">
             <section
@@ -2829,77 +2056,24 @@ export default function ProjectDetailClient({
               <ProjectDetailHeader project={currentProject} />
             </section>
 
-          <div className="mt-9 space-y-8">
-            {moduleError && (
-              <p className="text-sm font-medium text-red-600">{moduleError}</p>
-            )}
-
-            {sortedWorkspaceModules.map((module, moduleIndex) => (
-              <div key={module.id}>
-                <ModuleDropPlaceholder
-                  isVisible={
-                    moduleDropTarget?.moduleId === module.id &&
-                    moduleDropTarget.position === "before"
-                  }
-                  onDragOver={(event) =>
-                    handleModuleDragOver(event, module.id, "before")
-                  }
-                  onDrop={(event) =>
-                    void handleModuleDrop(event, module.id, "before")
-                  }
-                />
-                <ProjectModuleSection
-                  module={module}
-                  isFirst={moduleIndex === 0}
-                  isDragging={draggedModuleId === module.id}
-                  isLast={moduleIndex === sortedWorkspaceModules.length - 1}
-                  isDeleting={deletingModuleId === module.id || isResettingModules}
-                  isMoving={movingModuleId === module.id || isResettingModules}
-                  dragFrame={
-                    draggedModuleFrame?.moduleId === module.id
-                      ? draggedModuleFrame
-                      : null
-                  }
-                  onDelete={handleDeleteWorkspaceModule}
-                  onHeaderPointerDown={handleModulePointerDragStart}
-                  onMoveDown={(moduleId) =>
-                    handleMoveWorkspaceModule(moduleId, "down")
-                  }
-                  onMoveUp={(moduleId) =>
-                    handleMoveWorkspaceModule(moduleId, "up")
-                  }
-                  onSectionRefChange={handleModuleSectionRefChange}
-                >
-                  {renderProjectModuleContent(module)}
-                </ProjectModuleSection>
-                <ModuleDropPlaceholder
-                  isVisible={
-                    moduleDropTarget?.moduleId === module.id &&
-                    moduleDropTarget.position === "after"
-                  }
-                  onDragOver={(event) =>
-                    handleModuleDragOver(event, module.id, "after")
-                  }
-                  onDrop={(event) =>
-                    void handleModuleDrop(event, module.id, "after")
-                  }
-                />
-              </div>
-            ))}
-
-            <ModuleStackFooter
-              isBusy={
-                isResettingModules ||
-                isCreatingModule ||
-                Boolean(deletingModuleId) ||
-                Boolean(movingModuleId)
-              }
+            <ProjectModuleList
+              deletingModuleId={deletingModuleId}
+              draggedModuleFrame={draggedModuleFrame}
+              draggedModuleId={draggedModuleId}
               isCreatingModule={isCreatingModule}
               isResettingModules={isResettingModules}
+              moduleDropTarget={moduleDropTarget}
+              moduleError={moduleError}
+              modules={sortedWorkspaceModules}
+              movingModuleId={movingModuleId}
               onAddModule={openAddModuleModal}
+              onDeleteModule={handleDeleteWorkspaceModule}
+              onHeaderPointerDown={handleModulePointerDragStart}
+              onMoveModule={handleMoveWorkspaceModule}
               onResetModules={handleResetWorkspaceModules}
+              onSectionRefChange={handleModuleSectionRefChange}
+              renderModuleContent={renderProjectModuleContent}
             />
-          </div>
           </div>
 
           <ProjectContextPanel

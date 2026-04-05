@@ -1,4 +1,4 @@
-import type { Project, ProjectMetadata, ProjectTask } from "@/lib/projects"
+import type { ProjectMetadata, ProjectTask } from "@/lib/projects"
 import {
   defaultProjectModuleAnchors,
   type DefaultProjectModuleType,
@@ -378,16 +378,4 @@ export function logSupabaseMutationResult(
       statusText: result.statusText,
     })
   }
-}
-
-export function getProjectStatusOptions(): Array<{
-  label: string
-  value: Project["status"]
-}> {
-  return [
-    { label: "Not started", value: "not_started" },
-    { label: "In progress", value: "in_progress" },
-    { label: "Blocked", value: "blocked" },
-    { label: "Completed", value: "completed" },
-  ]
 }
