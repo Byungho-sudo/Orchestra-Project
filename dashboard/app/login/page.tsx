@@ -24,6 +24,7 @@ function LoginForm() {
 
   const nextPath = getSafeNextPath(searchParams);
   const resetSuccess = searchParams.get("reset") === "success";
+  const accountDeleted = searchParams.get("account-deleted") === "success";
 
   useEffect(() => {
     const loadSession = async () => {
@@ -68,6 +69,12 @@ function LoginForm() {
         {resetSuccess && (
           <p className="mt-4 text-sm font-medium text-green-700">
             Your password has been reset. You can log in now.
+          </p>
+        )}
+
+        {accountDeleted && (
+          <p className="mt-4 text-sm font-medium text-green-700">
+            Your account has been deleted successfully.
           </p>
         )}
 

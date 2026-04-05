@@ -1,24 +1,60 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { AppLayout } from "@/app/components/layout/AppLayout"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { useAccountSettings } from "./use-account-settings"
 
 export default function AccountSettingsPage() {
+  return (
+    <Suspense>
+      <AccountSettingsPageContent />
+    </Suspense>
+  )
+}
+
+function formatIsoDateTime(value?: string | null) {
+  if (!value) return "Unavailable"
+
+  const parsedDate = new Date(value)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Unavailable"
+  }
+
+  return parsedDate.toISOString()
+}
+
+function formatUnixTimestamp(seconds?: number | null) {
+  if (!seconds) return "Unavailable"
+
+  const parsedDate = new Date(seconds * 1000)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Unavailable"
+  }
+
+  return parsedDate.toISOString()
+}
+
+function AccountSettingsPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { currentUser, isLoading, logout } = useCurrentUser()
-  const [emailChangeConfirmed, setEmailChangeConfirmed] = useState(false)
   const {
     changePassword,
     confirmPassword,
     currentSession,
     currentPassword,
+    deleteAccount,
+    deleteAccountError,
+    deleteConfirmation,
     displayName,
     emailError,
     emailMessage,
     isChangingPassword,
+    isDeletingAccount,
     isSavingProfile,
     isUpdatingEmail,
     newEmail,
@@ -30,23 +66,28 @@ export default function AccountSettingsPage() {
     saveProfile,
     setConfirmPassword,
     setCurrentPassword,
+    setDeleteConfirmation,
     setDisplayName,
     setNewEmail,
     setNewPassword,
     updateEmail,
   } = useAccountSettings(currentUser)
+  const emailChangeConfirmed =
+    searchParams.get("email-change") === "confirmed"
+
   useEffect(() => {
     if (!isLoading && !currentUser) {
       router.replace("/login?next=/settings/account")
     }
   }, [currentUser, isLoading, router])
 
-  useEffect(() => {
-    if (typeof window === "undefined") return
+  async function handleDeleteAccount() {
+    const wasDeleted = await deleteAccount()
 
-    const params = new URLSearchParams(window.location.search)
-    setEmailChangeConfirmed(params.get("email-change") === "confirmed")
-  }, [])
+    if (!wasDeleted) return
+
+    router.replace("/login?account-deleted=success")
+  }
 
   return (
     <AppLayout
@@ -68,7 +109,7 @@ export default function AccountSettingsPage() {
             Manage your account
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Update your display name and keep your login details secure.
+            Update your profile, email, and core security settings.
           </p>
         </section>
 
@@ -77,7 +118,7 @@ export default function AccountSettingsPage() {
           <div className="mt-6 grid gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                Email
+                Current Email
               </label>
               <input
                 type="email"
@@ -234,9 +275,7 @@ export default function AccountSettingsPage() {
                 </p>
                 <p>
                   <span className="font-medium text-slate-900">Last Sign In:</span>{" "}
-                  {currentUser?.last_sign_in_at
-                    ? new Date(currentUser.last_sign_in_at).toLocaleString()
-                    : "Unavailable"}
+                  {formatIsoDateTime(currentUser?.last_sign_in_at)}
                 </p>
                 <p>
                   <span className="font-medium text-slate-900">Auth Status:</span>{" "}
@@ -244,9 +283,7 @@ export default function AccountSettingsPage() {
                 </p>
                 <p>
                   <span className="font-medium text-slate-900">Session Expires:</span>{" "}
-                  {currentSession?.expires_at
-                    ? new Date(currentSession.expires_at * 1000).toLocaleString()
-                    : "Unavailable"}
+                  {formatUnixTimestamp(currentSession?.expires_at)}
                 </p>
               </div>
             </div>
@@ -260,6 +297,48 @@ export default function AccountSettingsPage() {
             >
               Sign Out
             </button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-red-200 bg-white p-8 shadow-sm">
+          <h2 className="text-xl font-semibold text-red-700">Danger Zone</h2>
+          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm font-medium text-red-900">Delete account</p>
+            <p className="mt-2 text-sm leading-6 text-red-800">
+              This permanently deletes your account and removes access to the
+              app. This action cannot be undone.
+            </p>
+            <div className="mt-4">
+              <label className="mb-1 block text-sm font-medium text-red-900">
+                Type DELETE to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                placeholder="DELETE"
+                className="w-full rounded-md border border-red-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-red-400 focus:ring-2"
+              />
+            </div>
+            {deleteAccountError && (
+              <p className="mt-4 text-sm font-medium text-red-600">
+                {deleteAccountError}
+              </p>
+            )}
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={
+                  isLoading ||
+                  isDeletingAccount ||
+                  deleteConfirmation.trim() !== "DELETE"
+                }
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeletingAccount ? "Deleting..." : "Delete Account"}
+              </button>
+            </div>
           </div>
         </section>
       </main>

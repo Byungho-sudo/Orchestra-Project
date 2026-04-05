@@ -29,6 +29,9 @@ export function useAccountSettings(user: User | null) {
   const [passwordMessage, setPasswordMessage] = useState("")
   const [passwordError, setPasswordError] = useState("")
   const [currentSession, setCurrentSession] = useState<Session | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState("")
 
   useEffect(() => {
     setDisplayName(initialDisplayName)
@@ -183,15 +186,59 @@ export function useAccountSettings(user: User | null) {
     setPasswordMessage("Password updated successfully.")
   }
 
+  async function deleteAccount() {
+    if (!user || isDeletingAccount) return false
+
+    setDeleteAccountError("")
+
+    if (deleteConfirmation.trim() !== "DELETE") {
+      setDeleteAccountError('Type "DELETE" to confirm account deletion.')
+      return false
+    }
+
+    setIsDeletingAccount(true)
+
+    try {
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+      })
+
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string; success?: boolean }
+        | null
+
+      if (!response.ok || !result?.success) {
+        setDeleteAccountError(
+          result?.error ?? "Failed to delete your account. Please try again."
+        )
+        return false
+      }
+
+      await supabase.auth.signOut()
+      return true
+    } catch {
+      setDeleteAccountError(
+        "Failed to delete your account. Please try again."
+      )
+      return false
+    } finally {
+      setIsDeletingAccount(false)
+    }
+  }
+
   return {
     changePassword,
     confirmPassword,
     currentSession,
     currentPassword,
+    deleteAccount,
+    deleteAccountError,
+    deleteConfirmation,
     displayName,
     emailError,
     emailMessage,
     isChangingPassword,
+    isDeletingAccount,
     isSavingProfile,
     isUpdatingEmail,
     newEmail,
@@ -202,6 +249,7 @@ export function useAccountSettings(user: User | null) {
     saveProfile,
     setConfirmPassword,
     setCurrentPassword,
+    setDeleteConfirmation,
     setDisplayName,
     setNewEmail,
     setNewPassword,
