@@ -26,7 +26,7 @@ export function ProjectModuleSection({
   return (
     <section
       id={getProjectModuleAnchor(module)}
-      className={sectionCardClassName}
+      className={`${sectionCardClassName} scroll-mt-8 lg:scroll-mt-10`}
     >
       <div className="mb-4 flex flex-wrap justify-end gap-3">
         <button

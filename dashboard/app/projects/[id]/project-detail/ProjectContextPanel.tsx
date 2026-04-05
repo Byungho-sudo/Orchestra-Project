@@ -1,11 +1,10 @@
-import type { Project, ProjectMetadata } from "@/lib/projects"
+import type { Project } from "@/lib/projects"
 import {
   detailCardClassName,
   fieldCardClassName,
 } from "./helpers"
 
 export function ProjectContextPanel({
-  contextMetadata,
   deadlineFill,
   currentProject,
   deadlineBadge,
@@ -13,7 +12,6 @@ export function ProjectContextPanel({
   onEditMetadata,
   onEditProject,
 }: {
-  contextMetadata: ProjectMetadata[]
   deadlineFill: number
   currentProject: Project
   deadlineBadge: {
@@ -97,16 +95,14 @@ export function ProjectContextPanel({
           </p>
         </div>
 
-        {contextMetadata.map((metadata) => (
-          <div key={metadata.id} className={fieldCardClassName}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {metadata.key}
-            </p>
-            <p className="mt-2 text-sm font-medium text-slate-900">
-              {metadata.value}
-            </p>
-          </div>
-        ))}
+        <div className={fieldCardClassName}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Project ID
+          </p>
+          <p className="mt-2 break-all text-xs text-slate-600">
+            {currentProject.id}
+          </p>
+        </div>
       </div>
 
       <div className="mt-6 space-y-4">

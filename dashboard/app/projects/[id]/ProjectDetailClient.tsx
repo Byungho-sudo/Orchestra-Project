@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
 } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -91,6 +92,9 @@ const projectWorkspaceNavigation = [
   { href: "#timeline", label: "Timeline" },
   { href: "#assets", label: "Assets" },
 ]
+const projectWorkspaceNavigationIds = projectWorkspaceNavigation.map((item) =>
+  item.href.replace("#", "")
+)
 const customProjectModuleOptions: Array<{
   label: string
   value: ProjectModuleType
@@ -533,6 +537,9 @@ export default function ProjectDetailClient({
   const [pendingDeletedTask, setPendingDeletedTask] =
     useState<ProjectTask | null>(null)
   const [isUndoTimerRunning, setIsUndoTimerRunning] = useState(false)
+  const [activeSection, setActiveSection] = useState(
+    projectWorkspaceNavigationIds[0] ?? "overview"
+  )
   const newTaskInputRef = useRef<HTMLInputElement | null>(null)
   const taskSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -741,6 +748,43 @@ export default function ProjectDetailClient({
 
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const navigationSections = projectWorkspaceNavigationIds
+      .map((sectionId) => document.getElementById(sectionId))
+      .filter((section): section is HTMLElement => section instanceof HTMLElement)
+
+    if (navigationSections.length === 0) return
+
+    const updateActiveSection = () => {
+      const viewportOffset = 160
+      const currentSection = [...navigationSections]
+        .reverse()
+        .find((section) => section.getBoundingClientRect().top <= viewportOffset)
+
+      setActiveSection(currentSection?.id ?? navigationSections[0].id)
+    }
+
+    updateActiveSection()
+
+    const observer = new IntersectionObserver(() => {
+      updateActiveSection()
+    }, {
+      root: null,
+      rootMargin: "-18% 0px -60% 0px",
+      threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+    })
+
+    navigationSections.forEach((section) => observer.observe(section))
+    window.addEventListener("hashchange", updateActiveSection)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("hashchange", updateActiveSection)
+    }
+  }, [workspaceModules])
 
   function updateTaskSaveState(nextState: TaskSaveState) {
     if (taskSaveResetTimeoutRef.current) {
@@ -1515,9 +1559,31 @@ export default function ProjectDetailClient({
     router.push("/projects")
   }
 
+  function handleNavigationClick(
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string
+  ) {
+    if (typeof window === "undefined") return
+
+    const targetId = href.startsWith("#") ? href.slice(1) : href
+
+    if (!targetId) return
+
+    const targetElement = document.getElementById(targetId)
+
+    if (!targetElement) return
+
+    event.preventDefault()
+    setActiveSection(targetId)
+    window.history.replaceState(null, "", href)
+    targetElement.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    })
+  }
+
   const deadlineStatus = getDeadlineStatus(currentProject.due_date)
   const sortedProjectMetadata = mapProjectMetadata(projectMetadata)
-  const contextMetadata = sortedProjectMetadata.slice(0, 2)
   const sortedTasks = sortTasksByUrgency(tasks)
   const sortedWorkspaceModules = [...workspaceModules].sort(
     (firstModule, secondModule) => firstModule.order - secondModule.order
@@ -1840,7 +1906,17 @@ export default function ProjectDetailClient({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="block rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100"
+                  aria-current={
+                    activeSection === item.href.replace("#", "")
+                      ? "location"
+                      : undefined
+                  }
+                  onClick={(event) => handleNavigationClick(event, item.href)}
+                  className={`block rounded-lg px-3 py-2 transition-colors ${
+                    activeSection === item.href.replace("#", "")
+                      ? "bg-slate-900/10 font-semibold text-slate-900"
+                      : "text-slate-700 hover:bg-slate-100"
+                  }`}
                 >
                   {item.label}
                 </Link>
@@ -1851,7 +1927,7 @@ export default function ProjectDetailClient({
           <div className="min-w-0">
             <ProjectDetailHeader project={currentProject} />
 
-          <div className="mt-8 space-y-8">
+          <div className="mt-9 space-y-8">
             <div className="flex flex-wrap justify-end gap-3">
               <button
                 type="button"
@@ -1916,7 +1992,6 @@ export default function ProjectDetailClient({
           </div>
 
           <ProjectContextPanel
-            contextMetadata={contextMetadata}
             currentProject={currentProject}
             deadlineBadge={{
               className: getDeadlineBadgeClass(deadlineStatus),
