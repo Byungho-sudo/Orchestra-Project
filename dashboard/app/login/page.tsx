@@ -23,6 +23,7 @@ function LoginForm() {
   const [authError, setAuthError] = useState("");
 
   const nextPath = getSafeNextPath(searchParams);
+  const resetSuccess = searchParams.get("reset") === "success";
 
   useEffect(() => {
     const loadSession = async () => {
@@ -64,6 +65,12 @@ function LoginForm() {
           Sign in to your Orchestra Project account.
         </p>
 
+        {resetSuccess && (
+          <p className="mt-4 text-sm font-medium text-green-700">
+            Your password has been reset. You can log in now.
+          </p>
+        )}
+
         <form onSubmit={login}>
           <div className="mt-6 space-y-3">
           <input
@@ -87,19 +94,27 @@ function LoginForm() {
           )}
 
           <div className="mt-6 flex items-center justify-between">
-          <Link
-            href={nextPath === "/" ? "/signup" : `/signup?next=${encodeURIComponent(nextPath)}`}
-            className="text-sm font-medium text-indigo-600 hover:underline"
-          >
-            Create account
-          </Link>
-          <button
-            type="submit"
-            disabled={!email.trim() || !password.trim()}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Log in
-          </button>
+            <div className="space-y-1">
+              <Link
+                href={nextPath === "/" ? "/signup" : `/signup?next=${encodeURIComponent(nextPath)}`}
+                className="block text-sm font-medium text-indigo-600 hover:underline"
+              >
+                Create account
+              </Link>
+              <Link
+                href="/forgot-password"
+                className="block text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <button
+              type="submit"
+              disabled={!email.trim() || !password.trim()}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Log in
+            </button>
           </div>
         </form>
       </div>
