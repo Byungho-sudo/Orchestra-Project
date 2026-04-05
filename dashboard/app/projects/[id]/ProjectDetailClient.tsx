@@ -87,11 +87,11 @@ export default function ProjectDetailClient({
   const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
   const [deleteError, setDeleteError] = useState("")
   const [activeSection, setActiveSection] = useState("")
-  const [selectedSectionId, setSelectedSectionId] = useState("")
-  const pendingNavigationSectionRef = useRef<string | null>(null)
   const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
+  const observedSectionRefs = useRef<Record<string, HTMLElement | null>>({})
+  const sectionVisibilityRatiosRef = useRef<Record<string, number>>({})
 
   const [editForm, setEditForm] = useState({
     name: currentProject.name,
@@ -315,85 +315,93 @@ export default function ProjectDetailClient({
   }, [])
 
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") {
+      return
+    }
 
-    const navigationSections = projectWorkspaceNavigationIds
-      .map((sectionId) => document.getElementById(sectionId))
+    const observedSections = projectWorkspaceNavigationIds
+      .map((sectionId) => observedSectionRefs.current[sectionId])
       .filter((section): section is HTMLElement => section instanceof HTMLElement)
 
-    if (navigationSections.length === 0) return
+    if (observedSections.length === 0) {
+      return
+    }
 
-    const getClosestSectionId = () => {
-      const pendingSectionId = pendingNavigationSectionRef.current
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          sectionVisibilityRatiosRef.current[entry.target.id] =
+            entry.isIntersecting ? entry.intersectionRatio : 0
+        }
 
-      if (pendingSectionId) {
-        const pendingSection = navigationSections.find(
-          (section) => section.id === pendingSectionId
-        )
+        const visibleSections = projectWorkspaceNavigationIds
+          .map((sectionId) => {
+            const sectionElement = observedSectionRefs.current[sectionId]
 
-        if (pendingSection) {
-          const pendingDistance = Math.abs(
-            pendingSection.getBoundingClientRect().top -
-              projectSectionAnchorOffsetPx
+            if (!sectionElement) return null
+
+            return {
+              id: sectionId,
+              ratio: sectionVisibilityRatiosRef.current[sectionId] ?? 0,
+              topDistance: Math.abs(
+                sectionElement.getBoundingClientRect().top -
+                  (projectSectionAnchorOffsetPx + 80)
+              ),
+            }
+          })
+          .filter(
+            (
+              section
+            ): section is {
+              id: string
+              ratio: number
+              topDistance: number
+            } => Boolean(section && section.ratio > 0)
           )
 
-          if (pendingDistance > 12) {
-            return pendingSectionId
+        if (visibleSections.length === 0) {
+          return
+        }
+
+        visibleSections.sort((firstSection, secondSection) => {
+          if (secondSection.ratio !== firstSection.ratio) {
+            return secondSection.ratio - firstSection.ratio
           }
+
+          return firstSection.topDistance - secondSection.topDistance
+        })
+
+        const nextActiveSectionId = visibleSections[0]?.id
+
+        if (!nextActiveSectionId) {
+          return
         }
 
-        pendingNavigationSectionRef.current = null
+        setActiveSection((currentSection) =>
+          currentSection === nextActiveSectionId
+            ? currentSection
+            : nextActiveSectionId
+        )
+      },
+      {
+        root: null,
+        rootMargin: "-96px 0px -20% 0px",
+        threshold: [0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 1],
       }
+    )
 
-      const rankedSections = navigationSections.map((section) => {
-        const topOffset =
-          section.getBoundingClientRect().top - projectSectionAnchorOffsetPx
-
-        return {
-          id: section.id,
-          distance: Math.abs(topOffset),
-        }
-      })
-
-      rankedSections.sort((firstSection, secondSection) => {
-        return firstSection.distance - secondSection.distance
-      })
-
-      return rankedSections[0]?.id ?? navigationSections[0].id
+    for (const sectionElement of observedSections) {
+      observer.observe(sectionElement)
     }
-
-    let frameId = 0
-    const updateActiveSection = () => {
-      if (frameId) {
-        cancelAnimationFrame(frameId)
-      }
-
-      frameId = window.requestAnimationFrame(() => {
-        setActiveSection(getClosestSectionId())
-      })
-    }
-
-    updateActiveSection()
-
-    window.addEventListener("scroll", updateActiveSection, { passive: true })
-    window.addEventListener("resize", updateActiveSection)
-    window.addEventListener("hashchange", updateActiveSection)
 
     return () => {
-      if (frameId) {
-        cancelAnimationFrame(frameId)
-      }
-
-      window.removeEventListener("scroll", updateActiveSection)
-      window.removeEventListener("resize", updateActiveSection)
-      window.removeEventListener("hashchange", updateActiveSection)
+      observer.disconnect()
     }
   }, [projectWorkspaceNavigationIds])
 
   useEffect(() => {
     if (projectWorkspaceNavigationIds.length === 0) {
       setActiveSection("")
-      setSelectedSectionId("")
       return
     }
 
@@ -402,25 +410,7 @@ export default function ProjectDetailClient({
         ? currentSection
         : projectWorkspaceNavigationIds[0]
     )
-    setSelectedSectionId((currentSection) =>
-      projectWorkspaceNavigationIds.includes(currentSection)
-        ? currentSection
-        : projectWorkspaceNavigationIds[0]
-    )
   }, [projectWorkspaceNavigationIds])
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !selectedSectionId) return
-
-    const targetElement = document.getElementById(selectedSectionId)
-
-    if (!targetElement) return
-
-    targetElement.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    })
-  }, [selectedSectionId])
 
   function closeEditProjectModal() {
     if (isSaving) return
@@ -860,20 +850,54 @@ export default function ProjectDetailClient({
 
     if (!targetId) return
 
+    const targetElement = observedSectionRefs.current[targetId]
+
+    if (!targetElement) return
+
     setActiveSection(targetId)
-    setSelectedSectionId(targetId)
-    pendingNavigationSectionRef.current = targetId
 
     if (pendingNavigationTimeoutRef.current) {
       clearTimeout(pendingNavigationTimeoutRef.current)
     }
 
     pendingNavigationTimeoutRef.current = setTimeout(() => {
-      pendingNavigationSectionRef.current = null
       pendingNavigationTimeoutRef.current = null
     }, 1200)
 
     window.history.replaceState(null, "", href)
+    targetElement.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    })
+  }
+
+  function handleObservedSectionRefChange(
+    sectionId: string,
+    element: HTMLElement | null
+  ) {
+    observedSectionRefs.current[sectionId] = element
+
+    if (!element) {
+      delete sectionVisibilityRatiosRef.current[sectionId]
+    }
+  }
+
+  function handleWorkspaceModuleSectionRefChange(
+    moduleId: string,
+    element: HTMLElement | null
+  ) {
+    handleModuleSectionRefChange(moduleId, element)
+
+    const workspaceModule = workspaceModules.find(
+      (workspaceModule) => workspaceModule.id === moduleId
+    )
+
+    if (!workspaceModule) return
+
+    handleObservedSectionRefChange(
+      getProjectModuleAnchor(workspaceModule),
+      element
+    )
   }
 
   function handleNavigationClick(
@@ -944,7 +968,7 @@ export default function ProjectDetailClient({
         currentUser={currentUser}
         onLogout={logout}
       >
-        <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
+        <div className="grid gap-[var(--layout-gap)] lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
           <ProjectSidebarNav
             activeSection={activeSection}
             activeDragSurface={activeDragSurface}
@@ -972,13 +996,15 @@ export default function ProjectDetailClient({
             }
             onModuleItemPointerDown={handleNavItemPointerDown}
             onModuleItemRefChange={handleNavItemRefChange}
-            selectedSectionId={selectedSectionId}
             sortableItems={sortableProjectWorkspaceNavigation}
           />
 
           <div className="min-w-0">
             <section
               id="project-details"
+              ref={(element) =>
+                handleObservedSectionRefChange("project-details", element)
+              }
               style={{ scrollMarginTop: `${projectSectionAnchorOffsetPx}px` }}
             >
               <ProjectDetailHeader project={currentProject} />
@@ -1002,7 +1028,7 @@ export default function ProjectDetailClient({
                 onEditModule={openEditModuleModal}
                 onHeaderPointerDown={handleModulePointerDragStart}
                 onResetModules={handleResetWorkspaceModules}
-                onSectionRefChange={handleModuleSectionRefChange}
+                onSectionRefChange={handleWorkspaceModuleSectionRefChange}
                 renderModuleContent={(module) => (
                   <ProjectModuleContent
                     currentProject={currentProject}

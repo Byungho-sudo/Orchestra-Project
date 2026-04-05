@@ -57,6 +57,7 @@ export function ProjectsGrid({
         searchQuery={searchQuery}
         deadlineFilter={deadlineFilter}
         sortBy={sortBy}
+        onCreateProject={onOpenCreateProject}
         onSearchQueryChange={setSearchQuery}
         onDeadlineFilterChange={setDeadlineFilter}
         onSortByChange={setSortBy}

@@ -7,6 +7,7 @@ export function ProjectToolbar({
   searchQuery,
   deadlineFilter,
   sortBy,
+  onCreateProject,
   onSearchQueryChange,
   onDeadlineFilterChange,
   onSortByChange,
@@ -14,6 +15,7 @@ export function ProjectToolbar({
   searchQuery: string
   deadlineFilter: DeadlineFilter
   sortBy: SortOption
+  onCreateProject: () => void
   onSearchQueryChange: (value: string) => void
   onDeadlineFilterChange: (value: DeadlineFilter) => void
   onSortByChange: (value: SortOption) => void
@@ -57,6 +59,14 @@ export function ProjectToolbar({
             <option value="name">Name</option>
             <option value="progress">Progress</option>
           </select>
+
+          <button
+            type="button"
+            onClick={onCreateProject}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+          >
+            New Project
+          </button>
         </div>
       </div>
     </div>

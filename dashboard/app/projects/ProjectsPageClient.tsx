@@ -9,10 +9,7 @@ export default function ProjectsPageClient() {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
 
   return (
-    <AppShell
-      title="Projects"
-      onCreateProject={() => setIsCreateProjectOpen(true)}
-    >
+    <AppShell title="Projects">
       <Suspense fallback={<ProjectsGridSkeleton />}>
         <ProjectsGrid
           isCreateProjectOpen={isCreateProjectOpen}

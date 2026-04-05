@@ -10,7 +10,6 @@ export function AppLayout({
   title,
   currentUser,
   onLogout,
-  onCreateProject,
   children,
 }: {
   breadcrumb?: {
@@ -21,10 +20,10 @@ export function AppLayout({
   title: string
   currentUser?: User | null
   onLogout?: () => void
-  onCreateProject?: () => void
   children: ReactNode
 }) {
-  const { currentUser: fallbackCurrentUser, logout } = useCurrentUser()
+  const { currentUser: fallbackCurrentUser, logout: fallbackLogout } =
+    useCurrentUser()
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-900">
@@ -32,11 +31,12 @@ export function AppLayout({
         breadcrumb={breadcrumb}
         title={title}
         currentUser={currentUser ?? fallbackCurrentUser}
-        onLogout={onLogout ?? logout}
-        onCreateProject={onCreateProject}
+        onLogout={onLogout ?? fallbackLogout}
       />
 
-      <main className="mx-auto max-w-7xl px-6 pb-6 pt-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-[var(--layout-gap)] pb-6 pt-[var(--page-content-gap)]">
+        {children}
+      </main>
     </div>
   )
 }

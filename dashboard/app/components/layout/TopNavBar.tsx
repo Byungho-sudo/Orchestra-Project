@@ -8,7 +8,6 @@ export function TopNavBar({
   title = "Orchestra",
   currentUser,
   onLogout,
-  onCreateProject,
 }: {
   breadcrumb?: {
     current: string
@@ -17,11 +16,10 @@ export function TopNavBar({
   }
   title?: string
   currentUser: User | null
-  onLogout: () => void
-  onCreateProject?: () => void
+  onLogout?: () => void
 }) {
   return (
-    <header className="sticky top-0 z-50 h-20 border-b border-slate-300 bg-slate-50 px-6 shadow-sm">
+    <header className="sticky top-0 z-50 h-[var(--header-height)] border-b border-slate-300 bg-slate-50 px-6 shadow-sm">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4">
         <div className="min-w-0">
           {breadcrumb ? (
@@ -51,13 +49,15 @@ export function TopNavBar({
               <span className="hidden text-sm text-slate-600 sm:inline">
                 {currentUser.email}
               </span>
-              <button
-                type="button"
-                onClick={onLogout}
-                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Log out
-              </button>
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  Log out
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -74,23 +74,6 @@ export function TopNavBar({
                 Sign up
               </Link>
             </>
-          )}
-
-          {onCreateProject ? (
-            <button
-              type="button"
-              onClick={onCreateProject}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
-            >
-              New Project
-            </button>
-          ) : (
-            <Link
-              href="/projects"
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
-            >
-              New Project
-            </Link>
           )}
         </div>
       </div>

@@ -53,7 +53,6 @@ export function ProjectSidebarNav({
   onModuleItemClick,
   onModuleItemPointerDown,
   onModuleItemRefChange,
-  selectedSectionId,
   sortableItems,
 }: {
   activeSection: string
@@ -88,7 +87,6 @@ export function ProjectSidebarNav({
     moduleId: string,
     element: HTMLDivElement | null
   ) => void
-  selectedSectionId: string
   sortableItems: NavigationItem[]
 }) {
   const visibleDropSlotIndex =
@@ -99,8 +97,7 @@ export function ProjectSidebarNav({
     draggedModuleId && activeDragSurface
       ? sortableItems.find((item) => item.moduleId === draggedModuleId)?.id ?? null
       : null
-  const highlightedSectionId =
-    dragHighlightedSectionId ?? selectedSectionId ?? activeSection
+  const highlightedSectionId = dragHighlightedSectionId ?? activeSection
   const renderedSortableItems = isNavDragging
     ? sortableItems.filter((item) => item.moduleId !== draggedModuleId)
     : isModuleDragging && draggedModuleId
@@ -116,7 +113,7 @@ export function ProjectSidebarNav({
       : null
 
   return (
-    <Sidebar className="lg:sticky lg:top-24" title="Navigation">
+    <Sidebar className="lg:sticky lg:top-[var(--sticky-panel-top)]" title="Navigation">
       <nav className="text-sm">
         <div className="space-y-2">
           <SidebarItem

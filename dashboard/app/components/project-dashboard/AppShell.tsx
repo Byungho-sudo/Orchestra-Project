@@ -9,23 +9,16 @@ export function AppShell({
   title,
   currentUser,
   onLogout,
-  onCreateProject,
   children,
 }: {
   title: string
   currentUser?: User | null
   onLogout?: () => void
-  onCreateProject?: () => void
   children: ReactNode
 }) {
   return (
-    <AppLayout
-        title={title}
-        currentUser={currentUser}
-        onLogout={onLogout}
-        onCreateProject={onCreateProject}
-    >
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
+    <AppLayout title={title} currentUser={currentUser} onLogout={onLogout}>
+      <div className="grid grid-cols-1 gap-[var(--layout-gap)] md:grid-cols-[240px_1fr]">
         <DashboardSidebar />
         {children}
       </div>

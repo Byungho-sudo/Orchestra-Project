@@ -62,11 +62,7 @@ export default function DashboardOverviewPage() {
   }, [])
 
   return (
-    <AppShell
-      title="Dashboard Overview"
-      currentUser={currentUser}
-      onLogout={logout}
-    >
+    <AppShell title="Dashboard Overview" currentUser={currentUser} onLogout={logout}>
       <main className="space-y-6">
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm">
