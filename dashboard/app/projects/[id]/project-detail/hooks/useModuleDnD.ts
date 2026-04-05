@@ -5,16 +5,10 @@ import {
   useState,
   type PointerEvent,
 } from "react"
-import { reorderWorkspaceModulesByDrop } from "../helpers"
-import type {
-  ModuleDropPosition,
-  ProjectWorkspaceModule,
-} from "../types"
+import { reorderWorkspaceModulesBySlot } from "../helpers"
+import type { ProjectWorkspaceModule } from "../types"
 
-type DropTarget = {
-  moduleId: string
-  position: ModuleDropPosition
-} | null
+export type DragSurface = "module" | "nav" | null
 
 export function useModuleDnD({
   isDragDisabled,
@@ -29,6 +23,12 @@ export function useModuleDnD({
   sortedWorkspaceModules: ProjectWorkspaceModule[]
 }) {
   const [draggedModuleId, setDraggedModuleId] = useState<string | null>(null)
+  const [activeDragSurface, setActiveDragSurface] = useState<DragSurface>(null)
+  const [projectedDropSurface, setProjectedDropSurface] =
+    useState<DragSurface>(null)
+  const [moduleDropSlotIndex, setModuleDropSlotIndex] = useState<number | null>(
+    null
+  )
   const [draggedModuleFrame, setDraggedModuleFrame] = useState<{
     moduleId: string
     left: number
@@ -36,12 +36,11 @@ export function useModuleDnD({
     width: number
     height: number
   } | null>(null)
-  const [moduleDropTarget, setModuleDropTarget] = useState<DropTarget>(null)
-
   const dragAutoScrollFrameRef = useRef<number | null>(null)
   const dragAutoScrollVelocityRef = useRef(0)
   const dragUsesTouchScrollRef = useRef(false)
-  const moduleDropTargetRef = useRef<DropTarget>(null)
+  const projectedDropSurfaceRef = useRef<DragSurface>(null)
+  const moduleDropSlotIndexRef = useRef<number | null>(null)
   const pointerDragContextRef = useRef<{
     moduleId: string
     grabOffsetX: number
@@ -136,55 +135,63 @@ export function useModuleDnD({
     [startDragAutoScroll, stopDragAutoScroll]
   )
 
-  const updateSharedDropTarget = useCallback((nextTarget: DropTarget) => {
-    if (
-      moduleDropTargetRef.current?.moduleId === nextTarget?.moduleId &&
-      moduleDropTargetRef.current?.position === nextTarget?.position
-    ) {
+  const updateProjectedDropSurface = useCallback((nextSurface: DragSurface) => {
+    if (projectedDropSurfaceRef.current === nextSurface) {
       return
     }
 
-    moduleDropTargetRef.current = nextTarget
-    setModuleDropTarget(nextTarget)
+    projectedDropSurfaceRef.current = nextSurface
+    setProjectedDropSurface((currentSurface) =>
+      currentSurface === nextSurface ? currentSurface : nextSurface
+    )
   }, [])
 
   const clearDragState = useCallback(() => {
     stopDragAutoScroll()
     dragUsesTouchScrollRef.current = false
     pointerPositionRef.current = null
-    moduleDropTargetRef.current = null
+    projectedDropSurfaceRef.current = null
+    moduleDropSlotIndexRef.current = null
+    setActiveDragSurface(null)
+    setProjectedDropSurface(null)
+    setModuleDropSlotIndex(null)
     setDraggedModuleId(null)
     setDraggedModuleFrame(null)
-    setModuleDropTarget(null)
   }, [stopDragAutoScroll])
 
   const startSharedDrag = useCallback(
-    (moduleId: string) => {
+    (moduleId: string, dragSurface: Exclude<DragSurface, null>) => {
+      setActiveDragSurface(dragSurface)
       setDraggedModuleId(moduleId)
       setDraggedModuleFrame(null)
-      updateSharedDropTarget(null)
+      moduleDropSlotIndexRef.current = null
+      setModuleDropSlotIndex(null)
+      updateProjectedDropSurface(null)
     },
-    [updateSharedDropTarget]
+    [updateProjectedDropSurface]
   )
 
   const commitModuleDrop = useCallback(
-    async (
-      draggedId: string | null,
-      targetModuleId: string,
-      dropPosition: ModuleDropPosition | null
-    ) => {
+    async (draggedId: string | null, slotIndex: number | null) => {
       clearDragState()
 
-      if (!draggedId || !dropPosition || draggedId === targetModuleId) {
+      if (!draggedId || slotIndex === null) {
         return
       }
 
-      const reorderedModules = reorderWorkspaceModulesByDrop(
+      const reorderedModules = reorderWorkspaceModulesBySlot(
         sortedWorkspaceModules,
         draggedId,
-        targetModuleId,
-        dropPosition
+        slotIndex
       )
+
+      const orderUnchanged = reorderedModules.every(
+        (module, moduleIndex) => module.id === sortedWorkspaceModules[moduleIndex]?.id
+      )
+
+      if (orderUnchanged) {
+        return
+      }
 
       await persistWorkspaceModuleOrder(reorderedModules, draggedId)
     },
@@ -204,48 +211,30 @@ export function useModuleDnD({
     pointerDragListenersRef.current = null
   }, [])
 
-  const getModuleDropTargetFromPointer = useCallback(
+  const getModuleDropSlotIndexFromPointer = useCallback(
     (clientY: number, draggedId: string) => {
-      let closestTarget: {
-        moduleId: string
-        position: ModuleDropPosition
-        distance: number
-      } | null = null
+      const sortableModules = sortedWorkspaceModules.filter(
+        (workspaceModule) => workspaceModule.id !== draggedId
+      )
 
-      for (const workspaceModule of sortedWorkspaceModules) {
-        if (workspaceModule.id === draggedId) continue
+      if (sortableModules.length === 0) {
+        return null
+      }
 
-        const sectionElement = moduleSectionRefs.current[workspaceModule.id]
+      for (let slotIndex = 0; slotIndex < sortableModules.length; slotIndex += 1) {
+        const sectionElement = moduleSectionRefs.current[sortableModules[slotIndex].id]
 
         if (!sectionElement) continue
 
         const bounds = sectionElement.getBoundingClientRect()
-        const beforeDistance = Math.abs(clientY - bounds.top)
-        const afterDistance = Math.abs(clientY - bounds.bottom)
+        const moduleMidpoint = bounds.top + bounds.height / 2
 
-        if (!closestTarget || beforeDistance < closestTarget.distance) {
-          closestTarget = {
-            moduleId: workspaceModule.id,
-            position: "before",
-            distance: beforeDistance,
-          }
-        }
-
-        if (!closestTarget || afterDistance < closestTarget.distance) {
-          closestTarget = {
-            moduleId: workspaceModule.id,
-            position: "after",
-            distance: afterDistance,
-          }
+        if (clientY < moduleMidpoint) {
+          return slotIndex
         }
       }
 
-      if (!closestTarget) return null
-
-      return {
-        moduleId: closestTarget.moduleId,
-        position: closestTarget.position,
-      } satisfies NonNullable<DropTarget>
+      return sortableModules.length
     },
     [sortedWorkspaceModules]
   )
@@ -296,7 +285,7 @@ export function useModuleDnD({
         y: event.clientY,
       }
       dragUsesTouchScrollRef.current = event.pointerType !== "mouse"
-      startSharedDrag(moduleId)
+      startSharedDrag(moduleId, "module")
       setDraggedModuleFrame(
         sectionBounds
           ? {
@@ -323,10 +312,19 @@ export function useModuleDnD({
         }
         updateDraggedModuleVisualPosition(moduleId)
         updateDragAutoScroll(moveEvent.clientY)
-
-        updateSharedDropTarget(
-          getModuleDropTargetFromPointer(moveEvent.clientY, moduleId)
+        const nextSlotIndex = getModuleDropSlotIndexFromPointer(
+          moveEvent.clientY,
+          moduleId
         )
+
+        if (moduleDropSlotIndexRef.current !== nextSlotIndex) {
+          moduleDropSlotIndexRef.current = nextSlotIndex
+          setModuleDropSlotIndex((currentSlotIndex) =>
+            currentSlotIndex === nextSlotIndex ? currentSlotIndex : nextSlotIndex
+          )
+        }
+
+        updateProjectedDropSurface(nextSlotIndex === null ? null : "module")
       }
 
       const handlePointerUp = async () => {
@@ -338,8 +336,7 @@ export function useModuleDnD({
 
         await commitModuleDrop(
           dragContext?.moduleId ?? null,
-          moduleDropTargetRef.current?.moduleId ?? moduleId,
-          moduleDropTargetRef.current?.position ?? null
+          moduleDropSlotIndexRef.current
         )
       }
 
@@ -354,13 +351,13 @@ export function useModuleDnD({
     [
       commitModuleDrop,
       detachPointerDragListeners,
-      getModuleDropTargetFromPointer,
+      getModuleDropSlotIndexFromPointer,
       isDragDisabled,
       startSharedDrag,
       stopDragAutoScroll,
       updateDragAutoScroll,
       updateDraggedModuleVisualPosition,
-      updateSharedDropTarget,
+      updateProjectedDropSurface,
     ]
   )
 
@@ -383,13 +380,15 @@ export function useModuleDnD({
   }, [detachPointerDragListeners, stopDragAutoScroll])
 
   return {
+    activeDragSurface,
     commitModuleDrop,
     draggedModuleFrame,
     draggedModuleId,
     handleModulePointerDragStart,
     handleModuleSectionRefChange,
-    moduleDropTarget,
+    moduleDropSlotIndex,
+    projectedDropSurface,
     startSharedDrag,
-    updateSharedDropTarget,
+    updateProjectedDropSurface,
   }
 }

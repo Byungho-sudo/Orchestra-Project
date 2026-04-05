@@ -331,6 +331,34 @@ export function reorderWorkspaceModulesByDrop(
   return normalizeWorkspaceModuleOrder(reorderedModules)
 }
 
+export function reorderWorkspaceModulesBySlot(
+  modules: ProjectWorkspaceModule[],
+  draggedModuleId: string,
+  slotIndex: number | null
+) {
+  const sortedModules = [...modules].sort(
+    (firstModule, secondModule) => firstModule.order - secondModule.order
+  )
+  const draggedModuleIndex = sortedModules.findIndex(
+    (module) => module.id === draggedModuleId
+  )
+
+  if (draggedModuleIndex === -1 || slotIndex === null) {
+    return normalizeWorkspaceModuleOrder(sortedModules)
+  }
+
+  const reorderedModules = [...sortedModules]
+  const [draggedModule] = reorderedModules.splice(draggedModuleIndex, 1)
+  const normalizedSlotIndex = Math.max(
+    0,
+    Math.min(slotIndex, reorderedModules.length)
+  )
+
+  reorderedModules.splice(normalizedSlotIndex, 0, draggedModule)
+
+  return normalizeWorkspaceModuleOrder(reorderedModules)
+}
+
 export function isProjectModulesSchemaMissingError(error: unknown) {
   const errorCode = (error as { code?: string } | null)?.code
   const errorMessage = (error as { message?: string } | null)?.message || ""

@@ -2,15 +2,18 @@ import type { PointerEvent, ReactNode } from "react"
 import { ModuleDropPlaceholder } from "./ModuleDropPlaceholder"
 import { ModuleStackFooter } from "./ModuleStackFooter"
 import { ProjectModuleSection } from "./ProjectModuleSection"
-import type { ModuleDropPosition, ProjectWorkspaceModule } from "./types"
+import type { DragSurface } from "./hooks/useModuleDnD"
+import type { ProjectWorkspaceModule } from "./types"
 
 export function ProjectModuleList({
+  activeDragSurface,
   deletingModuleId,
   draggedModuleFrame,
   draggedModuleId,
   isCreatingModule,
   isResettingModules,
-  moduleDropTarget,
+  moduleDropSlotIndex,
+  projectedDropSurface,
   moduleError,
   modules,
   movingModuleId,
@@ -22,6 +25,7 @@ export function ProjectModuleList({
   onSectionRefChange,
   renderModuleContent,
 }: {
+  activeDragSurface: DragSurface
   deletingModuleId: string | null
   draggedModuleFrame: {
     moduleId: string
@@ -33,7 +37,8 @@ export function ProjectModuleList({
   draggedModuleId: string | null
   isCreatingModule: boolean
   isResettingModules: boolean
-  moduleDropTarget: { moduleId: string; position: ModuleDropPosition } | null
+  moduleDropSlotIndex: number | null
+  projectedDropSurface: DragSurface
   moduleError: string
   modules: ProjectWorkspaceModule[]
   movingModuleId: string | null
@@ -48,24 +53,36 @@ export function ProjectModuleList({
   onSectionRefChange: (moduleId: string, element: HTMLElement | null) => void
   renderModuleContent: (module: ProjectWorkspaceModule) => ReactNode
 }) {
+  const visibleDropSlotIndex =
+    projectedDropSurface === "module" ? moduleDropSlotIndex : null
+  const isModuleDragging =
+    activeDragSurface === "module" && Boolean(draggedModuleId)
+  const renderedModules = isModuleDragging
+    ? modules.filter((module) => module.id !== draggedModuleId)
+    : modules
+  const draggedModule =
+    isModuleDragging && draggedModuleId
+      ? modules.find((module) => module.id === draggedModuleId) ?? null
+      : null
+  const draggedModuleIndex = draggedModule
+    ? modules.findIndex((module) => module.id === draggedModule.id)
+    : -1
+
   return (
     <div className="mt-9 space-y-8">
       {moduleError && (
         <p className="text-sm font-medium text-red-600">{moduleError}</p>
       )}
 
-      {modules.map((module, moduleIndex) => (
+      <ModuleDropPlaceholder isVisible={visibleDropSlotIndex === 0} />
+      {renderedModules.map((module, moduleIndex) => (
         <div key={module.id}>
-          <ModuleDropPlaceholder
-            isVisible={
-              moduleDropTarget?.moduleId === module.id &&
-              moduleDropTarget.position === "before"
-            }
-          />
           <ProjectModuleSection
             module={module}
             isFirst={moduleIndex === 0}
-            isDragging={draggedModuleId === module.id}
+            isDragging={
+              activeDragSurface === "module" && draggedModuleId === module.id
+            }
             isLast={moduleIndex === modules.length - 1}
             isDeleting={deletingModuleId === module.id || isResettingModules}
             isMoving={movingModuleId === module.id || isResettingModules}
@@ -81,13 +98,35 @@ export function ProjectModuleList({
             {renderModuleContent(module)}
           </ProjectModuleSection>
           <ModuleDropPlaceholder
-            isVisible={
-              moduleDropTarget?.moduleId === module.id &&
-              moduleDropTarget.position === "after"
-            }
+            isVisible={visibleDropSlotIndex === moduleIndex + 1}
           />
         </div>
       ))}
+
+      {draggedModule && (
+        <ProjectModuleSection
+          module={draggedModule}
+          isFirst={draggedModuleIndex === 0}
+          isDragging
+          isLast={draggedModuleIndex === modules.length - 1}
+          isDeleting={
+            deletingModuleId === draggedModule.id || isResettingModules
+          }
+          isMoving={movingModuleId === draggedModule.id || isResettingModules}
+          dragFrame={
+            draggedModuleFrame?.moduleId === draggedModule.id
+              ? draggedModuleFrame
+              : null
+          }
+          onDelete={onDeleteModule}
+          onHeaderPointerDown={onHeaderPointerDown}
+          onMoveDown={(moduleId) => onMoveModule(moduleId, "down")}
+          onMoveUp={(moduleId) => onMoveModule(moduleId, "up")}
+          onSectionRefChange={onSectionRefChange}
+        >
+          {renderModuleContent(draggedModule)}
+        </ProjectModuleSection>
+      )}
 
       <ModuleStackFooter
         isBusy={

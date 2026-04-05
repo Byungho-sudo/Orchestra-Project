@@ -6,31 +6,28 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react"
-import type { ModuleDropPosition, ProjectWorkspaceModule } from "../types"
-
-type DropTarget = {
-  moduleId: string
-  position: ModuleDropPosition
-} | null
+import type { DragSurface } from "./useModuleDnD"
+import type { ProjectWorkspaceModule } from "../types"
 
 export function useNavDnD({
+  activeDragSurface,
   activeDragModuleId,
   commitModuleDrop,
   isDragDisabled,
   sortedWorkspaceModules,
   startSharedDrag,
-  updateSharedDropTarget,
+  updateProjectedDropSurface,
 }: {
+  activeDragSurface: DragSurface
   activeDragModuleId: string | null
-  commitModuleDrop: (
-    draggedId: string | null,
-    targetModuleId: string,
-    dropPosition: ModuleDropPosition | null
-  ) => Promise<void>
+  commitModuleDrop: (draggedId: string | null, slotIndex: number | null) => Promise<void>
   isDragDisabled: boolean
   sortedWorkspaceModules: ProjectWorkspaceModule[]
-  startSharedDrag: (moduleId: string) => void
-  updateSharedDropTarget: (nextTarget: DropTarget) => void
+  startSharedDrag: (
+    moduleId: string,
+    dragSurface: Exclude<DragSurface, null>
+  ) => void
+  updateProjectedDropSurface: (nextSurface: DragSurface) => void
 }) {
   const [draggedNavItemFrame, setDraggedNavItemFrame] = useState<{
     moduleId: string
@@ -39,6 +36,7 @@ export function useNavDnD({
     width: number
     height: number
   } | null>(null)
+  const [navDropSlotIndex, setNavDropSlotIndex] = useState<number | null>(null)
 
   const navDragContextRef = useRef<{
     moduleId: string
@@ -56,7 +54,7 @@ export function useNavDnD({
   const navItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const navListRef = useRef<HTMLDivElement | null>(null)
   const suppressNavClickRef = useRef<string | null>(null)
-  const moduleDropTargetRef = useRef<DropTarget>(null)
+  const navDropSlotIndexRef = useRef<number | null>(null)
 
   const detachNavPointerListeners = useCallback(() => {
     if (!navPointerListenersRef.current || typeof window === "undefined") {
@@ -95,48 +93,30 @@ export function useNavDnD({
     navItemElement.style.top = `${clampedTop}px`
   }, [])
 
-  const getNavDropTargetFromPointer = useCallback(
+  const getNavDropSlotIndexFromPointer = useCallback(
     (clientY: number, draggedId: string) => {
-      let closestTarget: {
-        moduleId: string
-        position: ModuleDropPosition
-        distance: number
-      } | null = null
+      const sortableItems = sortedWorkspaceModules.filter(
+        (workspaceModule) => workspaceModule.id !== draggedId
+      )
 
-      for (const workspaceModule of sortedWorkspaceModules) {
-        if (workspaceModule.id === draggedId) continue
+      if (sortableItems.length === 0) {
+        return null
+      }
 
-        const navItemElement = navItemRefs.current[workspaceModule.id]
+      for (let slotIndex = 0; slotIndex < sortableItems.length; slotIndex += 1) {
+        const navItemElement = navItemRefs.current[sortableItems[slotIndex].id]
 
         if (!navItemElement) continue
 
         const bounds = navItemElement.getBoundingClientRect()
-        const beforeDistance = Math.abs(clientY - bounds.top)
-        const afterDistance = Math.abs(clientY - bounds.bottom)
+        const itemMidpoint = bounds.top + bounds.height / 2
 
-        if (!closestTarget || beforeDistance < closestTarget.distance) {
-          closestTarget = {
-            moduleId: workspaceModule.id,
-            position: "before",
-            distance: beforeDistance,
-          }
-        }
-
-        if (!closestTarget || afterDistance < closestTarget.distance) {
-          closestTarget = {
-            moduleId: workspaceModule.id,
-            position: "after",
-            distance: afterDistance,
-          }
+        if (clientY < itemMidpoint) {
+          return slotIndex
         }
       }
 
-      if (!closestTarget) return null
-
-      return {
-        moduleId: closestTarget.moduleId,
-        position: closestTarget.position,
-      } satisfies NonNullable<DropTarget>
+      return sortableItems.length
     },
     [sortedWorkspaceModules]
   )
@@ -179,7 +159,7 @@ export function useNavDnD({
           dragContext.startedDragging = true
           suppressNavClickRef.current = dragContext.itemId
           navPointerPositionRef.current = { y: moveEvent.clientY }
-          startSharedDrag(moduleId)
+          startSharedDrag(moduleId, "nav")
           setDraggedNavItemFrame({
             moduleId,
             left: navItemBounds.left,
@@ -187,15 +167,22 @@ export function useNavDnD({
             width: navItemBounds.width,
             height: navItemBounds.height,
           })
-          moduleDropTargetRef.current = null
-          updateSharedDropTarget(null)
+          navDropSlotIndexRef.current = null
+          setNavDropSlotIndex(null)
+          updateProjectedDropSurface(null)
         }
 
         navPointerPositionRef.current = { y: moveEvent.clientY }
         updateDraggedNavItemVisualPosition(moduleId)
-        const nextTarget = getNavDropTargetFromPointer(moveEvent.clientY, moduleId)
-        moduleDropTargetRef.current = nextTarget
-        updateSharedDropTarget(nextTarget)
+        const nextSlotIndex = getNavDropSlotIndexFromPointer(
+          moveEvent.clientY,
+          moduleId
+        )
+        navDropSlotIndexRef.current = nextSlotIndex
+        setNavDropSlotIndex((currentSlotIndex) =>
+          currentSlotIndex === nextSlotIndex ? currentSlotIndex : nextSlotIndex
+        )
+        updateProjectedDropSurface(nextSlotIndex === null ? null : "nav")
       }
 
       const handlePointerUp = async () => {
@@ -204,6 +191,7 @@ export function useNavDnD({
         navDragContextRef.current = null
         navPointerPositionRef.current = null
         detachNavPointerListeners()
+        setNavDropSlotIndex(null)
 
         if (!dragContext) {
           return
@@ -217,8 +205,7 @@ export function useNavDnD({
 
         await commitModuleDrop(
           dragContext.moduleId,
-          moduleDropTargetRef.current?.moduleId ?? dragContext.moduleId,
-          moduleDropTargetRef.current?.position ?? null
+          navDropSlotIndexRef.current
         )
 
         window.setTimeout(() => {
@@ -239,11 +226,11 @@ export function useNavDnD({
     [
       commitModuleDrop,
       detachNavPointerListeners,
-      getNavDropTargetFromPointer,
+      getNavDropSlotIndexFromPointer,
       isDragDisabled,
       startSharedDrag,
       updateDraggedNavItemVisualPosition,
-      updateSharedDropTarget,
+      updateProjectedDropSurface,
     ]
   )
 
@@ -276,14 +263,17 @@ export function useNavDnD({
   )
 
   useEffect(() => {
-    moduleDropTargetRef.current = null
-  }, [activeDragModuleId])
+    if (activeDragSurface !== "nav") {
+      navDropSlotIndexRef.current = null
+      setNavDropSlotIndex(null)
+    }
+  }, [activeDragSurface])
 
   useEffect(() => {
-    if (!activeDragModuleId) {
+    if (!activeDragModuleId || activeDragSurface !== "nav") {
       setDraggedNavItemFrame(null)
     }
-  }, [activeDragModuleId])
+  }, [activeDragModuleId, activeDragSurface])
 
   useEffect(() => {
     return () => {
@@ -297,5 +287,6 @@ export function useNavDnD({
     handleNavItemPointerDown,
     handleNavItemRefChange,
     navListRef,
+    navDropSlotIndex,
   }
 }

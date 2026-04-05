@@ -125,14 +125,16 @@ export default function ProjectDetailClient({
     isResettingModules ||
     isCreatingModule
   const {
+    activeDragSurface,
     commitModuleDrop,
     draggedModuleFrame,
     draggedModuleId,
     handleModulePointerDragStart,
     handleModuleSectionRefChange,
-    moduleDropTarget,
+    moduleDropSlotIndex,
+    projectedDropSurface,
     startSharedDrag,
-    updateSharedDropTarget,
+    updateProjectedDropSurface,
   } = useModuleDnD({
     isDragDisabled: isModuleDragDisabled,
     persistWorkspaceModuleOrder,
@@ -144,13 +146,15 @@ export default function ProjectDetailClient({
     handleNavItemPointerDown,
     handleNavItemRefChange,
     navListRef,
+    navDropSlotIndex,
   } = useNavDnD({
+    activeDragSurface,
     activeDragModuleId: draggedModuleId,
     commitModuleDrop,
     isDragDisabled: isModuleDragDisabled,
     sortedWorkspaceModules,
     startSharedDrag,
-    updateSharedDropTarget,
+    updateProjectedDropSurface,
   })
   const { taskUi } = useProjectTasks({
     projectId: currentProject.id,
@@ -844,6 +848,7 @@ export default function ProjectDetailClient({
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
           <ProjectSidebarNav
             activeSection={activeSection}
+            activeDragSurface={activeDragSurface}
             draggedModuleId={draggedModuleId}
             draggedNavItemFrame={draggedNavItemFrame}
             fixedItem={fixedProjectDetailsNavigationItem}
@@ -853,7 +858,8 @@ export default function ProjectDetailClient({
               Boolean(deletingModuleId) ||
               Boolean(movingModuleId)
             }
-            moduleDropTarget={moduleDropTarget}
+            navDropSlotIndex={navDropSlotIndex}
+            projectedDropSurface={projectedDropSurface}
             navListRef={navListRef}
             onAddModule={openAddModuleModal}
             onFixedItemClick={(event) =>
@@ -878,12 +884,14 @@ export default function ProjectDetailClient({
             </section>
 
             <ProjectModuleList
+              activeDragSurface={activeDragSurface}
               deletingModuleId={deletingModuleId}
               draggedModuleFrame={draggedModuleFrame}
               draggedModuleId={draggedModuleId}
               isCreatingModule={isCreatingModule}
               isResettingModules={isResettingModules}
-              moduleDropTarget={moduleDropTarget}
+              moduleDropSlotIndex={moduleDropSlotIndex}
+              projectedDropSurface={projectedDropSurface}
               moduleError={moduleError}
               modules={sortedWorkspaceModules}
               movingModuleId={movingModuleId}
