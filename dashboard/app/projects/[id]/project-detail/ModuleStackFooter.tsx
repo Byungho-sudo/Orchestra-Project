@@ -12,7 +12,7 @@ export function ModuleStackFooter({
   onResetModules: () => void
 }) {
   return (
-    <div className="pt-6">
+    <div>
       <div className="space-y-4">
         <button
           type="button"

@@ -1,4 +1,13 @@
-import type { PointerEvent, ReactNode } from "react"
+import {
+  useLayoutEffect,
+  useRef,
+  type PointerEvent,
+  type ReactNode,
+} from "react"
+import {
+  projectModuleStackGapClassName,
+  reorderWorkspaceModulesBySlot,
+} from "./helpers"
 import { ModuleDropPlaceholder } from "./ModuleDropPlaceholder"
 import { ModuleStackFooter } from "./ModuleStackFooter"
 import { ProjectModuleSection } from "./ProjectModuleSection"
@@ -13,6 +22,7 @@ export function ProjectModuleList({
   isCreatingModule,
   isResettingModules,
   moduleDropSlotIndex,
+  navDropSlotIndex,
   projectedDropSurface,
   moduleError,
   modules,
@@ -20,7 +30,6 @@ export function ProjectModuleList({
   onAddModule,
   onDeleteModule,
   onHeaderPointerDown,
-  onMoveModule,
   onResetModules,
   onSectionRefChange,
   renderModuleContent,
@@ -38,6 +47,7 @@ export function ProjectModuleList({
   isCreatingModule: boolean
   isResettingModules: boolean
   moduleDropSlotIndex: number | null
+  navDropSlotIndex: number | null
   projectedDropSurface: DragSurface
   moduleError: string
   modules: ProjectWorkspaceModule[]
@@ -48,42 +58,94 @@ export function ProjectModuleList({
     event: PointerEvent<HTMLElement>,
     moduleId: string
   ) => void
-  onMoveModule: (moduleId: string, direction: "up" | "down") => void
   onResetModules: () => void
   onSectionRefChange: (moduleId: string, element: HTMLElement | null) => void
   renderModuleContent: (module: ProjectWorkspaceModule) => ReactNode
 }) {
+  const moduleItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const previousModuleTopsRef = useRef<Record<string, number>>({})
   const visibleDropSlotIndex =
     projectedDropSurface === "module" ? moduleDropSlotIndex : null
   const isModuleDragging =
     activeDragSurface === "module" && Boolean(draggedModuleId)
+  const isNavDragging = activeDragSurface === "nav" && Boolean(draggedModuleId)
   const renderedModules = isModuleDragging
     ? modules.filter((module) => module.id !== draggedModuleId)
+    : isNavDragging && draggedModuleId
+      ? reorderWorkspaceModulesBySlot(
+          modules,
+          draggedModuleId,
+          navDropSlotIndex
+        )
     : modules
   const draggedModule =
     isModuleDragging && draggedModuleId
       ? modules.find((module) => module.id === draggedModuleId) ?? null
       : null
-  const draggedModuleIndex = draggedModule
-    ? modules.findIndex((module) => module.id === draggedModule.id)
-    : -1
+
+  useLayoutEffect(() => {
+    const nextModuleTops: Record<string, number> = {}
+
+    for (const workspaceModule of renderedModules) {
+      const element = moduleItemRefs.current[workspaceModule.id]
+
+      if (!element) continue
+
+      const nextTop = element.getBoundingClientRect().top
+      nextModuleTops[workspaceModule.id] = nextTop
+
+      if (!isNavDragging) {
+        element.style.transform = ""
+        element.style.transition = ""
+        continue
+      }
+
+      if (workspaceModule.id === draggedModuleId) {
+        element.style.transform = ""
+        element.style.transition = ""
+        continue
+      }
+
+      const previousTop = previousModuleTopsRef.current[workspaceModule.id]
+      const deltaY = previousTop === undefined ? 0 : previousTop - nextTop
+
+      if (Math.abs(deltaY) < 1) {
+        element.style.transform = ""
+        element.style.transition = ""
+        continue
+      }
+
+      element.style.transition = "none"
+      element.style.transform = `translateY(${deltaY}px)`
+      element.getBoundingClientRect()
+      element.style.transition =
+        "transform 460ms cubic-bezier(0.22, 1, 0.36, 1)"
+      element.style.transform = "translateY(0)"
+    }
+
+    previousModuleTopsRef.current = nextModuleTops
+  }, [draggedModuleId, isNavDragging, renderedModules])
 
   return (
-    <div className="mt-9 space-y-8">
+    <div className={`mt-9 ${projectModuleStackGapClassName}`}>
       {moduleError && (
         <p className="text-sm font-medium text-red-600">{moduleError}</p>
       )}
 
       <ModuleDropPlaceholder isVisible={visibleDropSlotIndex === 0} />
       {renderedModules.map((module, moduleIndex) => (
-        <div key={module.id}>
+        <div
+          key={module.id}
+          ref={(element) => {
+            moduleItemRefs.current[module.id] = element
+          }}
+        >
           <ProjectModuleSection
             module={module}
-            isFirst={moduleIndex === 0}
             isDragging={
-              activeDragSurface === "module" && draggedModuleId === module.id
+              (activeDragSurface === "module" || activeDragSurface === "nav") &&
+              draggedModuleId === module.id
             }
-            isLast={moduleIndex === modules.length - 1}
             isDeleting={deletingModuleId === module.id || isResettingModules}
             isMoving={movingModuleId === module.id || isResettingModules}
             dragFrame={
@@ -91,8 +153,6 @@ export function ProjectModuleList({
             }
             onDelete={onDeleteModule}
             onHeaderPointerDown={onHeaderPointerDown}
-            onMoveDown={(moduleId) => onMoveModule(moduleId, "down")}
-            onMoveUp={(moduleId) => onMoveModule(moduleId, "up")}
             onSectionRefChange={onSectionRefChange}
           >
             {renderModuleContent(module)}
@@ -106,9 +166,7 @@ export function ProjectModuleList({
       {draggedModule && (
         <ProjectModuleSection
           module={draggedModule}
-          isFirst={draggedModuleIndex === 0}
           isDragging
-          isLast={draggedModuleIndex === modules.length - 1}
           isDeleting={
             deletingModuleId === draggedModule.id || isResettingModules
           }
@@ -120,8 +178,6 @@ export function ProjectModuleList({
           }
           onDelete={onDeleteModule}
           onHeaderPointerDown={onHeaderPointerDown}
-          onMoveDown={(moduleId) => onMoveModule(moduleId, "down")}
-          onMoveUp={(moduleId) => onMoveModule(moduleId, "up")}
           onSectionRefChange={onSectionRefChange}
         >
           {renderModuleContent(draggedModule)}

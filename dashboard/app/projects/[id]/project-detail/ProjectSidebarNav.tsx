@@ -9,6 +9,29 @@ type NavigationItem = {
   moduleId: string | null
 }
 
+function reorderNavigationItemsBySlot(
+  items: NavigationItem[],
+  draggedModuleId: string,
+  slotIndex: number | null
+) {
+  if (slotIndex === null) return items
+
+  const draggedIndex = items.findIndex((item) => item.moduleId === draggedModuleId)
+
+  if (draggedIndex === -1) return items
+
+  const reorderedItems = [...items]
+  const [draggedItem] = reorderedItems.splice(draggedIndex, 1)
+  const normalizedSlotIndex = Math.max(
+    0,
+    Math.min(slotIndex, reorderedItems.length)
+  )
+
+  reorderedItems.splice(normalizedSlotIndex, 0, draggedItem)
+
+  return reorderedItems
+}
+
 export function ProjectSidebarNav({
   activeSection,
   activeDragSurface,
@@ -16,6 +39,7 @@ export function ProjectSidebarNav({
   draggedNavItemFrame,
   fixedItem,
   isAddDisabled,
+  moduleDropSlotIndex,
   navDropSlotIndex,
   projectedDropSurface,
   navListRef,
@@ -38,6 +62,7 @@ export function ProjectSidebarNav({
   } | null
   fixedItem: NavigationItem
   isAddDisabled: boolean
+  moduleDropSlotIndex: number | null
   navDropSlotIndex: number | null
   projectedDropSurface: DragSurface
   navListRef: RefObject<HTMLDivElement | null>
@@ -62,9 +87,21 @@ export function ProjectSidebarNav({
   const visibleDropSlotIndex =
     projectedDropSurface === "nav" ? navDropSlotIndex : null
   const isNavDragging = activeDragSurface === "nav" && Boolean(draggedModuleId)
+  const isModuleDragging = activeDragSurface === "module" && Boolean(draggedModuleId)
+  const dragHighlightedSectionId =
+    draggedModuleId && activeDragSurface
+      ? sortableItems.find((item) => item.moduleId === draggedModuleId)?.id ?? null
+      : null
+  const highlightedSectionId = dragHighlightedSectionId ?? activeSection
   const renderedSortableItems = isNavDragging
     ? sortableItems.filter((item) => item.moduleId !== draggedModuleId)
-    : sortableItems
+    : isModuleDragging && draggedModuleId
+      ? reorderNavigationItemsBySlot(
+          sortableItems,
+          draggedModuleId,
+          moduleDropSlotIndex
+        )
+      : sortableItems
   const draggedSortableItem =
     isNavDragging && draggedModuleId
       ? sortableItems.find((item) => item.moduleId === draggedModuleId) ?? null
@@ -80,10 +117,12 @@ export function ProjectSidebarNav({
         <div className="space-y-2">
           <Link
             href={`#${fixedItem.id}`}
-            aria-current={activeSection === fixedItem.id ? "location" : undefined}
+            aria-current={
+              highlightedSectionId === fixedItem.id ? "location" : undefined
+            }
             onClick={onFixedItemClick}
             className={`block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color] duration-150 ${
-              activeSection === fixedItem.id
+              highlightedSectionId === fixedItem.id
                 ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
                 : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
             }`}
@@ -113,6 +152,9 @@ export function ProjectSidebarNav({
                   } ${
                     activeDragSurface === "nav" && draggedModuleId === item.moduleId
                       ? "scale-[0.985]"
+                      : activeDragSurface === "module" &&
+                          draggedModuleId === item.moduleId
+                        ? "scale-[0.98]"
                       : ""
                   }`}
                   style={
@@ -131,19 +173,24 @@ export function ProjectSidebarNav({
                   <Link
                     href={`#${item.id}`}
                     draggable={false}
-                    aria-current={activeSection === item.id ? "location" : undefined}
+                    aria-current={
+                      highlightedSectionId === item.id ? "location" : undefined
+                    }
                     onDragStart={(event) => event.preventDefault()}
                     onClick={(event) =>
                       onModuleItemClick(event, item.id, `#${item.id}`)
                     }
                     className={`block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color,transform,opacity] duration-150 ${
-                      activeSection === item.id
+                      highlightedSectionId === item.id
                         ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
                         : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
                     } ${
                       activeDragSurface === "nav" &&
                       draggedModuleId === item.moduleId
-                        ? "border-indigo-200 bg-white shadow-md ring-1 ring-indigo-100 opacity-80"
+                        ? "border-indigo-200 bg-indigo-50/95 font-medium text-indigo-900 shadow-md ring-1 ring-indigo-100 opacity-90"
+                        : activeDragSurface === "module" &&
+                            draggedModuleId === item.moduleId
+                          ? "border-indigo-200 bg-indigo-50/95 font-medium text-indigo-900 shadow-sm ring-1 ring-indigo-100"
                         : ""
                     } ${itemIndex > 0 ? "mt-2" : ""}`}
                   >
@@ -173,7 +220,7 @@ export function ProjectSidebarNav({
                 zIndex: 20,
               }}
             >
-              <div className="block rounded-xl border border-indigo-200 bg-white px-3 py-3 text-sm text-slate-700 shadow-md ring-1 ring-indigo-100 opacity-80">
+              <div className="block rounded-xl border border-indigo-200 bg-indigo-50/95 px-3 py-3 text-sm font-medium text-indigo-900 shadow-md ring-1 ring-indigo-100 opacity-90">
                 {draggedSortableItem.label}
               </div>
             </div>

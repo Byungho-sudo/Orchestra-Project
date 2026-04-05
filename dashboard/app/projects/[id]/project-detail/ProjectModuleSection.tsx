@@ -8,23 +8,17 @@ import type { ProjectWorkspaceModule } from "./types"
 
 export function ProjectModuleSection({
   module,
-  isFirst,
   isDragging,
-  isLast,
   isDeleting,
   isMoving,
   dragFrame,
   onDelete,
   onHeaderPointerDown,
-  onMoveDown,
-  onMoveUp,
   onSectionRefChange,
   children,
 }: {
   module: ProjectWorkspaceModule
-  isFirst: boolean
   isDragging: boolean
-  isLast: boolean
   isDeleting: boolean
   isMoving: boolean
   dragFrame:
@@ -41,8 +35,6 @@ export function ProjectModuleSection({
     event: PointerEvent<HTMLElement>,
     moduleId: string
   ) => void
-  onMoveDown: (moduleId: string) => void
-  onMoveUp: (moduleId: string) => void
   onSectionRefChange: (
     moduleId: string,
     element: HTMLElement | null
@@ -92,33 +84,17 @@ export function ProjectModuleSection({
     >
       <div
         onPointerDown={handleHeaderPointerDown}
-        className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg transition-colors ${
+        className={`mb-6 rounded-xl border border-slate-200 bg-white/80 px-4 py-4 transition-[border-color,background-color,box-shadow,color] ${
           isDeleting || isMoving
             ? "cursor-not-allowed"
             : isDragging
-              ? "cursor-grabbing"
-              : "cursor-grab"
+              ? "cursor-grabbing border-indigo-200 bg-indigo-50/80 text-indigo-950 shadow-sm"
+              : "cursor-grab hover:border-slate-300 hover:bg-white hover:shadow-sm"
         }`}
       >
-        <div className="flex flex-wrap justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => onMoveUp(module.id)}
-            disabled={isFirst || isMoving || isDeleting}
-            className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Move Up
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onMoveDown(module.id)}
-            disabled={isLast || isMoving || isDeleting}
-            className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Move Down
-          </button>
-        </div>
+        <h2 className="truncate text-xl font-semibold text-slate-900">
+          {module.title}
+        </h2>
       </div>
 
       {children}

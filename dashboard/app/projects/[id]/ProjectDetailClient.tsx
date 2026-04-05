@@ -628,37 +628,6 @@ export default function ProjectDetailClient({
     return true
   }
 
-  async function handleMoveWorkspaceModule(
-    moduleId: string,
-    direction: "up" | "down"
-  ) {
-    if (movingModuleId || deletingModuleId || isResettingModules || isCreatingModule) {
-      return
-    }
-
-    const sortedModules = [...workspaceModules].sort(
-      (firstModule, secondModule) => firstModule.order - secondModule.order
-    )
-    const moduleIndex = sortedModules.findIndex(
-      (module) => module.id === moduleId
-    )
-    const swapIndex = direction === "up" ? moduleIndex - 1 : moduleIndex + 1
-
-    if (
-      moduleIndex === -1 ||
-      swapIndex < 0 ||
-      swapIndex >= sortedModules.length
-    ) {
-      return
-    }
-
-    const reorderedModules = [...sortedModules]
-    const [movedModule] = reorderedModules.splice(moduleIndex, 1)
-    reorderedModules.splice(swapIndex, 0, movedModule)
-
-    await persistWorkspaceModuleOrder(reorderedModules, moduleId)
-  }
-
   async function handleResetWorkspaceModules() {
     if (isResettingModules || isCreatingModule || deletingModuleId || movingModuleId) {
       return
@@ -858,6 +827,7 @@ export default function ProjectDetailClient({
               Boolean(deletingModuleId) ||
               Boolean(movingModuleId)
             }
+            moduleDropSlotIndex={moduleDropSlotIndex}
             navDropSlotIndex={navDropSlotIndex}
             projectedDropSurface={projectedDropSurface}
             navListRef={navListRef}
@@ -883,25 +853,25 @@ export default function ProjectDetailClient({
               <ProjectDetailHeader project={currentProject} />
             </section>
 
-            <ProjectModuleList
-              activeDragSurface={activeDragSurface}
-              deletingModuleId={deletingModuleId}
-              draggedModuleFrame={draggedModuleFrame}
-              draggedModuleId={draggedModuleId}
-              isCreatingModule={isCreatingModule}
-              isResettingModules={isResettingModules}
-              moduleDropSlotIndex={moduleDropSlotIndex}
-              projectedDropSurface={projectedDropSurface}
-              moduleError={moduleError}
-              modules={sortedWorkspaceModules}
+              <ProjectModuleList
+                activeDragSurface={activeDragSurface}
+                deletingModuleId={deletingModuleId}
+                draggedModuleFrame={draggedModuleFrame}
+                draggedModuleId={draggedModuleId}
+                isCreatingModule={isCreatingModule}
+                isResettingModules={isResettingModules}
+                moduleDropSlotIndex={moduleDropSlotIndex}
+                navDropSlotIndex={navDropSlotIndex}
+                projectedDropSurface={projectedDropSurface}
+                moduleError={moduleError}
+                modules={sortedWorkspaceModules}
               movingModuleId={movingModuleId}
-              onAddModule={openAddModuleModal}
-              onDeleteModule={handleDeleteWorkspaceModule}
-              onHeaderPointerDown={handleModulePointerDragStart}
-              onMoveModule={handleMoveWorkspaceModule}
-              onResetModules={handleResetWorkspaceModules}
-              onSectionRefChange={handleModuleSectionRefChange}
-              renderModuleContent={(module) => (
+                onAddModule={openAddModuleModal}
+                onDeleteModule={handleDeleteWorkspaceModule}
+                onHeaderPointerDown={handleModulePointerDragStart}
+                onResetModules={handleResetWorkspaceModules}
+                onSectionRefChange={handleModuleSectionRefChange}
+                renderModuleContent={(module) => (
                 <ProjectModuleContent
                   currentProject={currentProject}
                   module={module}
