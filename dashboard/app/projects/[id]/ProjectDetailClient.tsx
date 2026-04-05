@@ -584,6 +584,7 @@ export default function ProjectDetailClient({
     startX: number
     startY: number
     grabOffsetY: number
+    itemHeight: number
     startedDragging: boolean
   } | null>(null)
   const navPointerPositionRef = useRef<{ y: number } | null>(null)
@@ -592,6 +593,7 @@ export default function ProjectDetailClient({
     up: () => void
   } | null>(null)
   const navItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const navListRef = useRef<HTMLDivElement | null>(null)
   const suppressNavClickRef = useRef<string | null>(null)
   const pointerDragListenersRef = useRef<{
     move: (event: globalThis.PointerEvent) => void
@@ -632,6 +634,8 @@ export default function ProjectDetailClient({
       moduleId: module.id,
     })),
   ]
+  const fixedProjectDetailsNavigationItem = projectWorkspaceNavigation[0]
+  const sortableProjectWorkspaceNavigation = projectWorkspaceNavigation.slice(1)
   const projectWorkspaceNavigationIds = projectWorkspaceNavigation.map(
     (item) => item.id
   )
@@ -1680,17 +1684,28 @@ export default function ProjectDetailClient({
     const dragContext = navDragContextRef.current
     const pointerPosition = navPointerPositionRef.current
     const navItemElement = navItemRefs.current[moduleId]
+    const navListElement = navListRef.current
 
     if (
       !dragContext ||
       dragContext.moduleId !== moduleId ||
       !pointerPosition ||
-      !navItemElement
+      !navItemElement ||
+      !navListElement
     ) {
       return
     }
 
-    navItemElement.style.top = `${pointerPosition.y - dragContext.grabOffsetY}px`
+    const navListBounds = navListElement.getBoundingClientRect()
+    const navItemHeight = dragContext.itemHeight
+    const unclampedTop = pointerPosition.y - dragContext.grabOffsetY
+    const clampedTop = Math.min(
+      Math.max(unclampedTop, navListBounds.top),
+      navListBounds.bottom - navItemHeight
+    )
+
+    navItemElement.style.left = `${navListBounds.left}px`
+    navItemElement.style.top = `${clampedTop}px`
   }
 
   function getNavDropTargetFromPointer(clientY: number, draggedId: string) {
@@ -1757,6 +1772,7 @@ export default function ProjectDetailClient({
       startX: event.clientX,
       startY: event.clientY,
       grabOffsetY: event.clientY - navItemBounds.top,
+      itemHeight: navItemBounds.height,
       startedDragging: false,
     }
     navPointerPositionRef.current = { y: event.clientY }
@@ -1770,13 +1786,10 @@ export default function ProjectDetailClient({
         return
       }
 
-      const moveDistance = Math.hypot(
-        moveEvent.clientX - dragContext.startX,
-        moveEvent.clientY - dragContext.startY
-      )
+      const moveDistanceY = Math.abs(moveEvent.clientY - dragContext.startY)
 
       if (!dragContext.startedDragging) {
-        if (moveDistance < 4) {
+        if (moveDistanceY < 7) {
           return
         }
 
@@ -2678,8 +2691,36 @@ export default function ProjectDetailClient({
               Navigation
             </h2>
 
-            <nav className="flex flex-wrap gap-2 text-sm lg:block lg:space-y-2">
-              {projectWorkspaceNavigation.map((item) => {
+            <nav className="text-sm">
+              <div className="space-y-2">
+                <Link
+                  href={`#${fixedProjectDetailsNavigationItem.id}`}
+                  aria-current={
+                    activeSection === fixedProjectDetailsNavigationItem.id
+                      ? "location"
+                      : undefined
+                  }
+                  onClick={(event) =>
+                    handleNavigationClick(
+                      event,
+                      `#${fixedProjectDetailsNavigationItem.id}`
+                    )
+                  }
+                  className={`block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color] duration-150 ${
+                    activeSection === fixedProjectDetailsNavigationItem.id
+                      ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
+                      : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
+                  }`}
+                >
+                  {fixedProjectDetailsNavigationItem.label}
+                </Link>
+              </div>
+
+              <div
+                ref={navListRef}
+                className="mt-2 space-y-2"
+              >
+              {sortableProjectWorkspaceNavigation.map((item) => {
                 const isReorderableModule =
                   item.moduleId !== null
                 const dropIndicator =
@@ -2690,11 +2731,6 @@ export default function ProjectDetailClient({
                 return (
                   <div
                     key={item.id}
-                    style={
-                      draggedNavItemFrame?.moduleId === item.moduleId
-                        ? { minHeight: `${draggedNavItemFrame.height}px` }
-                        : undefined
-                    }
                   >
                     <NavDropPlaceholder
                       isVisible={dropIndicator === "before"}
@@ -2764,7 +2800,9 @@ export default function ProjectDetailClient({
                   </div>
                 )
               })}
+              </div>
 
+              <div className="mt-2">
               <button
                 type="button"
                 onClick={openAddModuleModal}
@@ -2779,6 +2817,7 @@ export default function ProjectDetailClient({
               >
                 +
               </button>
+              </div>
             </nav>
           </aside>
 

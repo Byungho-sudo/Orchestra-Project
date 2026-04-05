@@ -286,9 +286,7 @@ export function mapWorkspaceModules(moduleRows: ProjectModuleRecord[]) {
 export function normalizeWorkspaceModuleOrder(
   modules: ProjectWorkspaceModule[]
 ) {
-  return [...modules]
-    .sort((firstModule, secondModule) => firstModule.order - secondModule.order)
-    .map((module, moduleIndex) => ({
+  return modules.map((module, moduleIndex) => ({
     ...module,
     order: moduleIndex,
   }))

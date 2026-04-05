@@ -71,70 +71,68 @@ export function ProjectModuleSection({
   }
 
   return (
-    <div style={isDragging && dragFrame ? { minHeight: `${dragFrame.height}px` } : undefined}>
-      <section
-        ref={handleSectionRefChange}
-        id={getProjectModuleAnchor(module)}
-        className={`relative ${
-          isDragging
-            ? "z-20 will-change-[top,left] transition-[opacity,box-shadow] duration-150"
-            : "will-change-transform transition-[opacity,box-shadow,transform] duration-150"
-        } ${
-          isDragging ? "opacity-90 shadow-xl ring-1 ring-indigo-200" : ""
-        } ${sectionCardClassName}`}
-        style={{
-          scrollMarginTop: `${projectSectionAnchorOffsetPx}px`,
-          cursor: isDragging ? "grabbing" : undefined,
-          position: isDragging && dragFrame ? "fixed" : undefined,
-          left: isDragging && dragFrame ? `${dragFrame.left}px` : undefined,
-          top: isDragging && dragFrame ? `${dragFrame.top}px` : undefined,
-          width: isDragging && dragFrame ? `${dragFrame.width}px` : undefined,
-        }}
+    <section
+      ref={handleSectionRefChange}
+      id={getProjectModuleAnchor(module)}
+      className={`relative ${
+        isDragging
+          ? "z-20 will-change-[top,left] transition-[opacity,box-shadow] duration-150"
+          : "will-change-transform transition-[opacity,box-shadow,transform] duration-150"
+      } ${
+        isDragging ? "opacity-90 shadow-xl ring-1 ring-indigo-200" : ""
+      } ${sectionCardClassName}`}
+      style={{
+        scrollMarginTop: `${projectSectionAnchorOffsetPx}px`,
+        cursor: isDragging ? "grabbing" : undefined,
+        position: isDragging && dragFrame ? "fixed" : undefined,
+        left: isDragging && dragFrame ? `${dragFrame.left}px` : undefined,
+        top: isDragging && dragFrame ? `${dragFrame.top}px` : undefined,
+        width: isDragging && dragFrame ? `${dragFrame.width}px` : undefined,
+      }}
+    >
+      <div
+        onPointerDown={handleHeaderPointerDown}
+        className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg transition-colors ${
+          isDeleting || isMoving
+            ? "cursor-not-allowed"
+            : isDragging
+              ? "cursor-grabbing"
+              : "cursor-grab"
+        }`}
       >
-        <div
-          onPointerDown={handleHeaderPointerDown}
-          className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg transition-colors ${
-            isDeleting || isMoving
-              ? "cursor-not-allowed"
-              : isDragging
-                ? "cursor-grabbing"
-                : "cursor-grab"
-          }`}
-        >
-          <div className="flex flex-wrap justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => onMoveUp(module.id)}
-              disabled={isFirst || isMoving || isDeleting}
-              className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Move Up
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onMoveDown(module.id)}
-              disabled={isLast || isMoving || isDeleting}
-              className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Move Down
-            </button>
-          </div>
-        </div>
-
-        {children}
-
-        <div className="mt-6 flex justify-end">
+        <div className="flex flex-wrap justify-end gap-3">
           <button
             type="button"
-            onClick={() => onDelete(module.id)}
-            disabled={isDeleting}
-            className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => onMoveUp(module.id)}
+            disabled={isFirst || isMoving || isDeleting}
+            className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isDeleting ? "Deleting..." : "Delete Module"}
+            Move Up
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onMoveDown(module.id)}
+            disabled={isLast || isMoving || isDeleting}
+            className="text-sm font-medium text-slate-700 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Move Down
           </button>
         </div>
-      </section>
-    </div>
+      </div>
+
+      {children}
+
+      <div className="mt-6 flex justify-end">
+        <button
+          type="button"
+          onClick={() => onDelete(module.id)}
+          disabled={isDeleting}
+          className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isDeleting ? "Deleting..." : "Delete Module"}
+        </button>
+      </div>
+    </section>
   )
 }

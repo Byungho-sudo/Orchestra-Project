@@ -19,8 +19,7 @@ export function ModuleDropPlaceholder({
       }`}
     >
       <div className="rounded-3xl border border-dashed border-indigo-200 bg-indigo-50/70 px-6 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-        <div className="mb-4 h-px rounded-full bg-indigo-400/90 shadow-[0_0_0_2px_rgba(238,242,255,0.95)]" />
-        <div className="h-12 rounded-2xl border border-indigo-100/80 bg-white/70" />
+        <div className="h-16 rounded-2xl border border-indigo-100/80 bg-white/70" />
       </div>
     </div>
   )
