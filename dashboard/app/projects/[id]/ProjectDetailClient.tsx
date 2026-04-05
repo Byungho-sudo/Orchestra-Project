@@ -26,6 +26,12 @@ import {
   validateProjectForm,
   type ProjectFormErrors,
 } from "@/lib/project-validation"
+import {
+  defaultProjectModuleAnchors,
+  getDefaultProjectModuleRows,
+  getDefaultProjectWorkspaceModules,
+  type DefaultProjectModuleType,
+} from "@/lib/project-modules"
 import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 
@@ -52,11 +58,7 @@ type TaskDueStatus =
 type TaskSaveState = "idle" | "saving" | "saved" | "error"
 
 type ProjectModuleType =
-  | "workspace_plan"
-  | "planning_operations"
-  | "tasks"
-  | "timeline"
-  | "assets"
+  | DefaultProjectModuleType
   | "text_grid"
   | "notes"
   | "checklist"
@@ -96,45 +98,6 @@ const projectWorkspaceNavigation = [
   { href: "#timeline", label: "Timeline" },
   { href: "#assets", label: "Assets" },
 ]
-const projectWorkspaceModules: ProjectWorkspaceModule[] = [
-  {
-    id: "overview",
-    title: "Workspace Plan",
-    type: "workspace_plan",
-    order: 1,
-  },
-  {
-    id: "operations",
-    title: "Planning / Operations",
-    type: "planning_operations",
-    order: 2,
-  },
-  {
-    id: "tasks",
-    title: "Tasks / Next Steps",
-    type: "tasks",
-    order: 3,
-  },
-  {
-    id: "timeline",
-    title: "Timeline",
-    type: "timeline",
-    order: 4,
-  },
-  {
-    id: "assets",
-    title: "Assets",
-    type: "assets",
-    order: 5,
-  },
-]
-const defaultProjectModuleAnchors: Partial<Record<ProjectModuleType, string>> = {
-  workspace_plan: "overview",
-  planning_operations: "operations",
-  tasks: "tasks",
-  timeline: "timeline",
-  assets: "assets",
-}
 const customProjectModuleOptions: Array<{
   label: string
   value: ProjectModuleType
@@ -416,6 +379,14 @@ function WorkspaceValue({ value }: { value: string | null }) {
   )
 }
 
+function getProjectModuleAnchor(module: ProjectWorkspaceModule) {
+  if (module.type in defaultProjectModuleAnchors) {
+    return defaultProjectModuleAnchors[module.type as DefaultProjectModuleType]
+  }
+
+  return module.id
+}
+
 function ProjectModule({
   module,
   isFirst,
@@ -439,7 +410,7 @@ function ProjectModule({
 }) {
   return (
     <section
-      id={defaultProjectModuleAnchors[module.type] || module.id}
+      id={getProjectModuleAnchor(module)}
       className={sectionCardClassName}
     >
       <div className="mb-4 flex flex-wrap justify-end gap-3">
@@ -519,15 +490,6 @@ function mapWorkspaceModules(moduleRows: ProjectModuleRecord[]) {
     }))
 }
 
-function getDefaultWorkspaceModuleRows(projectId: number) {
-  return projectWorkspaceModules.map((module) => ({
-    project_id: projectId,
-    title: module.title,
-    type: module.type,
-    order: module.order,
-  }))
-}
-
 function isProjectModulesSchemaMissingError(error: unknown) {
   const errorCode = (error as { code?: string } | null)?.code
   const errorMessage = (error as { message?: string } | null)?.message || ""
@@ -578,7 +540,7 @@ export default function ProjectDetailClient({
   const [currentProject, setCurrentProject] = useState<Project>(project)
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [workspaceModules, setWorkspaceModules] =
-    useState<ProjectWorkspaceModule[]>(projectWorkspaceModules)
+    useState<ProjectWorkspaceModule[]>(getDefaultProjectWorkspaceModules())
 
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -661,12 +623,12 @@ export default function ProjectDetailClient({
           "Project modules table is unavailable. Rendering default workspace modules only.",
           error
         )
-        setWorkspaceModules(projectWorkspaceModules)
+        setWorkspaceModules(getDefaultProjectWorkspaceModules())
         return
       }
 
       console.error("Project modules fetch failed:", error)
-      setWorkspaceModules(projectWorkspaceModules)
+      setWorkspaceModules(getDefaultProjectWorkspaceModules())
       return
     }
 
@@ -710,7 +672,7 @@ export default function ProjectDetailClient({
       statusText: defaultModulesStatusText,
     } = await supabase
       .from("project_modules")
-      .insert(getDefaultWorkspaceModuleRows(currentProject.id))
+      .insert(getDefaultProjectModuleRows(currentProject.id))
       .select("id,title,type,order")
       .order("order", { ascending: true })
       .order("created_at", { ascending: true })
@@ -727,7 +689,7 @@ export default function ProjectDetailClient({
         "Failed to seed default project modules. Rendering local defaults only.",
         defaultModulesError
       )
-      setWorkspaceModules(projectWorkspaceModules)
+      setWorkspaceModules(getDefaultProjectWorkspaceModules())
       return
     }
 
@@ -932,7 +894,7 @@ export default function ProjectDetailClient({
         setModuleError(
           "Custom modules are unavailable until the project_modules table is created."
         )
-        setWorkspaceModules(projectWorkspaceModules)
+        setWorkspaceModules(getDefaultProjectWorkspaceModules())
         return
       }
 
@@ -1080,7 +1042,7 @@ export default function ProjectDetailClient({
 
     const { error: insertError } = await supabase
       .from("project_modules")
-      .insert(getDefaultWorkspaceModuleRows(currentProject.id))
+      .insert(getDefaultProjectModuleRows(currentProject.id))
 
     if (insertError) {
       console.error("Project module reset insert failed:", insertError)

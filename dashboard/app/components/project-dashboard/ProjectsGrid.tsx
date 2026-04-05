@@ -131,19 +131,13 @@ export function ProjectsGrid({
     setIsCreatingProject(true)
 
     const { data, error } = await supabase
-      .from("projects")
-      .insert([
-        {
-          name: validation.values.name,
-          description: validation.values.description,
-          due_date: validation.values.due_date,
-          progress: 0,
-          user_id: currentUser?.id ?? null,
-          visibility: validation.values.visibility,
-          status: "not_started",
-        },
-      ])
-      .select()
+      .rpc("create_project_with_default_modules", {
+        p_name: validation.values.name,
+        p_description: validation.values.description,
+        p_due_date: validation.values.due_date,
+        p_visibility: validation.values.visibility,
+      })
+      .single<Project>()
 
     setIsCreatingProject(false)
 
@@ -154,7 +148,7 @@ export function ProjectsGrid({
     }
 
     if (data) {
-      setProjects((current) => [...current, ...data])
+      setProjects((current) => [...current, data])
     }
 
     setName("")
