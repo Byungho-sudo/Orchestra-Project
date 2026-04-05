@@ -60,7 +60,7 @@ begin
   values
     (v_project.id, 'Workspace Plan', 'workspace_plan', 1),
     (v_project.id, 'Planning / Operations', 'planning_operations', 2),
-    (v_project.id, 'Tasks / Next Steps', 'tasks', 3),
+    (v_project.id, 'Checklist', 'checklist', 3),
     (v_project.id, 'Timeline', 'timeline', 4),
     (v_project.id, 'Assets', 'assets', 5);
 

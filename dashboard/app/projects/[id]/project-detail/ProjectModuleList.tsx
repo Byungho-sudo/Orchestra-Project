@@ -29,6 +29,7 @@ export function ProjectModuleList({
   movingModuleId,
   onAddModule,
   onDeleteModule,
+  onEditModule,
   onHeaderPointerDown,
   onResetModules,
   onSectionRefChange,
@@ -54,6 +55,7 @@ export function ProjectModuleList({
   movingModuleId: string | null
   onAddModule: () => void
   onDeleteModule: (moduleId: string) => void
+  onEditModule: (module: ProjectWorkspaceModule) => void
   onHeaderPointerDown: (
     event: PointerEvent<HTMLElement>,
     moduleId: string
@@ -82,6 +84,11 @@ export function ProjectModuleList({
     isModuleDragging && draggedModuleId
       ? modules.find((module) => module.id === draggedModuleId) ?? null
       : null
+  const placeholderHeight =
+    draggedModuleFrame?.height ??
+    (draggedModuleId
+      ? moduleItemRefs.current[draggedModuleId]?.getBoundingClientRect().height ?? null
+      : null)
 
   useLayoutEffect(() => {
     const nextModuleTops: Record<string, number> = {}
@@ -132,7 +139,10 @@ export function ProjectModuleList({
         <p className="text-sm font-medium text-red-600">{moduleError}</p>
       )}
 
-      <ModuleDropPlaceholder isVisible={visibleDropSlotIndex === 0} />
+      <ModuleDropPlaceholder
+        height={placeholderHeight}
+        isVisible={visibleDropSlotIndex === 0}
+      />
       {renderedModules.map((module, moduleIndex) => (
         <div
           key={module.id}
@@ -152,12 +162,14 @@ export function ProjectModuleList({
               draggedModuleFrame?.moduleId === module.id ? draggedModuleFrame : null
             }
             onDelete={onDeleteModule}
+            onEdit={onEditModule}
             onHeaderPointerDown={onHeaderPointerDown}
             onSectionRefChange={onSectionRefChange}
           >
             {renderModuleContent(module)}
           </ProjectModuleSection>
           <ModuleDropPlaceholder
+            height={placeholderHeight}
             isVisible={visibleDropSlotIndex === moduleIndex + 1}
           />
         </div>
@@ -177,6 +189,7 @@ export function ProjectModuleList({
               : null
           }
           onDelete={onDeleteModule}
+          onEdit={onEditModule}
           onHeaderPointerDown={onHeaderPointerDown}
           onSectionRefChange={onSectionRefChange}
         >

@@ -1,15 +1,14 @@
-import type {
-  Dispatch,
-  KeyboardEvent,
-  RefObject,
-  SetStateAction,
-} from "react"
-import type { Project, ProjectMetadata, ProjectTask } from "@/lib/projects"
-import { fieldCardClassName, taskDeleteUndoDurationMs } from "./helpers"
+import type { Project, ProjectMetadata } from "@/lib/projects"
+import {
+  fieldCardClassName,
+  humanizeProjectModuleType,
+  isProjectModuleInstanceId,
+  taskDeleteUndoDurationMs,
+} from "./helpers"
+import { useProjectTasks } from "./hooks/useProjectTasks"
 import type {
   ProjectModuleType,
   ProjectWorkspaceModule,
-  TaskSaveState,
 } from "./types"
 
 function WorkspaceValue({ value }: { value: string | null }) {
@@ -46,52 +45,22 @@ function CustomProjectModulePlaceholder({
   )
 }
 
-type TaskBadge = {
-  label: string
-  className: string
-}
-
-export type ProjectModuleTaskUiProps = {
-  getTaskDueDateValue: (dueDate: string | null) => string
-  getTaskSaveStateClassName: (taskSaveState: TaskSaveState) => string
-  getTaskSaveStateLabel: (taskSaveState: TaskSaveState) => string
-  getTaskStatusBadge: (task: ProjectTask) => TaskBadge
-  handleAddTask: () => void | Promise<unknown>
-  handleDeleteTask: (taskId: number) => void
-  handleNewTaskKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
-  handleToggleTask: (taskId: number) => void | Promise<unknown>
-  handleUndoDeleteTask: () => void
-  handleUpdateTaskDueDate: (
-    taskId: number,
-    dueDate: string
-  ) => void | Promise<unknown>
-  isSavingTask: boolean
-  isSavingTasks: boolean
-  isUndoTimerRunning: boolean
-  newTaskDueDate: string
-  newTaskInputRef: RefObject<HTMLInputElement | null>
-  newTaskText: string
-  pendingDeletedTask: ProjectTask | null
-  setNewTaskDueDate: Dispatch<SetStateAction<string>>
-  setNewTaskText: Dispatch<SetStateAction<string>>
-  setTaskInputError: Dispatch<SetStateAction<boolean>>
-  sortedTasks: ProjectTask[]
-  taskError: string
-  taskInputError: boolean
-  taskSaveState: TaskSaveState
-}
-
 export function ProjectModuleContent({
   currentProject,
   module,
   sortedProjectMetadata,
-  taskUi,
 }: {
   currentProject: Project
   module: ProjectWorkspaceModule
   sortedProjectMetadata: ProjectMetadata[]
-  taskUi: ProjectModuleTaskUiProps
 }) {
+  const { taskUi } = useProjectTasks({
+    enabled:
+      module.type === "checklist" && isProjectModuleInstanceId(module.id),
+    moduleId: module.id,
+    projectId: currentProject.id,
+  })
+
   if (module.type === "workspace_plan") {
     return (
       <>
@@ -177,12 +146,12 @@ export function ProjectModuleContent({
     )
   }
 
-  if (module.type === "tasks") {
+  if (module.type === "checklist") {
     return (
       <>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 px-6">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            {module.title}
+            {humanizeProjectModuleType(module.type).toUpperCase()}
           </p>
 
           {taskUi.taskSaveState !== "idle" && (
@@ -208,7 +177,7 @@ export function ProjectModuleContent({
               }
             }}
             onKeyDown={taskUi.handleNewTaskKeyDown}
-            placeholder="Add a new task"
+            placeholder="Add a checklist item"
             className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500 ${
               taskUi.taskInputError
                 ? "border-red-300 bg-red-50"
@@ -226,7 +195,7 @@ export function ProjectModuleContent({
             disabled={taskUi.isSavingTask || !taskUi.newTaskText.trim()}
             className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Add Task
+            Add Item
           </button>
         </div>
 
@@ -247,16 +216,21 @@ export function ProjectModuleContent({
             return (
               <div
                 key={task.id}
+                onClick={() => {
+                  if (taskUi.isSavingTasks) return
+                  void taskUi.handleToggleTask(task.id)
+                }}
                 className={`flex flex-col gap-3 rounded-xl border border-slate-200 p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors duration-200 sm:flex-row sm:items-center sm:justify-between ${
                   task.completed
                     ? "bg-slate-50 opacity-80"
                     : "bg-white opacity-100"
-                }`}
+                } hover:bg-slate-50 ${taskUi.isSavingTasks ? "cursor-not-allowed" : "cursor-pointer"}`}
               >
-                <label className="flex flex-1 items-center gap-3 text-sm">
+                <div className="flex flex-1 items-center gap-3 text-sm">
                   <input
                     type="checkbox"
                     checked={task.completed}
+                    onClick={(event) => event.stopPropagation()}
                     onChange={() => void taskUi.handleToggleTask(task.id)}
                     disabled={taskUi.isSavingTasks}
                     className="h-4 w-4 accent-indigo-600"
@@ -267,15 +241,19 @@ export function ProjectModuleContent({
                         ? "text-slate-400 line-through transition-all duration-200"
                         : "text-slate-700 transition-all duration-200"
                     }
-                  >
-                    {task.text}
-                  </span>
-                </label>
+                    >
+                      {task.text}
+                    </span>
+                </div>
 
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  className="flex flex-wrap items-center gap-2 sm:justify-end"
+                >
                   <input
                     type="date"
                     value={taskUi.getTaskDueDateValue(task.due_date)}
+                    onClick={(event) => event.stopPropagation()}
                     onChange={(event) =>
                       void taskUi.handleUpdateTaskDueDate(task.id, event.target.value)
                     }
@@ -284,13 +262,17 @@ export function ProjectModuleContent({
                   />
 
                   <span
+                    onClick={(event) => event.stopPropagation()}
                     className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskStatusBadge.className}`}
                   >
                     {taskStatusBadge.label}
                   </span>
 
                   <button
-                    onClick={() => taskUi.handleDeleteTask(task.id)}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      taskUi.handleDeleteTask(task.id)
+                    }}
                     disabled={taskUi.isSavingTasks}
                     className="text-sm font-medium text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                   >

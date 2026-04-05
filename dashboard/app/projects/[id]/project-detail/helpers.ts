@@ -1,8 +1,4 @@
 import type { ProjectMetadata, ProjectTask } from "@/lib/projects"
-import {
-  defaultProjectModuleAnchors,
-  type DefaultProjectModuleType,
-} from "@/lib/project-modules"
 import type {
   ModuleDropPosition,
   ProjectMetadataDraft,
@@ -211,6 +207,33 @@ export function normalizeProgressOnBlur(value: string, fallbackProgress: number)
   return String(Math.min(100, Math.max(0, Number(value))))
 }
 
+export function isProjectModuleInstanceId(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  )
+}
+
+export function humanizeProjectModuleType(type: ProjectModuleType | "tasks") {
+  if (type === "workspace_plan") return "Workspace Plan"
+  if (type === "planning_operations") return "Planning / Operations"
+  if (type === "checklist" || type === "tasks") return "Checklist"
+  if (type === "text_grid") return "Text Grid"
+
+  return type
+    .split("_")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ")
+}
+
+export function getProjectModuleDisplayTitle(module: {
+  title: string
+  type: ProjectModuleType | "tasks"
+}) {
+  const normalizedTitle = module.title.trim()
+
+  return normalizedTitle || humanizeProjectModuleType(module.type)
+}
+
 export function createMetadataDraft(
   metadata?: Partial<Pick<ProjectMetadata, "id" | "key" | "value" | "order">>
 ): ProjectMetadataDraft {
@@ -262,19 +285,15 @@ export function normalizeMetadataDrafts(metadataRows: ProjectMetadataDraft[]) {
 }
 
 export function getProjectModuleAnchor(module: ProjectWorkspaceModule) {
-  if (module.type in defaultProjectModuleAnchors) {
-    return defaultProjectModuleAnchors[module.type as DefaultProjectModuleType]
-  }
-
-  return module.id
+  return `module-${module.id}`
 }
 
 export function mapWorkspaceModules(moduleRows: ProjectModuleRecord[]) {
   return moduleRows
     .map((module) => ({
       id: module.id,
-      title: module.title,
-      type: module.type,
+      title: getProjectModuleDisplayTitle(module),
+      type: module.type === "tasks" ? "checklist" : module.type,
       order: module.order,
     }))
     .sort((firstModule, secondModule) => firstModule.order - secondModule.order)

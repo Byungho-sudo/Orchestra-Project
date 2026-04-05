@@ -1,5 +1,6 @@
 import { useRef, type PointerEvent, type ReactNode } from "react"
 import {
+  getProjectModuleDisplayTitle,
   getProjectModuleAnchor,
   projectSectionAnchorOffsetPx,
   sectionCardClassName,
@@ -13,6 +14,7 @@ export function ProjectModuleSection({
   isMoving,
   dragFrame,
   onDelete,
+  onEdit,
   onHeaderPointerDown,
   onSectionRefChange,
   children,
@@ -31,6 +33,7 @@ export function ProjectModuleSection({
       }
     | null
   onDelete: (moduleId: string) => void
+  onEdit: (module: ProjectWorkspaceModule) => void
   onHeaderPointerDown: (
     event: PointerEvent<HTMLElement>,
     moduleId: string
@@ -79,12 +82,13 @@ export function ProjectModuleSection({
         position: isDragging && dragFrame ? "fixed" : undefined,
         left: isDragging && dragFrame ? `${dragFrame.left}px` : undefined,
         top: isDragging && dragFrame ? `${dragFrame.top}px` : undefined,
+        height: isDragging && dragFrame ? `${dragFrame.height}px` : undefined,
         width: isDragging && dragFrame ? `${dragFrame.width}px` : undefined,
       }}
     >
       <div
         onPointerDown={handleHeaderPointerDown}
-        className={`mb-6 rounded-xl border border-slate-200 bg-white/80 px-4 py-4 transition-[border-color,background-color,box-shadow,color] ${
+        className={`mb-6 flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white/80 px-6 py-4 transition-[border-color,background-color,box-shadow,color] ${
           isDeleting || isMoving
             ? "cursor-not-allowed"
             : isDragging
@@ -92,9 +96,19 @@ export function ProjectModuleSection({
               : "cursor-grab hover:border-slate-300 hover:bg-white hover:shadow-sm"
         }`}
       >
-        <h2 className="truncate text-xl font-semibold text-slate-900">
-          {module.title}
-        </h2>
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-semibold text-slate-900">
+            {getProjectModuleDisplayTitle(module)}
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onEdit(module)}
+          className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+        >
+          Edit
+        </button>
       </div>
 
       {children}

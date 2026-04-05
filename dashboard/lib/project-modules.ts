@@ -12,9 +12,9 @@ export const defaultProjectModuleTemplates = [
     order: 2,
   },
   {
-    id: "tasks",
-    title: "Tasks / Next Steps",
-    type: "tasks",
+    id: "checklist",
+    title: "Checklist",
+    type: "checklist",
     order: 3,
   },
   {

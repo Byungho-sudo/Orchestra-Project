@@ -11,6 +11,7 @@ export type SortOption = "due_date" | "created_at" | "name" | "progress"
 export type ProjectTask = {
   id: number
   project_id: number
+  module_id: string | null
   text: string
   completed: boolean
   completed_at: string | null

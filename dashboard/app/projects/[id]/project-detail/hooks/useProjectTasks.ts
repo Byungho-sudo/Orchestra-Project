@@ -20,10 +20,44 @@ import {
   sortTasksByUrgency,
   taskDeleteUndoDurationMs,
 } from "../helpers"
-import type { TaskSaveState } from "../types"
-import type { ProjectModuleTaskUiProps } from "../ProjectModuleContent"
+import type { ProjectModuleTaskUiProps, TaskSaveState } from "../types"
 
-export function useProjectTasks({ projectId }: { projectId: number }) {
+const emptyTaskUi: ProjectModuleTaskUiProps = {
+  getTaskDueDateValue,
+  getTaskSaveStateClassName,
+  getTaskSaveStateLabel,
+  getTaskStatusBadge,
+  handleAddTask: () => {},
+  handleDeleteTask: () => {},
+  handleNewTaskKeyDown: () => {},
+  handleToggleTask: () => {},
+  handleUndoDeleteTask: () => {},
+  handleUpdateTaskDueDate: () => {},
+  isSavingTask: false,
+  isSavingTasks: false,
+  isUndoTimerRunning: false,
+  newTaskDueDate: "",
+  newTaskInputRef: { current: null },
+  newTaskText: "",
+  pendingDeletedTask: null,
+  setNewTaskDueDate: () => "",
+  setNewTaskText: () => "",
+  setTaskInputError: () => false,
+  sortedTasks: [],
+  taskError: "",
+  taskInputError: false,
+  taskSaveState: "idle",
+}
+
+export function useProjectTasks({
+  enabled,
+  moduleId,
+  projectId,
+}: {
+  enabled: boolean
+  moduleId: string
+  projectId: number
+}) {
   const router = useRouter()
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [taskError, setTaskError] = useState("")
@@ -71,17 +105,20 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
 
   const commitTaskDelete = useCallback(
     async (taskToDelete: ProjectTask) => {
+      if (!enabled) return
+
       setTaskError("")
       updateTaskSaveState("saving")
 
       try {
-        console.log("Updating projectId:", projectId)
+        console.log("Updating projectId/moduleId:", { projectId, moduleId })
 
         const { data, error, status, statusText } = await supabase
           .from("project_tasks")
           .delete()
           .eq("id", taskToDelete.id)
           .eq("project_id", taskToDelete.project_id)
+          .eq("module_id", moduleId)
           .select("id")
           .single()
 
@@ -110,16 +147,23 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
         updateTaskSaveState("error")
       }
     },
-    [projectId, router, updateTaskSaveState]
+    [enabled, moduleId, projectId, router, updateTaskSaveState]
   )
 
   const loadProjectTasks = useCallback(async () => {
+    if (!enabled) {
+      setTasks([])
+      setTaskError("")
+      return
+    }
+
     setTaskError("")
 
     const { data, error, status, statusText } = await supabase
       .from("project_tasks")
       .select("*")
       .eq("project_id", projectId)
+      .eq("module_id", moduleId)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
 
@@ -141,7 +185,7 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
     }
 
     setTasks((data as ProjectTask[]) || [])
-  }, [projectId])
+  }, [enabled, moduleId, projectId])
 
   useEffect(() => {
     void loadProjectTasks()
@@ -160,7 +204,7 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
   }, [])
 
   const handleAddTask = useCallback(async () => {
-    if (isSavingTask || isSavingTasks) return false
+    if (!enabled || isSavingTask || isSavingTasks) return false
 
     const taskText = newTaskText.trim()
 
@@ -174,6 +218,7 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
     const temporaryTask: ProjectTask = {
       id: temporaryTaskId,
       project_id: projectId,
+      module_id: moduleId,
       text: taskText,
       completed: false,
       completed_at: null,
@@ -188,13 +233,14 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
     setTasks((current) => [...current, temporaryTask])
 
     try {
-      console.log("Updating projectId:", projectId)
+      console.log("Updating projectId/moduleId:", { projectId, moduleId })
 
       const { data, error, status, statusText } = await supabase
         .from("project_tasks")
         .insert([
           {
             project_id: projectId,
+            module_id: moduleId,
             text: taskText,
             completed: false,
             completed_at: null,
@@ -243,6 +289,8 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
     isSavingTasks,
     newTaskDueDate,
     newTaskText,
+    enabled,
+    moduleId,
     projectId,
     router,
     updateTaskSaveState,
@@ -266,7 +314,7 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
 
   const handleUpdateTaskDueDate = useCallback(
     async (taskId: number, dueDate: string) => {
-      if (isSavingTasks) return
+      if (!enabled || isSavingTasks) return
 
       setTaskError("")
       setIsSavingTasks(true)
@@ -275,13 +323,14 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
       try {
         const normalizedDueDate = normalizeTaskDueDateInput(dueDate)
 
-        console.log("Updating projectId:", projectId)
+        console.log("Updating projectId/moduleId:", { projectId, moduleId })
 
         const { data, error, status, statusText } = await supabase
           .from("project_tasks")
           .update({ due_date: normalizedDueDate })
           .eq("id", taskId)
           .eq("project_id", projectId)
+          .eq("module_id", moduleId)
           .select("*")
           .single()
 
@@ -315,12 +364,12 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
         setIsSavingTasks(false)
       }
     },
-    [isSavingTasks, projectId, router, updateTaskSaveState]
+    [enabled, isSavingTasks, moduleId, projectId, router, updateTaskSaveState]
   )
 
   const handleToggleTask = useCallback(
     async (taskId: number) => {
-      if (isSavingTasks) return
+      if (!enabled || isSavingTasks) return
 
       const taskToUpdate = tasks.find((task) => task.id === taskId)
 
@@ -333,7 +382,7 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
       try {
         const nextCompleted = !taskToUpdate.completed
 
-        console.log("Updating projectId:", projectId)
+        console.log("Updating projectId/moduleId:", { projectId, moduleId })
 
         const { data, error, status, statusText } = await supabase
           .from("project_tasks")
@@ -343,6 +392,7 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
           })
           .eq("id", taskId)
           .eq("project_id", projectId)
+          .eq("module_id", moduleId)
           .select("*")
           .single()
 
@@ -373,12 +423,12 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
         setIsSavingTasks(false)
       }
     },
-    [isSavingTasks, projectId, router, tasks, updateTaskSaveState]
+    [enabled, isSavingTasks, moduleId, projectId, router, tasks, updateTaskSaveState]
   )
 
   const handleDeleteTask = useCallback(
     (taskId: number) => {
-      if (isSavingTasks) return
+      if (!enabled || isSavingTasks) return
 
       const taskToDelete = tasks.find((task) => task.id === taskId)
 
@@ -417,6 +467,7 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
     [
       clearPendingTaskDeleteTimeout,
       commitTaskDelete,
+      enabled,
       isSavingTasks,
       tasks,
     ]
@@ -438,7 +489,8 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
     )
   }, [clearPendingTaskDeleteTimeout])
 
-  const taskUi: ProjectModuleTaskUiProps = {
+  const taskUi: ProjectModuleTaskUiProps = enabled
+    ? {
     getTaskDueDateValue,
     getTaskSaveStateClassName,
     getTaskSaveStateLabel,
@@ -463,7 +515,8 @@ export function useProjectTasks({ projectId }: { projectId: number }) {
     taskError,
     taskInputError,
     taskSaveState,
-  }
+      }
+    : emptyTaskUi
 
   return {
     taskUi,

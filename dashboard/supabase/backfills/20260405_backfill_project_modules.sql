@@ -15,7 +15,7 @@ from (
     values
       ('Workspace Plan', 'workspace_plan', 1),
       ('Planning / Operations', 'planning_operations', 2),
-      ('Tasks / Next Steps', 'tasks', 3),
+      ('Checklist', 'checklist', 3),
       ('Timeline', 'timeline', 4),
       ('Assets', 'assets', 5)
   ) as starter_modules(title, type, module_order)

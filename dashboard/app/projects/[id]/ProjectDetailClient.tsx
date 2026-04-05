@@ -34,6 +34,7 @@ import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
 import { ProjectModuleContent } from "./project-detail/ProjectModuleContent"
 import {
   customProjectModuleOptions,
+  getProjectModuleDisplayTitle,
   getProjectModuleAnchor,
   isProjectModulesSchemaMissingError,
   logSupabaseMutationResult,
@@ -49,7 +50,6 @@ import { ProjectSidebarNav } from "./project-detail/ProjectSidebarNav"
 import { useModuleDnD } from "./project-detail/hooks/useModuleDnD"
 import { useProjectMetadata } from "./project-detail/hooks/useProjectMetadata"
 import { useNavDnD } from "./project-detail/hooks/useNavDnD"
-import { useProjectTasks } from "./project-detail/hooks/useProjectTasks"
 import type {
   CreateProjectModuleForm,
   ProjectModuleRecord,
@@ -73,8 +73,10 @@ export default function ProjectDetailClient({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isMetadataEditOpen, setIsMetadataEditOpen] = useState(false)
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false)
+  const [isEditModuleOpen, setIsEditModuleOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isCreatingModule, setIsCreatingModule] = useState(false)
+  const [isUpdatingModule, setIsUpdatingModule] = useState(false)
   const [deletingModuleId, setDeletingModuleId] = useState<string | null>(null)
   const [movingModuleId, setMovingModuleId] = useState<string | null>(null)
   const [isResettingModules, setIsResettingModules] = useState(false)
@@ -103,14 +105,23 @@ export default function ProjectDetailClient({
       title: "",
       type: "notes",
     })
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null)
+  const [editModuleForm, setEditModuleForm] =
+    useState<CreateProjectModuleForm>({
+      title: "",
+      type: "notes",
+    })
   const sortedWorkspaceModules = [...workspaceModules].sort(
     (firstModule, secondModule) => firstModule.order - secondModule.order
   )
+  const editingModule = editingModuleId
+    ? workspaceModules.find((module) => module.id === editingModuleId) ?? null
+    : null
   const projectWorkspaceNavigation = [
     { id: "project-details", label: "Project Details", moduleId: null },
     ...sortedWorkspaceModules.map((module) => ({
       id: getProjectModuleAnchor(module),
-      label: module.title,
+      label: getProjectModuleDisplayTitle(module),
       moduleId: module.id,
     })),
   ]
@@ -155,9 +166,6 @@ export default function ProjectDetailClient({
     sortedWorkspaceModules,
     startSharedDrag,
     updateProjectedDropSurface,
-  })
-  const { taskUi } = useProjectTasks({
-    projectId: currentProject.id,
   })
   const {
     addMetadataField,
@@ -419,6 +427,18 @@ export default function ProjectDetailClient({
     })
   }
 
+  function closeEditModuleModal() {
+    if (isUpdatingModule) return
+
+    setIsEditModuleOpen(false)
+    setEditingModuleId(null)
+    setModuleError("")
+    setEditModuleForm({
+      title: "",
+      type: "notes",
+    })
+  }
+
   function closeDeleteProjectModal() {
     if (isDeleting) return
 
@@ -484,21 +504,94 @@ export default function ProjectDetailClient({
     }
 
     const createdModule = data as ProjectModuleRecord
-    const nextModules = normalizeWorkspaceModuleOrder([
-      ...normalizedExistingModules,
-      {
-        id: createdModule.id,
-        title: createdModule.title,
-        type: createdModule.type,
-        order: createdModule.order,
-      },
-    ])
+    const normalizedCreatedModule = mapWorkspaceModules([createdModule])[0]
 
-    await persistWorkspaceModuleOrder(nextModules, createdModule.id, {
-      useTemporaryOrders: false,
-      errorMessage: "Failed to normalize module order after create.",
-    })
+    if (!normalizedCreatedModule) {
+      setModuleError("Failed to normalize the new module.")
+      return
+    }
+
+    const nextModules = normalizeWorkspaceModuleOrder([
+        ...normalizedExistingModules,
+        normalizedCreatedModule,
+      ])
+
+    await persistWorkspaceModuleOrder(nextModules, normalizedCreatedModule.id, {
+        useTemporaryOrders: false,
+        errorMessage: "Failed to normalize module order after create.",
+      })
     closeAddModuleModal()
+  }
+
+  async function handleUpdateWorkspaceModule() {
+    if (
+      !editingModule ||
+      isUpdatingModule ||
+      isCreatingModule ||
+      isResettingModules ||
+      deletingModuleId ||
+      movingModuleId
+    ) {
+      return
+    }
+
+    const trimmedTitle = editModuleForm.title.trim()
+    const previousModules = workspaceModules
+    const nextModules = workspaceModules.map((module) =>
+      module.id === editingModule.id
+        ? {
+            ...module,
+            title: trimmedTitle,
+            type: editModuleForm.type,
+          }
+        : module
+    )
+
+    setModuleError("")
+    setIsUpdatingModule(true)
+    setWorkspaceModules(nextModules)
+
+    const { data, error, status, statusText } = await supabase
+      .from("project_modules")
+      .update({
+        title: trimmedTitle,
+        type: editModuleForm.type,
+      })
+      .eq("id", editingModule.id)
+      .eq("project_id", currentProject.id)
+      .select("id,title,type,order")
+      .single()
+
+    logSupabaseMutationResult("Project module update", {
+      data,
+      error,
+      status,
+      statusText,
+    })
+
+    setIsUpdatingModule(false)
+
+    if (error) {
+      setWorkspaceModules(previousModules)
+      setModuleError("Failed to update module. Please try again.")
+      return
+    }
+
+    const normalizedUpdatedModule = mapWorkspaceModules([
+      data as ProjectModuleRecord,
+    ])[0]
+
+    if (normalizedUpdatedModule) {
+      setWorkspaceModules((current) =>
+        current.map((module) =>
+          module.id === normalizedUpdatedModule.id
+            ? normalizedUpdatedModule
+            : module
+        )
+      )
+    }
+
+    closeEditModuleModal()
   }
 
   async function handleDeleteWorkspaceModule(moduleId: string) {
@@ -790,6 +883,16 @@ export default function ProjectDetailClient({
     setIsAddModuleOpen(true)
   }
 
+  function openEditModuleModal(module: ProjectWorkspaceModule) {
+    setModuleError("")
+    setEditingModuleId(module.id)
+    setEditModuleForm({
+      title: module.title,
+      type: module.type,
+    })
+    setIsEditModuleOpen(true)
+  }
+
   const deadlineStatus = getDeadlineStatus(currentProject.due_date)
   const hasEditProjectChanges =
     editForm.name !== currentProject.name ||
@@ -810,6 +913,10 @@ export default function ProjectDetailClient({
     )
   const hasCreateModuleChanges =
     createModuleForm.title.trim() !== "" || createModuleForm.type !== "notes"
+  const hasEditModuleChanges = editingModule
+    ? editModuleForm.title.trim() !== editingModule.title.trim() ||
+      editModuleForm.type !== editingModule.type
+    : false
 
   return (
     <>
@@ -865,21 +972,21 @@ export default function ProjectDetailClient({
                 projectedDropSurface={projectedDropSurface}
                 moduleError={moduleError}
                 modules={sortedWorkspaceModules}
-              movingModuleId={movingModuleId}
+                movingModuleId={movingModuleId}
                 onAddModule={openAddModuleModal}
                 onDeleteModule={handleDeleteWorkspaceModule}
+                onEditModule={openEditModuleModal}
                 onHeaderPointerDown={handleModulePointerDragStart}
                 onResetModules={handleResetWorkspaceModules}
                 onSectionRefChange={handleModuleSectionRefChange}
                 renderModuleContent={(module) => (
-                <ProjectModuleContent
-                  currentProject={currentProject}
-                  module={module}
-                  sortedProjectMetadata={sortedProjectMetadata}
-                  taskUi={taskUi}
-                />
-              )}
-            />
+                  <ProjectModuleContent
+                    currentProject={currentProject}
+                    module={module}
+                    sortedProjectMetadata={sortedProjectMetadata}
+                  />
+                )}
+              />
           </div>
 
           <ProjectContextPanel
@@ -1226,6 +1333,94 @@ export default function ProjectDetailClient({
                 {isSavingMetadata ? "Saving..." : "Save Metadata"}
               </button>
             </div>
+            </>
+          )}
+        </ModalShell>
+        )}
+
+      {isEditModuleOpen && (
+        <ModalShell
+          hasUnsavedChanges={hasEditModuleChanges}
+          isDismissDisabled={isUpdatingModule}
+          panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          onClose={closeEditModuleModal}
+        >
+          {({ requestClose }) => (
+            <>
+              <h2 className="text-xl font-bold text-slate-900">Edit Module</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Update the selected module title and behavior type.
+              </p>
+
+              <div className="mt-6 space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Module Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editModuleForm.title}
+                    onChange={(event) => {
+                      setEditModuleForm((current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                      if (moduleError) {
+                        setModuleError("")
+                      }
+                    }}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    Module Type
+                  </label>
+                  <select
+                    value={editModuleForm.type}
+                    onChange={(event) =>
+                      setEditModuleForm((current) => ({
+                        ...current,
+                        type: event.target.value as ProjectModuleType,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                  >
+                    {customProjectModuleOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {moduleError && (
+                  <p className="text-sm font-medium text-red-600">
+                    {moduleError}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => requestClose()}
+                  disabled={isUpdatingModule}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleUpdateWorkspaceModule}
+                  disabled={isUpdatingModule || !hasEditModuleChanges}
+                  className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isUpdatingModule ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
             </>
           )}
         </ModalShell>
