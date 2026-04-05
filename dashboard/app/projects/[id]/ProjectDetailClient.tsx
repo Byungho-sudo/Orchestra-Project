@@ -990,30 +990,63 @@ export default function ProjectDetailClient({
 
     const currentModule = sortedModules[moduleIndex]
     const adjacentModule = sortedModules[swapIndex]
+    const temporaryOrder = -1
 
     setModuleError("")
     setMovingModuleId(moduleId)
 
-    const [currentUpdateResult, adjacentUpdateResult] = await Promise.all([
-      supabase
-        .from("project_modules")
-        .update({ order: adjacentModule.order })
-        .eq("id", currentModule.id)
-        .eq("project_id", currentProject.id),
-      supabase
+    const moveCurrentToTemporaryResult = await supabase
+      .from("project_modules")
+      .update({ order: temporaryOrder })
+      .eq("id", currentModule.id)
+      .eq("project_id", currentProject.id)
+
+    if (moveCurrentToTemporaryResult.error) {
+      setMovingModuleId(null)
+      console.error(
+        "Project module move failed while reserving temporary order:",
+        moveCurrentToTemporaryResult.error
+      )
+      setModuleError("Failed to reorder module. Please try again.")
+      return
+    }
+
+    const moveAdjacentIntoCurrentOrderResult = await supabase
+      .from("project_modules")
+      .update({ order: currentModule.order })
+      .eq("id", adjacentModule.id)
+      .eq("project_id", currentProject.id)
+
+    if (moveAdjacentIntoCurrentOrderResult.error) {
+      await supabase
         .from("project_modules")
         .update({ order: currentModule.order })
-        .eq("id", adjacentModule.id)
-        .eq("project_id", currentProject.id),
-    ])
+        .eq("id", currentModule.id)
+        .eq("project_id", currentProject.id)
+
+      setMovingModuleId(null)
+      console.error(
+        "Project module move failed while shifting adjacent module:",
+        moveAdjacentIntoCurrentOrderResult.error
+      )
+      setModuleError("Failed to reorder module. Please try again.")
+      return
+    }
+
+    const moveCurrentIntoAdjacentOrderResult = await supabase
+      .from("project_modules")
+      .update({ order: adjacentModule.order })
+      .eq("id", currentModule.id)
+      .eq("project_id", currentProject.id)
 
     setMovingModuleId(null)
 
-    const updateError = currentUpdateResult.error || adjacentUpdateResult.error
-
-    if (updateError) {
-      console.error("Project module move failed:", updateError)
+    if (moveCurrentIntoAdjacentOrderResult.error) {
       setModuleError("Failed to reorder module. Please try again.")
+      console.error(
+        "Project module move failed while finalizing swap:",
+        moveCurrentIntoAdjacentOrderResult.error
+      )
       return
     }
 
