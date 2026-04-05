@@ -17,6 +17,8 @@ export type ProjectWorkspaceModule = {
   order: number
 }
 
+export type ModuleDropPosition = "before" | "after"
+
 export type ProjectModuleRecord = {
   id: string
   title: string

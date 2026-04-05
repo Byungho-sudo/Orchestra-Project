@@ -4,6 +4,7 @@ import {
   type DefaultProjectModuleType,
 } from "@/lib/project-modules"
 import type {
+  ModuleDropPosition,
   ProjectMetadataDraft,
   ProjectModuleRecord,
   ProjectModuleType,
@@ -278,8 +279,58 @@ export function mapWorkspaceModules(moduleRows: ProjectModuleRecord[]) {
     .sort((firstModule, secondModule) => firstModule.order - secondModule.order)
     .map((module, moduleIndex) => ({
       ...module,
-      order: moduleIndex + 1,
+      order: moduleIndex,
     }))
+}
+
+export function normalizeWorkspaceModuleOrder(
+  modules: ProjectWorkspaceModule[]
+) {
+  return [...modules]
+    .sort((firstModule, secondModule) => firstModule.order - secondModule.order)
+    .map((module, moduleIndex) => ({
+    ...module,
+    order: moduleIndex,
+  }))
+}
+
+export function reorderWorkspaceModulesByDrop(
+  modules: ProjectWorkspaceModule[],
+  draggedModuleId: string,
+  targetModuleId: string,
+  dropPosition: ModuleDropPosition
+) {
+  const sortedModules = [...modules].sort(
+    (firstModule, secondModule) => firstModule.order - secondModule.order
+  )
+  const draggedModuleIndex = sortedModules.findIndex(
+    (module) => module.id === draggedModuleId
+  )
+  const targetModuleIndex = sortedModules.findIndex(
+    (module) => module.id === targetModuleId
+  )
+
+  if (
+    draggedModuleIndex === -1 ||
+    targetModuleIndex === -1 ||
+    draggedModuleId === targetModuleId
+  ) {
+    return normalizeWorkspaceModuleOrder(sortedModules)
+  }
+
+  const reorderedModules = [...sortedModules]
+  const [draggedModule] = reorderedModules.splice(draggedModuleIndex, 1)
+
+  let insertionIndex =
+    dropPosition === "before" ? targetModuleIndex : targetModuleIndex + 1
+
+  if (draggedModuleIndex < insertionIndex) {
+    insertionIndex -= 1
+  }
+
+  reorderedModules.splice(insertionIndex, 0, draggedModule)
+
+  return normalizeWorkspaceModuleOrder(reorderedModules)
 }
 
 export function isProjectModulesSchemaMissingError(error: unknown) {

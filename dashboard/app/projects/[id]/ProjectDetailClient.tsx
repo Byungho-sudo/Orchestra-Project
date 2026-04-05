@@ -5,8 +5,10 @@ import {
   useEffect,
   useRef,
   useState,
+  type DragEvent,
   type KeyboardEvent,
   type MouseEvent,
+  type PointerEvent,
 } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -38,10 +40,15 @@ import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
 import {
   getProjectModuleAnchor,
+  normalizeWorkspaceModuleOrder,
   projectSectionAnchorOffsetPx,
+  reorderWorkspaceModulesByDrop,
 } from "./project-detail/helpers"
 import { ModuleStackFooter } from "./project-detail/ModuleStackFooter"
+import { ModuleDropPlaceholder } from "./project-detail/ModuleDropPlaceholder"
+import { NavDropPlaceholder } from "./project-detail/NavDropPlaceholder"
 import { ProjectModuleSection } from "./project-detail/ProjectModuleSection"
+import type { ModuleDropPosition } from "./project-detail/types"
 
 type TaskDueStatus =
   | "completed"
@@ -439,7 +446,7 @@ function mapWorkspaceModules(moduleRows: ProjectModuleRecord[]) {
     .sort((firstModule, secondModule) => firstModule.order - secondModule.order)
     .map((module, moduleIndex) => ({
       ...module,
-      order: moduleIndex + 1,
+      order: moduleIndex,
     }))
 }
 
@@ -533,11 +540,64 @@ export default function ProjectDetailClient({
     useState<ProjectTask | null>(null)
   const [isUndoTimerRunning, setIsUndoTimerRunning] = useState(false)
   const [activeSection, setActiveSection] = useState("")
+  const [draggedModuleId, setDraggedModuleId] = useState<string | null>(null)
+  const [moduleDropTarget, setModuleDropTarget] = useState<{
+    moduleId: string
+    position: ModuleDropPosition
+  } | null>(null)
+  const [draggedNavItemFrame, setDraggedNavItemFrame] = useState<{
+    moduleId: string
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
+  const [draggedModuleFrame, setDraggedModuleFrame] = useState<{
+    moduleId: string
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const newTaskInputRef = useRef<HTMLInputElement | null>(null)
   const pendingNavigationSectionRef = useRef<string | null>(null)
   const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
+  const dragAutoScrollFrameRef = useRef<number | null>(null)
+  const dragAutoScrollVelocityRef = useRef(0)
+  const dragUsesTouchScrollRef = useRef(false)
+  const moduleDropTargetRef = useRef<{
+    moduleId: string
+    position: ModuleDropPosition
+  } | null>(null)
+  const pointerDragContextRef = useRef<{
+    moduleId: string
+    grabOffsetX: number
+    grabOffsetY: number
+    pointerType: string
+  } | null>(null)
+  const pointerPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const navDragContextRef = useRef<{
+    moduleId: string
+    itemId: string
+    startX: number
+    startY: number
+    grabOffsetY: number
+    startedDragging: boolean
+  } | null>(null)
+  const navPointerPositionRef = useRef<{ y: number } | null>(null)
+  const navPointerListenersRef = useRef<{
+    move: (event: globalThis.PointerEvent) => void
+    up: () => void
+  } | null>(null)
+  const navItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const suppressNavClickRef = useRef<string | null>(null)
+  const pointerDragListenersRef = useRef<{
+    move: (event: globalThis.PointerEvent) => void
+    up: (event: globalThis.PointerEvent) => void
+  } | null>(null)
+  const moduleSectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const taskSaveResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
@@ -565,15 +625,47 @@ export default function ProjectDetailClient({
     (firstModule, secondModule) => firstModule.order - secondModule.order
   )
   const projectWorkspaceNavigation = [
-    { id: "project-details", label: "Project Details" },
+    { id: "project-details", label: "Project Details", moduleId: null },
     ...sortedWorkspaceModules.map((module) => ({
       id: getProjectModuleAnchor(module),
       label: module.title,
+      moduleId: module.id,
     })),
   ]
   const projectWorkspaceNavigationIds = projectWorkspaceNavigation.map(
     (item) => item.id
   )
+
+  useEffect(() => {
+    moduleDropTargetRef.current = moduleDropTarget
+  }, [moduleDropTarget])
+
+  useEffect(() => {
+    return () => {
+      stopDragAutoScroll()
+
+      if (pointerDragListenersRef.current && typeof window !== "undefined") {
+        window.removeEventListener(
+          "pointermove",
+          pointerDragListenersRef.current.move
+        )
+        window.removeEventListener(
+          "pointerup",
+          pointerDragListenersRef.current.up
+        )
+        pointerDragListenersRef.current = null
+      }
+
+      if (navPointerListenersRef.current && typeof window !== "undefined") {
+        window.removeEventListener(
+          "pointermove",
+          navPointerListenersRef.current.move
+        )
+        window.removeEventListener("pointerup", navPointerListenersRef.current.up)
+        navPointerListenersRef.current = null
+      }
+    }
+  }, [])
 
   const loadWorkspaceModules = useCallback(async () => {
     const { data, error, status, statusText } = await supabase
@@ -611,20 +703,20 @@ export default function ProjectDetailClient({
       const normalizedModules = mapWorkspaceModules(moduleRows)
 
       if (
-        moduleRows.some((moduleRow, moduleIndex) => moduleRow.order !== moduleIndex + 1)
+        moduleRows.some((moduleRow, moduleIndex) => moduleRow.order !== moduleIndex)
       ) {
-        const normalizeResults = await Promise.all(
-          normalizedModules.map((module) =>
-            supabase
-              .from("project_modules")
-              .update({ order: module.order })
-              .eq("id", module.id)
-              .eq("project_id", currentProject.id)
+        const { error: normalizeError } = await supabase
+          .from("project_modules")
+          .upsert(
+            normalizedModules.map((module) => ({
+              id: module.id,
+              project_id: currentProject.id,
+              title: module.title,
+              type: module.type,
+              order: module.order,
+            })),
+            { onConflict: "id" }
           )
-        )
-        const normalizeError = normalizeResults.find(
-          (result) => result.error
-        )?.error
 
         if (normalizeError) {
           console.warn(
@@ -666,9 +758,31 @@ export default function ProjectDetailClient({
       return
     }
 
-    setWorkspaceModules(
-      mapWorkspaceModules((defaultModulesData as ProjectModuleRecord[]) || [])
+    const normalizedDefaultModules = mapWorkspaceModules(
+      (defaultModulesData as ProjectModuleRecord[]) || []
     )
+
+    setWorkspaceModules(normalizedDefaultModules)
+
+    const { error: normalizeDefaultModulesError } = await supabase
+      .from("project_modules")
+      .upsert(
+        normalizedDefaultModules.map((module) => ({
+          id: module.id,
+          project_id: currentProject.id,
+          title: module.title,
+          type: module.type,
+          order: module.order,
+        })),
+        { onConflict: "id" }
+      )
+
+    if (normalizeDefaultModulesError) {
+      console.warn(
+        "Default project modules were created, but 0-based order normalization failed.",
+        normalizeDefaultModulesError
+      )
+    }
   }, [currentProject.id])
 
   const loadProjectMetadata = useCallback(async () => {
@@ -758,6 +872,10 @@ export default function ProjectDetailClient({
 
       if (pendingNavigationTimeoutRef.current) {
         clearTimeout(pendingNavigationTimeoutRef.current)
+      }
+
+      if (dragAutoScrollFrameRef.current) {
+        cancelAnimationFrame(dragAutoScrollFrameRef.current)
       }
 
     }
@@ -1002,8 +1120,10 @@ export default function ProjectDetailClient({
     setModuleError("")
     setIsCreatingModule(true)
 
-    const nextOrder =
-      Math.max(0, ...workspaceModules.map((module) => module.order)) + 1
+    const normalizedExistingModules = normalizeWorkspaceModuleOrder(
+      workspaceModules
+    )
+    const nextOrder = normalizedExistingModules.length
 
     const { data, error, status, statusText } = await supabase
       .from("project_modules")
@@ -1042,7 +1162,21 @@ export default function ProjectDetailClient({
       return
     }
 
-    await loadWorkspaceModules()
+    const createdModule = data as ProjectModuleRecord
+    const nextModules = normalizeWorkspaceModuleOrder([
+      ...normalizedExistingModules,
+      {
+        id: createdModule.id,
+        title: createdModule.title,
+        type: createdModule.type,
+        order: createdModule.order,
+      },
+    ])
+
+    await persistWorkspaceModuleOrder(nextModules, createdModule.id, {
+      useTemporaryOrders: false,
+      errorMessage: "Failed to normalize module order after create.",
+    })
     closeAddModuleModal()
   }
 
@@ -1074,34 +1208,103 @@ export default function ProjectDetailClient({
       return
     }
 
-    const nextModules = workspaceModules
+    const nextModules = normalizeWorkspaceModuleOrder(
+      workspaceModules
       .filter((module) => module.id !== moduleId)
-      .sort((firstModule, secondModule) => firstModule.order - secondModule.order)
-      .map((module, moduleIndex) => ({
-        ...module,
-        order: moduleIndex + 1,
-      }))
+    )
+
+    setWorkspaceModules(nextModules)
 
     if (nextModules.length > 0) {
-      const updateResults = await Promise.all(
-        nextModules.map((module) =>
-          supabase
-            .from("project_modules")
-            .update({ order: module.order })
-            .eq("id", module.id)
-            .eq("project_id", currentProject.id)
-        )
-      )
-
-      const updateError = updateResults.find((result) => result.error)?.error
-
-      if (updateError) {
-        console.error("Project module reorder after delete failed:", updateError)
-        setModuleError("Module was deleted, but order cleanup failed.")
-      }
+      await persistWorkspaceModuleOrder(nextModules, null, {
+        useTemporaryOrders: false,
+        restoreOnFailure: false,
+        errorMessage: "Module was deleted, but order cleanup failed.",
+      })
+      return
     }
 
     await loadWorkspaceModules()
+  }
+
+  async function persistWorkspaceModuleOrder(
+    nextModules: ProjectWorkspaceModule[],
+    activeModuleId: string | null,
+    options?: {
+      errorMessage?: string
+      restoreOnFailure?: boolean
+      useTemporaryOrders?: boolean
+    }
+  ) {
+    const normalizedModules = normalizeWorkspaceModuleOrder(nextModules)
+    const previousModules = workspaceModules
+    const errorMessage =
+      options?.errorMessage ?? "Failed to reorder module. Please try again."
+    const restoreOnFailure = options?.restoreOnFailure ?? true
+    const useTemporaryOrders = options?.useTemporaryOrders ?? true
+
+    setModuleError("")
+    setMovingModuleId(activeModuleId)
+    setWorkspaceModules(normalizedModules)
+
+    if (useTemporaryOrders && normalizedModules.length > 0) {
+      const { error: reserveTemporaryOrdersError } = await supabase
+        .from("project_modules")
+        .upsert(
+          normalizedModules.map((module, moduleIndex) => ({
+            id: module.id,
+            project_id: currentProject.id,
+            title: module.title,
+            type: module.type,
+            order: -1 * (moduleIndex + 1),
+          })),
+          { onConflict: "id" }
+        )
+
+      if (reserveTemporaryOrdersError) {
+        console.error(
+          "Project module reorder failed while reserving temporary orders:",
+          reserveTemporaryOrdersError
+        )
+        if (restoreOnFailure) {
+          setWorkspaceModules(previousModules)
+        }
+        setMovingModuleId(null)
+        setModuleError(errorMessage)
+        await loadWorkspaceModules()
+        return false
+      }
+    }
+
+    const { error: finalizeOrderError } = await supabase
+      .from("project_modules")
+      .upsert(
+        normalizedModules.map((module) => ({
+          id: module.id,
+          project_id: currentProject.id,
+          title: module.title,
+          type: module.type,
+          order: module.order,
+        })),
+        { onConflict: "id" }
+      )
+
+    setMovingModuleId(null)
+
+    if (finalizeOrderError) {
+      console.error(
+        "Project module reorder failed while finalizing orders:",
+        finalizeOrderError
+      )
+      if (restoreOnFailure) {
+        setWorkspaceModules(previousModules)
+      }
+      setModuleError(errorMessage)
+      await loadWorkspaceModules()
+      return false
+    }
+
+    return true
   }
 
   async function handleMoveWorkspaceModule(
@@ -1128,69 +1331,11 @@ export default function ProjectDetailClient({
       return
     }
 
-    const currentModule = sortedModules[moduleIndex]
-    const adjacentModule = sortedModules[swapIndex]
-    const temporaryOrder = -1
+    const reorderedModules = [...sortedModules]
+    const [movedModule] = reorderedModules.splice(moduleIndex, 1)
+    reorderedModules.splice(swapIndex, 0, movedModule)
 
-    setModuleError("")
-    setMovingModuleId(moduleId)
-
-    const moveCurrentToTemporaryResult = await supabase
-      .from("project_modules")
-      .update({ order: temporaryOrder })
-      .eq("id", currentModule.id)
-      .eq("project_id", currentProject.id)
-
-    if (moveCurrentToTemporaryResult.error) {
-      setMovingModuleId(null)
-      console.error(
-        "Project module move failed while reserving temporary order:",
-        moveCurrentToTemporaryResult.error
-      )
-      setModuleError("Failed to reorder module. Please try again.")
-      return
-    }
-
-    const moveAdjacentIntoCurrentOrderResult = await supabase
-      .from("project_modules")
-      .update({ order: currentModule.order })
-      .eq("id", adjacentModule.id)
-      .eq("project_id", currentProject.id)
-
-    if (moveAdjacentIntoCurrentOrderResult.error) {
-      await supabase
-        .from("project_modules")
-        .update({ order: currentModule.order })
-        .eq("id", currentModule.id)
-        .eq("project_id", currentProject.id)
-
-      setMovingModuleId(null)
-      console.error(
-        "Project module move failed while shifting adjacent module:",
-        moveAdjacentIntoCurrentOrderResult.error
-      )
-      setModuleError("Failed to reorder module. Please try again.")
-      return
-    }
-
-    const moveCurrentIntoAdjacentOrderResult = await supabase
-      .from("project_modules")
-      .update({ order: adjacentModule.order })
-      .eq("id", currentModule.id)
-      .eq("project_id", currentProject.id)
-
-    setMovingModuleId(null)
-
-    if (moveCurrentIntoAdjacentOrderResult.error) {
-      setModuleError("Failed to reorder module. Please try again.")
-      console.error(
-        "Project module move failed while finalizing swap:",
-        moveCurrentIntoAdjacentOrderResult.error
-      )
-      return
-    }
-
-    await loadWorkspaceModules()
+    await persistWorkspaceModuleOrder(reorderedModules, moduleId)
   }
 
   async function handleResetWorkspaceModules() {
@@ -1226,6 +1371,549 @@ export default function ProjectDetailClient({
 
     await loadWorkspaceModules()
     setIsResettingModules(false)
+  }
+
+  function stopDragAutoScroll() {
+    dragAutoScrollVelocityRef.current = 0
+
+    if (dragAutoScrollFrameRef.current) {
+      cancelAnimationFrame(dragAutoScrollFrameRef.current)
+      dragAutoScrollFrameRef.current = null
+    }
+  }
+
+  function startDragAutoScroll() {
+    if (dragAutoScrollFrameRef.current || typeof window === "undefined") {
+      return
+    }
+
+    const step = () => {
+      const velocity = dragAutoScrollVelocityRef.current
+
+      if (!velocity) {
+        dragAutoScrollFrameRef.current = null
+        return
+      }
+
+      const maxScrollTop =
+        document.documentElement.scrollHeight - window.innerHeight
+      const remainingScrollDown = Math.max(0, maxScrollTop - window.scrollY)
+      const remainingScrollUp = Math.max(0, window.scrollY)
+      const boundedVelocity =
+        velocity > 0
+          ? Math.min(velocity, remainingScrollDown)
+          : -1 * Math.min(Math.abs(velocity), remainingScrollUp)
+
+      if (!boundedVelocity) {
+        stopDragAutoScroll()
+        return
+      }
+
+      window.scrollBy({
+        top: boundedVelocity,
+        left: 0,
+        behavior: "auto",
+      })
+
+      dragAutoScrollFrameRef.current = window.requestAnimationFrame(step)
+    }
+
+    dragAutoScrollFrameRef.current = window.requestAnimationFrame(step)
+  }
+
+  function updateDragAutoScroll(clientY: number) {
+    if (typeof window === "undefined") return
+    if (!dragUsesTouchScrollRef.current) {
+      stopDragAutoScroll()
+      return
+    }
+
+    const edgeZone = 96
+    const maxVelocity = 10
+    const viewportHeight = window.innerHeight
+    let velocity = 0
+
+    if (clientY < edgeZone) {
+      const edgeProgress = (edgeZone - clientY) / edgeZone
+      velocity = -1 * Math.max(1.5, edgeProgress * edgeProgress * maxVelocity)
+    } else if (clientY > viewportHeight - edgeZone) {
+      const edgeProgress =
+        (clientY - (viewportHeight - edgeZone)) / edgeZone
+      velocity = Math.max(1.5, edgeProgress * edgeProgress * maxVelocity)
+    }
+
+    dragAutoScrollVelocityRef.current = velocity
+
+    if (velocity) {
+      startDragAutoScroll()
+      return
+    }
+
+    stopDragAutoScroll()
+  }
+
+  async function commitModuleDrop(
+    draggedId: string | null,
+    targetModuleId: string,
+    dropPosition: ModuleDropPosition | null
+  ) {
+    setDraggedNavItemFrame(null)
+    setDraggedModuleId(null)
+    setDraggedModuleFrame(null)
+    moduleDropTargetRef.current = null
+    setModuleDropTarget(null)
+    dragUsesTouchScrollRef.current = false
+    pointerPositionRef.current = null
+
+    if (!draggedId || !dropPosition || draggedId === targetModuleId) {
+      return
+    }
+
+    const reorderedModules = reorderWorkspaceModulesByDrop(
+      workspaceModules,
+      draggedId,
+      targetModuleId,
+      dropPosition
+    )
+
+    await persistWorkspaceModuleOrder(reorderedModules, draggedId)
+  }
+
+  function detachPointerDragListeners() {
+    if (!pointerDragListenersRef.current || typeof window === "undefined") {
+      return
+    }
+
+    window.removeEventListener(
+      "pointermove",
+      pointerDragListenersRef.current.move
+    )
+    window.removeEventListener("pointerup", pointerDragListenersRef.current.up)
+    pointerDragListenersRef.current = null
+  }
+
+  function detachNavPointerListeners() {
+    if (!navPointerListenersRef.current || typeof window === "undefined") {
+      return
+    }
+
+    window.removeEventListener("pointermove", navPointerListenersRef.current.move)
+    window.removeEventListener("pointerup", navPointerListenersRef.current.up)
+    navPointerListenersRef.current = null
+  }
+
+  function getModuleDropTargetFromPointer(
+    clientY: number,
+    draggedId: string
+  ) {
+    let closestTarget: {
+      moduleId: string
+      position: ModuleDropPosition
+      distance: number
+    } | null = null
+
+    for (const workspaceModule of sortedWorkspaceModules) {
+      if (workspaceModule.id === draggedId) continue
+
+      const sectionElement = moduleSectionRefs.current[workspaceModule.id]
+
+      if (!sectionElement) continue
+
+      const bounds = sectionElement.getBoundingClientRect()
+      const beforeDistance = Math.abs(clientY - bounds.top)
+      const afterDistance = Math.abs(clientY - bounds.bottom)
+
+      if (!closestTarget || beforeDistance < closestTarget.distance) {
+        closestTarget = {
+          moduleId: workspaceModule.id,
+          position: "before",
+          distance: beforeDistance,
+        }
+      }
+
+      if (!closestTarget || afterDistance < closestTarget.distance) {
+        closestTarget = {
+          moduleId: workspaceModule.id,
+          position: "after",
+          distance: afterDistance,
+        }
+      }
+    }
+
+    if (!closestTarget) return null
+
+    return {
+      moduleId: closestTarget.moduleId,
+      position: closestTarget.position,
+    }
+  }
+
+  function updateDraggedModuleVisualPosition(moduleId: string) {
+    const dragContext = pointerDragContextRef.current
+    const pointerPosition = pointerPositionRef.current
+    const sectionElement = moduleSectionRefs.current[moduleId]
+
+    if (
+      !dragContext ||
+      dragContext.moduleId !== moduleId ||
+      !pointerPosition ||
+      !sectionElement
+    ) {
+      return
+    }
+
+    const desiredLeft = pointerPosition.x - dragContext.grabOffsetX
+    const desiredTop = pointerPosition.y - dragContext.grabOffsetY
+
+    sectionElement.style.left = `${desiredLeft}px`
+    sectionElement.style.top = `${desiredTop}px`
+  }
+
+  function handleModulePointerDragStart(
+    event: PointerEvent<HTMLElement>,
+    moduleId: string
+  ) {
+    if (event.button !== 0 && event.pointerType !== "touch") {
+      return
+    }
+
+    if (movingModuleId || deletingModuleId || isResettingModules || isCreatingModule) {
+      return
+    }
+
+    event.preventDefault()
+
+    const sectionElement = moduleSectionRefs.current[moduleId]
+    const sectionBounds = sectionElement?.getBoundingClientRect()
+
+    pointerDragContextRef.current = {
+      moduleId,
+      grabOffsetX: sectionBounds ? event.clientX - sectionBounds.left : 0,
+      grabOffsetY: sectionBounds ? event.clientY - sectionBounds.top : 0,
+      pointerType: event.pointerType,
+    }
+    pointerPositionRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    }
+    dragUsesTouchScrollRef.current = event.pointerType !== "mouse"
+    setDraggedModuleId(moduleId)
+    setDraggedModuleFrame(
+      sectionBounds
+        ? {
+            moduleId,
+            left: sectionBounds.left,
+            top: sectionBounds.top,
+            width: sectionBounds.width,
+            height: sectionBounds.height,
+          }
+        : null
+    )
+    moduleDropTargetRef.current = null
+    setModuleDropTarget(null)
+    detachPointerDragListeners()
+
+    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
+      const dragContext = pointerDragContextRef.current
+
+      if (!dragContext || dragContext.moduleId !== moduleId) {
+        return
+      }
+
+      pointerPositionRef.current = {
+        x: moveEvent.clientX,
+        y: moveEvent.clientY,
+      }
+      updateDraggedModuleVisualPosition(moduleId)
+
+      updateDragAutoScroll(moveEvent.clientY)
+
+      const nextDropTarget = getModuleDropTargetFromPointer(
+        moveEvent.clientY,
+        moduleId
+      )
+
+      if (
+        moduleDropTargetRef.current?.moduleId !== nextDropTarget?.moduleId ||
+        moduleDropTargetRef.current?.position !== nextDropTarget?.position
+      ) {
+        moduleDropTargetRef.current = nextDropTarget
+        setModuleDropTarget(nextDropTarget)
+      }
+    }
+
+    const handlePointerUp = async () => {
+      const dragContext = pointerDragContextRef.current
+
+      pointerDragContextRef.current = null
+      detachPointerDragListeners()
+      stopDragAutoScroll()
+
+      await commitModuleDrop(
+        dragContext?.moduleId ?? null,
+        moduleDropTargetRef.current?.moduleId ?? moduleId,
+        moduleDropTargetRef.current?.position ?? null
+      )
+    }
+
+    pointerDragListenersRef.current = {
+      move: handlePointerMove,
+      up: handlePointerUp,
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", handlePointerUp, { once: true })
+  }
+
+  function handleModuleSectionRefChange(
+    moduleId: string,
+    element: HTMLElement | null
+  ) {
+    moduleSectionRefs.current[moduleId] = element
+
+    if (draggedModuleId === moduleId) {
+      updateDraggedModuleVisualPosition(moduleId)
+    }
+  }
+
+  function updateDraggedNavItemVisualPosition(moduleId: string) {
+    const dragContext = navDragContextRef.current
+    const pointerPosition = navPointerPositionRef.current
+    const navItemElement = navItemRefs.current[moduleId]
+
+    if (
+      !dragContext ||
+      dragContext.moduleId !== moduleId ||
+      !pointerPosition ||
+      !navItemElement
+    ) {
+      return
+    }
+
+    navItemElement.style.top = `${pointerPosition.y - dragContext.grabOffsetY}px`
+  }
+
+  function getNavDropTargetFromPointer(clientY: number, draggedId: string) {
+    let closestTarget: {
+      moduleId: string
+      position: ModuleDropPosition
+      distance: number
+    } | null = null
+
+    for (const workspaceModule of sortedWorkspaceModules) {
+      if (workspaceModule.id === draggedId) continue
+
+      const navItemElement = navItemRefs.current[workspaceModule.id]
+
+      if (!navItemElement) continue
+
+      const bounds = navItemElement.getBoundingClientRect()
+      const beforeDistance = Math.abs(clientY - bounds.top)
+      const afterDistance = Math.abs(clientY - bounds.bottom)
+
+      if (!closestTarget || beforeDistance < closestTarget.distance) {
+        closestTarget = {
+          moduleId: workspaceModule.id,
+          position: "before",
+          distance: beforeDistance,
+        }
+      }
+
+      if (!closestTarget || afterDistance < closestTarget.distance) {
+        closestTarget = {
+          moduleId: workspaceModule.id,
+          position: "after",
+          distance: afterDistance,
+        }
+      }
+    }
+
+    if (!closestTarget) return null
+
+    return {
+      moduleId: closestTarget.moduleId,
+      position: closestTarget.position,
+    }
+  }
+
+  function handleNavItemPointerDown(
+    event: PointerEvent<HTMLDivElement>,
+    moduleId: string,
+    itemId: string
+  ) {
+    if (event.button !== 0) return
+    if (movingModuleId || deletingModuleId || isResettingModules || isCreatingModule) {
+      return
+    }
+
+    const navItemElement = navItemRefs.current[moduleId]
+    const navItemBounds = navItemElement?.getBoundingClientRect()
+
+    if (!navItemBounds) return
+
+    navDragContextRef.current = {
+      moduleId,
+      itemId,
+      startX: event.clientX,
+      startY: event.clientY,
+      grabOffsetY: event.clientY - navItemBounds.top,
+      startedDragging: false,
+    }
+    navPointerPositionRef.current = { y: event.clientY }
+    suppressNavClickRef.current = null
+    detachNavPointerListeners()
+
+    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
+      const dragContext = navDragContextRef.current
+
+      if (!dragContext || dragContext.moduleId !== moduleId) {
+        return
+      }
+
+      const moveDistance = Math.hypot(
+        moveEvent.clientX - dragContext.startX,
+        moveEvent.clientY - dragContext.startY
+      )
+
+      if (!dragContext.startedDragging) {
+        if (moveDistance < 4) {
+          return
+        }
+
+        dragContext.startedDragging = true
+        suppressNavClickRef.current = dragContext.itemId
+        navPointerPositionRef.current = { y: moveEvent.clientY }
+        setDraggedModuleId(moduleId)
+        setDraggedNavItemFrame({
+          moduleId,
+          left: navItemBounds.left,
+          top: navItemBounds.top,
+          width: navItemBounds.width,
+          height: navItemBounds.height,
+        })
+        moduleDropTargetRef.current = null
+        setModuleDropTarget(null)
+      }
+
+      navPointerPositionRef.current = { y: moveEvent.clientY }
+      updateDraggedNavItemVisualPosition(moduleId)
+
+      const nextDropTarget = getNavDropTargetFromPointer(moveEvent.clientY, moduleId)
+
+      if (
+        moduleDropTargetRef.current?.moduleId !== nextDropTarget?.moduleId ||
+        moduleDropTargetRef.current?.position !== nextDropTarget?.position
+      ) {
+        moduleDropTargetRef.current = nextDropTarget
+        setModuleDropTarget(nextDropTarget)
+      }
+    }
+
+    const handlePointerUp = async () => {
+      const dragContext = navDragContextRef.current
+      navDragContextRef.current = null
+      navPointerPositionRef.current = null
+      detachNavPointerListeners()
+
+      if (!dragContext) {
+        return
+      }
+
+      if (!dragContext.startedDragging) {
+        return
+      }
+
+      await commitModuleDrop(
+        dragContext.moduleId,
+        moduleDropTargetRef.current?.moduleId ?? dragContext.moduleId,
+        moduleDropTargetRef.current?.position ?? null
+      )
+
+       window.setTimeout(() => {
+        if (suppressNavClickRef.current === dragContext.itemId) {
+          suppressNavClickRef.current = null
+        }
+      }, 0)
+    }
+
+    navPointerListenersRef.current = {
+      move: handlePointerMove,
+      up: handlePointerUp,
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", handlePointerUp, { once: true })
+  }
+
+  function handleNavItemRefChange(moduleId: string, element: HTMLDivElement | null) {
+    navItemRefs.current[moduleId] = element
+
+    if (draggedNavItemFrame?.moduleId === moduleId) {
+      updateDraggedNavItemVisualPosition(moduleId)
+    }
+  }
+
+  function handleModuleDragOver(
+    event: DragEvent<HTMLElement>,
+    moduleId: string,
+    forcedPosition?: ModuleDropPosition
+  ) {
+    if (!draggedModuleId || draggedModuleId === moduleId) {
+      if (moduleDropTargetRef.current !== null) {
+        moduleDropTargetRef.current = null
+        setModuleDropTarget(null)
+      }
+      return
+    }
+
+    event.preventDefault()
+    updateDragAutoScroll(event.clientY)
+
+    const dropPosition =
+      forcedPosition ??
+      (() => {
+        const targetBounds = event.currentTarget.getBoundingClientRect()
+
+        return event.clientY < targetBounds.top + targetBounds.height / 2
+          ? "before"
+          : "after"
+      })()
+
+    setModuleDropTarget((currentTarget) => {
+      if (
+        currentTarget?.moduleId === moduleId &&
+        currentTarget.position === dropPosition
+      ) {
+        return currentTarget
+      }
+
+      const nextTarget = {
+        moduleId,
+        position: dropPosition,
+      }
+      moduleDropTargetRef.current = nextTarget
+
+      return nextTarget
+    })
+  }
+
+  async function handleModuleDrop(
+    event: DragEvent<HTMLElement>,
+    moduleId: string,
+    forcedPosition?: ModuleDropPosition
+  ) {
+    event.preventDefault()
+    stopDragAutoScroll()
+
+    const draggedId =
+      draggedModuleId || event.dataTransfer.getData("text/plain") || null
+    const dropPosition =
+      forcedPosition ||
+      (moduleDropTarget?.moduleId === moduleId
+        ? moduleDropTarget.position
+        : null)
+
+    await commitModuleDrop(draggedId, moduleId, dropPosition)
   }
 
   async function handleUpdateProject() {
@@ -1625,13 +2313,8 @@ export default function ProjectDetailClient({
     router.push("/projects")
   }
 
-  function handleNavigationClick(
-    event: MouseEvent<HTMLAnchorElement>,
-    href: string
-  ) {
+  function navigateToSection(targetId: string, href: string) {
     if (typeof window === "undefined") return
-
-    const targetId = href.startsWith("#") ? href.slice(1) : href
 
     if (!targetId) return
 
@@ -1639,7 +2322,6 @@ export default function ProjectDetailClient({
 
     if (!targetElement) return
 
-    event.preventDefault()
     setActiveSection(targetId)
     pendingNavigationSectionRef.current = targetId
 
@@ -1657,6 +2339,18 @@ export default function ProjectDetailClient({
       behavior: "smooth",
       block: "start",
     })
+  }
+
+  function handleNavigationClick(
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string
+  ) {
+    const targetId = href.startsWith("#") ? href.slice(1) : href
+
+    if (!targetId) return
+
+    event.preventDefault()
+    navigateToSection(targetId, href)
   }
 
   function openAddModuleModal() {
@@ -1980,32 +2674,96 @@ export default function ProjectDetailClient({
       <main className="min-h-screen bg-gray-50 px-6 py-10">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
           <aside className="rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm lg:sticky lg:top-6">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            <h2 className="mb-4 px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
               Navigation
             </h2>
 
             <nav className="flex flex-wrap gap-2 text-sm lg:block lg:space-y-2">
-              {projectWorkspaceNavigation.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`#${item.id}`}
-                  aria-current={
-                    activeSection === item.id
-                      ? "location"
-                      : undefined
-                  }
-                  onClick={(event) =>
-                    handleNavigationClick(event, `#${item.id}`)
-                  }
-                  className={`block rounded-md px-3 py-2 transition-colors ${
-                    activeSection === item.id
-                      ? "bg-indigo-50 font-medium text-indigo-700"
-                      : "text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {projectWorkspaceNavigation.map((item) => {
+                const isReorderableModule =
+                  item.moduleId !== null
+                const dropIndicator =
+                  item.moduleId && moduleDropTarget?.moduleId === item.moduleId
+                    ? moduleDropTarget.position
+                    : null
+
+                return (
+                  <div
+                    key={item.id}
+                    style={
+                      draggedNavItemFrame?.moduleId === item.moduleId
+                        ? { minHeight: `${draggedNavItemFrame.height}px` }
+                        : undefined
+                    }
+                  >
+                    <NavDropPlaceholder
+                      isVisible={dropIndicator === "before"}
+                    />
+                    <div
+                      ref={(element) =>
+                        item.moduleId
+                          ? handleNavItemRefChange(item.moduleId, element)
+                          : undefined
+                      }
+                      onPointerDown={(event) =>
+                        isReorderableModule
+                          ? handleNavItemPointerDown(event, item.moduleId!, item.id)
+                          : undefined
+                      }
+                      className={`relative transition-transform duration-150 ${
+                        isReorderableModule ? "cursor-grab active:cursor-grabbing" : ""
+                      } ${
+                        draggedModuleId === item.moduleId ? "scale-[0.985]" : ""
+                      }`}
+                      style={
+                        draggedNavItemFrame?.moduleId === item.moduleId
+                          ? {
+                              position: "fixed",
+                              left: `${draggedNavItemFrame.left}px`,
+                              top: `${draggedNavItemFrame.top}px`,
+                              width: `${draggedNavItemFrame.width}px`,
+                              zIndex: 20,
+                            }
+                          : undefined
+                      }
+                    >
+                      <Link
+                        href={`#${item.id}`}
+                        draggable={false}
+                        aria-current={
+                          activeSection === item.id
+                            ? "location"
+                            : undefined
+                        }
+                        onDragStart={(event) => event.preventDefault()}
+                        onClick={(event) => {
+                          if (suppressNavClickRef.current === item.id) {
+                            event.preventDefault()
+                            suppressNavClickRef.current = null
+                            return
+                          }
+
+                          handleNavigationClick(event, `#${item.id}`)
+                        }}
+                        className={`block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color,transform,opacity] duration-150 ${
+                          activeSection === item.id
+                            ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
+                            : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
+                        } ${
+                          draggedModuleId === item.moduleId
+                            ? "border-indigo-200 bg-white shadow-md ring-1 ring-indigo-100 opacity-80"
+                            : ""
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    </div>
+                    <NavDropPlaceholder
+                      isVisible={dropIndicator === "after"}
+                    />
+                  </div>
+                )
+              })}
 
               <button
                 type="button"
@@ -2016,7 +2774,7 @@ export default function ProjectDetailClient({
                   Boolean(deletingModuleId) ||
                   Boolean(movingModuleId)
                 }
-                className="flex h-10 w-full items-center justify-center rounded-md border border-dashed border-slate-300 text-lg font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex h-11 w-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/70 text-lg font-medium text-slate-600 transition-[border-color,background-color,box-shadow,color] duration-150 hover:border-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="Add Module"
               >
                 +
@@ -2038,23 +2796,56 @@ export default function ProjectDetailClient({
             )}
 
             {sortedWorkspaceModules.map((module, moduleIndex) => (
-              <ProjectModuleSection
-                key={module.id}
-                module={module}
-                isFirst={moduleIndex === 0}
-                isLast={moduleIndex === sortedWorkspaceModules.length - 1}
-                isDeleting={deletingModuleId === module.id || isResettingModules}
-                isMoving={movingModuleId === module.id || isResettingModules}
-                onDelete={handleDeleteWorkspaceModule}
-                onMoveDown={(moduleId) =>
-                  handleMoveWorkspaceModule(moduleId, "down")
-                }
-                onMoveUp={(moduleId) =>
-                  handleMoveWorkspaceModule(moduleId, "up")
-                }
-              >
-                {renderProjectModuleContent(module)}
-              </ProjectModuleSection>
+              <div key={module.id}>
+                <ModuleDropPlaceholder
+                  isVisible={
+                    moduleDropTarget?.moduleId === module.id &&
+                    moduleDropTarget.position === "before"
+                  }
+                  onDragOver={(event) =>
+                    handleModuleDragOver(event, module.id, "before")
+                  }
+                  onDrop={(event) =>
+                    void handleModuleDrop(event, module.id, "before")
+                  }
+                />
+                <ProjectModuleSection
+                  module={module}
+                  isFirst={moduleIndex === 0}
+                  isDragging={draggedModuleId === module.id}
+                  isLast={moduleIndex === sortedWorkspaceModules.length - 1}
+                  isDeleting={deletingModuleId === module.id || isResettingModules}
+                  isMoving={movingModuleId === module.id || isResettingModules}
+                  dragFrame={
+                    draggedModuleFrame?.moduleId === module.id
+                      ? draggedModuleFrame
+                      : null
+                  }
+                  onDelete={handleDeleteWorkspaceModule}
+                  onHeaderPointerDown={handleModulePointerDragStart}
+                  onMoveDown={(moduleId) =>
+                    handleMoveWorkspaceModule(moduleId, "down")
+                  }
+                  onMoveUp={(moduleId) =>
+                    handleMoveWorkspaceModule(moduleId, "up")
+                  }
+                  onSectionRefChange={handleModuleSectionRefChange}
+                >
+                  {renderProjectModuleContent(module)}
+                </ProjectModuleSection>
+                <ModuleDropPlaceholder
+                  isVisible={
+                    moduleDropTarget?.moduleId === module.id &&
+                    moduleDropTarget.position === "after"
+                  }
+                  onDragOver={(event) =>
+                    handleModuleDragOver(event, module.id, "after")
+                  }
+                  onDrop={(event) =>
+                    void handleModuleDrop(event, module.id, "after")
+                  }
+                />
+              </div>
             ))}
 
             <ModuleStackFooter
