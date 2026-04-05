@@ -36,6 +36,7 @@ import { supabase } from "@/lib/supabase"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
+import { ModuleStackFooter } from "./project-detail/ModuleStackFooter"
 import { ProjectModuleSection } from "./project-detail/ProjectModuleSection"
 
 type TaskDueStatus =
@@ -1928,43 +1929,6 @@ export default function ProjectDetailClient({
             <ProjectDetailHeader project={currentProject} />
 
           <div className="mt-9 space-y-8">
-            <div className="flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={handleResetWorkspaceModules}
-                disabled={
-                  isResettingModules ||
-                  isCreatingModule ||
-                  Boolean(deletingModuleId) ||
-                  Boolean(movingModuleId)
-                }
-                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isResettingModules ? "Resetting..." : "Reset to default"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setModuleError("")
-                  setCreateModuleForm({
-                    title: "",
-                    type: "notes",
-                  })
-                  setIsAddModuleOpen(true)
-                }}
-                disabled={
-                  isResettingModules ||
-                  isCreatingModule ||
-                  Boolean(deletingModuleId) ||
-                  Boolean(movingModuleId)
-                }
-                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Add Module
-              </button>
-            </div>
-
             {moduleError && (
               <p className="text-sm font-medium text-red-600">{moduleError}</p>
             )}
@@ -1988,6 +1952,26 @@ export default function ProjectDetailClient({
                 {renderProjectModuleContent(module)}
               </ProjectModuleSection>
             ))}
+
+            <ModuleStackFooter
+              isBusy={
+                isResettingModules ||
+                isCreatingModule ||
+                Boolean(deletingModuleId) ||
+                Boolean(movingModuleId)
+              }
+              isCreatingModule={isCreatingModule}
+              isResettingModules={isResettingModules}
+              onAddModule={() => {
+                setModuleError("")
+                setCreateModuleForm({
+                  title: "",
+                  type: "notes",
+                })
+                setIsAddModuleOpen(true)
+              }}
+              onResetModules={handleResetWorkspaceModules}
+            />
           </div>
           </div>
 
