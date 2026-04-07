@@ -9,12 +9,6 @@ import {
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/app/components/layout/AppLayout"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
-import {
-  getDeadlineBadgeClass,
-  getDeadlineBarClass,
-  getDeadlineFill,
-  getDeadlineStatus,
-} from "@/lib/project-deadline"
 import type { Project, ProjectVisibility } from "@/lib/projects"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
@@ -60,6 +54,7 @@ export default function ProjectDetailClient({
   const {
     beginEditingProject,
     clearProjectDeleteError,
+    clearProjectSummaryError,
     currentProject,
     deleteError,
     deleteProject,
@@ -67,11 +62,14 @@ export default function ProjectDetailClient({
     hasEditProjectChanges,
     isDeleting,
     isSaving,
+    isSavingSummary,
     saveError,
     saveFieldErrors,
     setEditForm,
     setSaveFieldErrors,
+    summaryError,
     updateProject,
+    updateProjectSummaryFields,
   } = useProjectMutations({
     project,
     canCreatePrivateProject: Boolean(currentUser),
@@ -120,9 +118,12 @@ export default function ProjectDetailClient({
     openEditProjectModal,
     openMetadataEditModal,
   } = useProjectModals()
+  const visibleWorkspaceModules = sortedWorkspaceModules.filter(
+    (module) => module.type !== "workspace_plan"
+  )
   const projectWorkspaceNavigation = [
     { id: "project-details", label: "Project Details", moduleId: null },
-    ...sortedWorkspaceModules.map((module) => ({
+    ...visibleWorkspaceModules.map((module) => ({
       id: getProjectModuleAnchor(module),
       label: getProjectModuleDisplayTitle(module),
       moduleId: module.id,
@@ -389,6 +390,7 @@ export default function ProjectDetailClient({
 
   function handleOpenEditProjectModal() {
     beginEditingProject()
+    clearProjectSummaryError()
     openEditProjectModal()
   }
 
@@ -473,7 +475,6 @@ export default function ProjectDetailClient({
     navigateToSection(targetId, `#${targetId}`)
   }
 
-  const deadlineStatus = getDeadlineStatus(currentProject.due_date)
   const hasMetadataChanges =
     JSON.stringify(normalizeMetadataDrafts(metadataForm)) !==
     JSON.stringify(
@@ -554,18 +555,17 @@ export default function ProjectDetailClient({
               style={{ scrollMarginTop: `${projectSectionAnchorOffsetPx}px` }}
             >
               <ProjectDetailHeader project={currentProject} />
-              <ProjectHealthSummary project={currentProject} />
+              <ProjectHealthSummary
+                isUpdatingSummary={isSavingSummary}
+                onUpdateSummaryFields={updateProjectSummaryFields}
+                project={currentProject}
+                summaryError={summaryError}
+              />
             </section>
 
             <div className="mt-5 space-y-4 lg:hidden">
               <ProjectMobileContext
                 currentProject={currentProject}
-                deadlineBadge={{
-                  className: getDeadlineBadgeClass(deadlineStatus),
-                  fillClassName: getDeadlineBarClass(deadlineStatus),
-                  label: deadlineStatus,
-                }}
-                deadlineFill={getDeadlineFill(currentProject.due_date)}
                 onDeleteProject={() => {
                   handleOpenDeleteProjectModal()
                 }}
@@ -589,7 +589,7 @@ export default function ProjectDetailClient({
                 navDropSlotIndex={navDropSlotIndex}
                 projectedDropSurface={projectedDropSurface}
                 moduleError={moduleError}
-                modules={sortedWorkspaceModules}
+                modules={visibleWorkspaceModules}
                 movingModuleId={movingModuleId}
                 onAddModule={handleOpenAddModuleModal}
                 onDeleteModule={handleDeleteWorkspaceModule}
@@ -610,12 +610,6 @@ export default function ProjectDetailClient({
           <div className="hidden lg:block lg:sticky lg:top-[var(--sticky-panel-top)] lg:self-start lg:h-fit">
             <ProjectContextPanel
               currentProject={currentProject}
-              deadlineBadge={{
-                className: getDeadlineBadgeClass(deadlineStatus),
-                fillClassName: getDeadlineBarClass(deadlineStatus),
-                label: deadlineStatus,
-              }}
-              deadlineFill={getDeadlineFill(currentProject.due_date)}
               onDeleteProject={() => {
                 handleOpenDeleteProjectModal()
               }}
@@ -709,48 +703,6 @@ export default function ProjectDetailClient({
                     {saveFieldErrors.description}
                   </p>
                 )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Status
-                </label>
-                <select
-                  value={editForm.status}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      status: e.target.value as Project["status"],
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                >
-                  <option value="not_started">Not started</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="paused">Paused</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Health
-                </label>
-                <select
-                  value={editForm.health}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      health: e.target.value as typeof editForm.health,
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                >
-                  <option value="on_track">On track</option>
-                  <option value="at_risk">At risk</option>
-                  <option value="off_track">Off track</option>
-                </select>
               </div>
 
               <div>

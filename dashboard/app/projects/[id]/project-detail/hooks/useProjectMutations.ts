@@ -4,7 +4,6 @@ import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import type {
   Project,
-  ProjectHealth,
   ProjectVisibility,
 } from "@/lib/projects"
 import {
@@ -16,8 +15,6 @@ import { supabase } from "@/lib/supabase"
 export type ProjectEditForm = {
   name: string
   description: string
-  status: Project["status"]
-  health: ProjectHealth
   due_date: string
   visibility: ProjectVisibility
 }
@@ -26,8 +23,6 @@ function createProjectEditForm(project: Project): ProjectEditForm {
   return {
     name: project.name,
     description: project.description ?? "",
-    status: project.status,
-    health: project.health,
     due_date: project.due_date ?? "",
     visibility: project.visibility,
   }
@@ -46,8 +41,10 @@ export function useProjectMutations({
     createProjectEditForm(project)
   )
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingSummary, setIsSavingSummary] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const [summaryError, setSummaryError] = useState("")
   const [deleteError, setDeleteError] = useState("")
   const [saveFieldErrors, setSaveFieldErrors] = useState<ProjectFormErrors>({})
 
@@ -55,8 +52,6 @@ export function useProjectMutations({
     () =>
       editForm.name !== currentProject.name ||
       editForm.description !== (currentProject.description ?? "") ||
-      editForm.status !== currentProject.status ||
-      editForm.health !== currentProject.health ||
       editForm.due_date !== (currentProject.due_date ?? "") ||
       editForm.visibility !== currentProject.visibility,
     [currentProject, editForm]
@@ -70,6 +65,26 @@ export function useProjectMutations({
 
   function clearProjectDeleteError() {
     setDeleteError("")
+  }
+
+  function clearProjectSummaryError() {
+    setSummaryError("")
+  }
+
+  async function persistProjectSummaryFields({
+    health,
+    status,
+  }: Pick<Project, "health" | "status">) {
+    const { error } = await supabase.from("project_progress").upsert(
+      {
+        project_id: currentProject.id,
+        status,
+        health,
+      },
+      { onConflict: "project_id" }
+    )
+
+    return error
   }
 
   async function updateProject() {
@@ -111,16 +126,10 @@ export function useProjectMutations({
       return false
     }
 
-    const { error: progressError } = await supabase
-      .from("project_progress")
-      .upsert(
-        {
-          project_id: currentProject.id,
-          status: editForm.status,
-          health: editForm.health,
-        },
-        { onConflict: "project_id" }
-      )
+    const progressError = await persistProjectSummaryFields({
+      health: currentProject.health,
+      status: currentProject.status,
+    })
 
     setIsSaving(false)
 
@@ -132,8 +141,32 @@ export function useProjectMutations({
     setCurrentProject((current) => ({
       ...current,
       ...projectUpdates,
-      status: editForm.status,
-      health: editForm.health,
+    }))
+    router.refresh()
+    return true
+  }
+
+  async function updateProjectSummaryFields(
+    updates: Pick<Project, "health" | "status">
+  ) {
+    if (isSavingSummary) return false
+
+    setSummaryError("")
+    setIsSavingSummary(true)
+
+    const progressError = await persistProjectSummaryFields(updates)
+
+    setIsSavingSummary(false)
+
+    if (progressError) {
+      setSummaryError("Failed to update project health. Please try again.")
+      return false
+    }
+
+    setCurrentProject((current) => ({
+      ...current,
+      status: updates.status,
+      health: updates.health,
     }))
     router.refresh()
     return true
@@ -163,6 +196,7 @@ export function useProjectMutations({
   return {
     beginEditingProject,
     clearProjectDeleteError,
+    clearProjectSummaryError,
     currentProject,
     deleteError,
     deleteProject,
@@ -170,10 +204,13 @@ export function useProjectMutations({
     hasEditProjectChanges,
     isDeleting,
     isSaving,
+    isSavingSummary,
     saveError,
     saveFieldErrors,
     setEditForm,
     setSaveFieldErrors,
+    summaryError,
     updateProject,
+    updateProjectSummaryFields,
   }
 }

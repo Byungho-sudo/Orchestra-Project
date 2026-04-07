@@ -1,33 +1,27 @@
 export const defaultProjectModuleTemplates = [
   {
-    id: "overview",
-    title: "Workspace Plan",
-    type: "workspace_plan",
-    order: 1,
-  },
-  {
     id: "operations",
     title: "Planning / Operations",
     type: "planning_operations",
-    order: 2,
+    order: 1,
   },
   {
     id: "checklist",
     title: "Checklist",
     type: "checklist",
-    order: 3,
+    order: 2,
   },
   {
     id: "timeline",
     title: "Timeline",
     type: "timeline",
-    order: 4,
+    order: 3,
   },
   {
     id: "assets",
     title: "Assets",
     type: "assets",
-    order: 5,
+    order: 4,
   },
 ] as const
 

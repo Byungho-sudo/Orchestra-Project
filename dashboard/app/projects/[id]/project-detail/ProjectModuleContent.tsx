@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { Project, ProjectMetadata } from "@/lib/projects"
 import { AssetsModule } from "./AssetsModule"
+import { ChecklistDueDate } from "./ChecklistDueDate"
 import { MetricsModule } from "./MetricsModule"
 import { NotesModule } from "./NotesModule"
 import { TextGridModule } from "./TextGridModule"
@@ -152,61 +153,7 @@ export function ProjectModuleContent({
   }
 
   if (module.type === "workspace_plan") {
-    return (
-      <>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Project Overview
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-slate-900">
-              {module.title}
-            </h2>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className={fieldCardClassName}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Status
-            </p>
-            <p className="mt-2 text-sm font-medium text-slate-900">
-              {currentProject.status}
-            </p>
-          </div>
-          <div className={fieldCardClassName}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Visibility
-            </p>
-            <p className="mt-2 text-sm font-medium text-slate-900">
-              {currentProject.visibility}
-            </p>
-          </div>
-          <div className={fieldCardClassName}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Due Date
-            </p>
-            <p className="mt-2 text-sm font-medium text-slate-900">
-              {currentProject.due_date ?? "No due date"}
-            </p>
-          </div>
-          <div className={fieldCardClassName}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Progress
-            </p>
-            <p className="mt-2 text-sm font-medium text-slate-900">
-              {currentProject.progress}%
-            </p>
-          </div>
-          <div className={`${fieldCardClassName} md:col-span-2`}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Description
-            </p>
-            <WorkspaceValue value={currentProject.description} />
-          </div>
-        </div>
-      </>
-    )
+    return null
   }
 
   if (module.type === "planning_operations") {
@@ -369,12 +316,13 @@ export function ProjectModuleContent({
                 : "border-slate-300"
             }`}
           />
-          <input
-            type="date"
-            value={taskUi.newTaskDueDate}
-            onChange={(event) => taskUi.setNewTaskDueDate(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
-          />
+          <div className="flex items-center sm:w-auto">
+            <ChecklistDueDate
+              dueDate={taskUi.newTaskDueDate || null}
+              emptyLabel="Set due date"
+              onChange={(value) => taskUi.setNewTaskDueDate(value)}
+            />
+          </div>
           <button
             onClick={() => void taskUi.handleAddTask()}
             disabled={taskUi.isSavingTask || !taskUi.newTaskText.trim()}
@@ -423,7 +371,6 @@ export function ProjectModuleContent({
 
           {taskUi.sortedTasks.map((task) => {
             const isOverdueTask = taskUi.isTaskOverdue(task)
-            const taskDueBadge = taskUi.getTaskStatusBadge(task)
 
             return (
               <div
@@ -466,15 +413,13 @@ export function ProjectModuleContent({
                   onClick={(event) => event.stopPropagation()}
                   className="flex flex-wrap items-center gap-2 sm:justify-end"
                 >
-                  <input
-                    type="date"
-                    value={taskUi.getTaskDueDateValue(task.due_date)}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) =>
-                      void taskUi.handleUpdateTaskDueDate(task.id, event.target.value)
-                    }
+                  <ChecklistDueDate
+                    completed={task.completed}
                     disabled={taskUi.isSavingTasks}
-                    className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    dueDate={taskUi.getTaskDueDateValue(task.due_date) || null}
+                    onChange={(value) => {
+                      void taskUi.handleUpdateTaskDueDate(task.id, value)
+                    }}
                   />
 
                   {isOverdueTask && (
@@ -483,15 +428,6 @@ export function ProjectModuleContent({
                       className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-semibold text-red-700"
                     >
                       Overdue
-                    </span>
-                  )}
-
-                  {task.due_date && !isOverdueTask && (
-                    <span
-                      onClick={(event) => event.stopPropagation()}
-                      className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskDueBadge.className}`}
-                    >
-                      {taskDueBadge.label}
                     </span>
                   )}
 

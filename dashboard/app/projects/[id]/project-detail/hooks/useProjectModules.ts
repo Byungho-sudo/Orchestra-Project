@@ -92,7 +92,9 @@ export function useProjectModules({ projectId }: { projectId: number }) {
     const moduleRows = (data as ProjectModuleRecord[]) || []
 
     if (moduleRows.length > 0) {
-      const normalizedModules = mapWorkspaceModules(moduleRows)
+      const normalizedModules = mapWorkspaceModules(moduleRows).filter(
+        (module) => module.type !== "workspace_plan"
+      )
 
       if (
         moduleRows.some((moduleRow, moduleIndex) => moduleRow.order !== moduleIndex)
@@ -152,7 +154,7 @@ export function useProjectModules({ projectId }: { projectId: number }) {
 
     const normalizedDefaultModules = mapWorkspaceModules(
       (defaultModulesData as ProjectModuleRecord[]) || []
-    )
+    ).filter((module) => module.type !== "workspace_plan")
 
     setWorkspaceModules(normalizedDefaultModules)
 

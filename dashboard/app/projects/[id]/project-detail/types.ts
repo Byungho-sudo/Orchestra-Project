@@ -11,6 +11,7 @@ export type TaskSaveState = "idle" | "saving" | "saved" | "error"
 
 export type ProjectModuleType =
   | DefaultProjectModuleType
+  | "workspace_plan"
   | "text_grid"
   | "notes"
   | "metrics"

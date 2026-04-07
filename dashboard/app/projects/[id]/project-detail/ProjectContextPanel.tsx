@@ -1,3 +1,9 @@
+import {
+  getDeadlineBadgeClass,
+  getDeadlineBarClass,
+  getDeadlineFill,
+  getDeadlineStatus,
+} from "@/lib/project-deadline"
 import type { Project } from "@/lib/projects"
 import {
   detailCardClassName,
@@ -5,24 +11,18 @@ import {
 } from "./helpers"
 
 export function ProjectContextPanel({
-  deadlineFill,
   currentProject,
-  deadlineBadge,
   onDeleteProject,
   onEditMetadata,
   onEditProject,
 }: {
-  deadlineFill: number
   currentProject: Project
-  deadlineBadge: {
-    className: string
-    fillClassName: string
-    label: string
-  }
   onDeleteProject: () => void
   onEditMetadata: () => void
   onEditProject: () => void
 }) {
+  const deadlineStatus = getDeadlineStatus(currentProject.due_date)
+
   return (
     <aside
       className={`${detailCardClassName} h-fit self-start`}
@@ -34,19 +34,10 @@ export function ProjectContextPanel({
       <div className="mt-6 space-y-4">
         <div className={fieldCardClassName}>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Status
+            Visibility
           </p>
           <p className="mt-2 text-sm font-medium text-slate-900">
-            {currentProject.status}
-          </p>
-        </div>
-
-        <div className={fieldCardClassName}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Health
-          </p>
-          <p className="mt-2 text-sm font-medium text-slate-900">
-            {currentProject.health}
+            {currentProject.visibility}
           </p>
         </div>
 
@@ -74,14 +65,16 @@ export function ProjectContextPanel({
               Deadline Bar
             </span>
             <span className="text-sm font-medium text-slate-600">
-              {deadlineBadge.label}
+              {deadlineStatus}
             </span>
           </div>
 
           <div className="h-3 rounded-full bg-slate-200">
             <div
-              className={`h-full rounded-full transition-all ${deadlineBadge.fillClassName}`}
-              style={{ width: `${deadlineFill}%` }}
+              className={`h-full rounded-full transition-all ${getDeadlineBarClass(
+                deadlineStatus
+              )}`}
+              style={{ width: `${getDeadlineFill(currentProject.due_date)}%` }}
             />
           </div>
 
@@ -90,28 +83,12 @@ export function ProjectContextPanel({
               ? `Due ${currentProject.due_date}`
               : "No due date"}
             <span
-              className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${deadlineBadge.className}`}
+              className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getDeadlineBadgeClass(
+                deadlineStatus
+              )}`}
             >
-              {deadlineBadge.label}
+              {deadlineStatus}
             </span>
-          </p>
-        </div>
-
-        <div className={fieldCardClassName}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Created At
-          </p>
-          <p className="mt-2 text-sm font-medium text-slate-900">
-            {new Date(currentProject.created_at).toLocaleDateString()}
-          </p>
-        </div>
-
-        <div className={fieldCardClassName}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Project ID
-          </p>
-          <p className="mt-2 break-all text-xs text-slate-600">
-            {currentProject.id}
           </p>
         </div>
       </div>
