@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useRef } from "react"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
@@ -81,6 +82,7 @@ function getMetricSaveStateClassName(
 }
 
 const autosaveDelayMs = 700
+const metricsFormId = "metrics-module-form"
 
 export function MetricsModule({
   moduleId,
@@ -115,6 +117,7 @@ export function MetricsModule({
   const [editSaveState, setEditSaveState] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle")
+  const primaryInputRef = useRef<HTMLInputElement | null>(null)
 
   const hasDraftChanges = useMemo(() => {
     const initialDraft = createMetricDraft(editingMetric)
@@ -143,6 +146,19 @@ export function MetricsModule({
     setEditingMetric(null)
     setDraft(emptyProjectMetricDraft)
   }, [isCreating, savingMetricId])
+
+  useEffect(() => {
+    if (!isModalOpen) return
+
+    const focusTimeout = setTimeout(() => {
+      primaryInputRef.current?.focus()
+      primaryInputRef.current?.select()
+    }, 0)
+
+    return () => {
+      clearTimeout(focusTimeout)
+    }
+  }, [editingMetric, isModalOpen])
 
   const handleDraftChange = useCallback(
     (field: keyof ProjectMetricDraft, value: string) => {
@@ -216,15 +232,19 @@ export function MetricsModule({
     const didSave = await createMetric(draft)
 
     if (didSave) {
-      closeModal()
+      setDraft({
+        ...emptyProjectMetricDraft,
+        unit: draft.unit,
+      })
+      primaryInputRef.current?.focus()
     }
   }, [
-    closeModal,
     createMetric,
     draft,
     editingMetric,
     hasDraftChanges,
     updateMetric,
+    closeModal,
   ])
 
   return (
@@ -385,12 +405,20 @@ export function MetricsModule({
                 </p>
               )}
 
-              <div className="mt-6 space-y-4">
+              <form
+                id={metricsFormId}
+                className="mt-6 space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void handleSubmit()
+                }}
+              >
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Metric Name
                   </label>
                   <input
+                    ref={primaryInputRef}
                     type="text"
                     value={draft.name}
                     onChange={(event) =>
@@ -444,7 +472,7 @@ export function MetricsModule({
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                   />
                 </div>
-              </div>
+              </form>
 
               {error && (
                 <p className="mt-4 text-sm font-medium text-red-600">{error}</p>
@@ -462,8 +490,8 @@ export function MetricsModule({
 
                 {editingMetric ? (
                   <button
-                    type="button"
-                    onClick={() => void handleSubmit()}
+                    type="submit"
+                    form={metricsFormId}
                     disabled={savingMetricId === editingMetric.id}
                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -471,8 +499,8 @@ export function MetricsModule({
                   </button>
                 ) : (
                   <button
-                    type="button"
-                    onClick={() => void handleSubmit()}
+                    type="submit"
+                    form={metricsFormId}
                     disabled={isCreating || Boolean(savingMetricId)}
                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >

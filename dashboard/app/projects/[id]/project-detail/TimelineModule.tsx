@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
@@ -48,6 +48,12 @@ function createTimelineEventDraft(
   }
 }
 
+function getTodayDateInputValue() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+const timelineFormId = "timeline-module-form"
+
 export function TimelineModule({
   moduleId,
   projectId,
@@ -78,6 +84,7 @@ export function TimelineModule({
     null
   )
   const [draft, setDraft] = useState<TimelineEventDraft>(emptyTimelineEventDraft)
+  const primaryInputRef = useRef<HTMLInputElement | null>(null)
 
   const hasDraftChanges = useMemo(() => {
     const initialDraft = createTimelineEventDraft(editingEvent)
@@ -87,7 +94,10 @@ export function TimelineModule({
 
   const openCreateModal = useCallback(() => {
     setEditingEvent(null)
-    setDraft(emptyTimelineEventDraft)
+    setDraft({
+      ...emptyTimelineEventDraft,
+      start_date: getTodayDateInputValue(),
+    })
     setIsModalOpen(true)
   }, [])
 
@@ -105,6 +115,19 @@ export function TimelineModule({
     setDraft(emptyTimelineEventDraft)
   }, [isCreating, savingEventId])
 
+  useEffect(() => {
+    if (!isModalOpen) return
+
+    const focusTimeout = setTimeout(() => {
+      primaryInputRef.current?.focus()
+      primaryInputRef.current?.select()
+    }, 0)
+
+    return () => {
+      clearTimeout(focusTimeout)
+    }
+  }, [isModalOpen, editingEvent])
+
   const handleDraftChange = useCallback(
     (field: keyof TimelineEventDraft, value: string) => {
       setDraft((currentDraft) => ({
@@ -121,7 +144,16 @@ export function TimelineModule({
       : await createEvent(draft)
 
     if (didSave) {
-      closeModal()
+      if (editingEvent) {
+        closeModal()
+        return
+      }
+
+      setDraft({
+        ...emptyTimelineEventDraft,
+        start_date: draft.start_date || getTodayDateInputValue(),
+      })
+      primaryInputRef.current?.focus()
     }
   }, [closeModal, createEvent, draft, editingEvent, updateEvent])
 
@@ -284,12 +316,20 @@ export function TimelineModule({
                 Capture key production milestones and keep the module ordered.
               </p>
 
-              <div className="mt-6 space-y-4">
+              <form
+                id={timelineFormId}
+                className="mt-6 space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void handleSubmit()
+                }}
+              >
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Milestone Name
                   </label>
                   <input
+                    ref={primaryInputRef}
                     type="text"
                     value={draft.name}
                     onChange={(event) =>
@@ -361,7 +401,7 @@ export function TimelineModule({
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                   />
                 </div>
-              </div>
+              </form>
 
               {error && (
                 <p className="mt-4 text-sm font-medium text-red-600">{error}</p>
@@ -378,8 +418,8 @@ export function TimelineModule({
                 </button>
 
                 <button
-                  type="button"
-                  onClick={() => void handleSubmit()}
+                  type="submit"
+                  form={timelineFormId}
                   disabled={isCreating || Boolean(savingEventId)}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >

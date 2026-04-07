@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
@@ -48,6 +48,8 @@ function getAssetCategoryLabel(category: ProjectAssetCategory) {
   )
 }
 
+const assetsFormId = "assets-module-form"
+
 export function AssetsModule({
   moduleId,
   projectId,
@@ -78,6 +80,7 @@ export function AssetsModule({
     null
   )
   const [draft, setDraft] = useState<ProjectAssetDraft>(emptyProjectAssetDraft)
+  const primaryInputRef = useRef<HTMLInputElement | null>(null)
 
   const hasDraftChanges = useMemo(() => {
     const initialDraft = createAssetDraft(editingAsset)
@@ -87,7 +90,10 @@ export function AssetsModule({
 
   const openCreateModal = useCallback(() => {
     setEditingAsset(null)
-    setDraft(emptyProjectAssetDraft)
+    setDraft({
+      ...emptyProjectAssetDraft,
+      category: "link",
+    })
     setIsModalOpen(true)
   }, [])
 
@@ -105,6 +111,19 @@ export function AssetsModule({
     setDraft(emptyProjectAssetDraft)
   }, [isCreating, savingAssetId])
 
+  useEffect(() => {
+    if (!isModalOpen) return
+
+    const focusTimeout = setTimeout(() => {
+      primaryInputRef.current?.focus()
+      primaryInputRef.current?.select()
+    }, 0)
+
+    return () => {
+      clearTimeout(focusTimeout)
+    }
+  }, [editingAsset, isModalOpen])
+
   const handleDraftChange = useCallback(
     (field: keyof ProjectAssetDraft, value: string) => {
       setDraft((currentDraft) => ({
@@ -121,7 +140,16 @@ export function AssetsModule({
       : await createAsset(draft)
 
     if (didSave) {
-      closeModal()
+      if (editingAsset) {
+        closeModal()
+        return
+      }
+
+      setDraft({
+        ...emptyProjectAssetDraft,
+        category: draft.category,
+      })
+      primaryInputRef.current?.focus()
     }
   }, [closeModal, createAsset, draft, editingAsset, updateAsset])
 
@@ -269,12 +297,20 @@ export function AssetsModule({
                 Track documents, links, and project resources in one place.
               </p>
 
-              <div className="mt-6 space-y-4">
+              <form
+                id={assetsFormId}
+                className="mt-6 space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void handleSubmit()
+                }}
+              >
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Asset Name
                   </label>
                   <input
+                    ref={primaryInputRef}
                     type="text"
                     value={draft.name}
                     onChange={(event) =>
@@ -330,7 +366,7 @@ export function AssetsModule({
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                   />
                 </div>
-              </div>
+              </form>
 
               {error && (
                 <p className="mt-4 text-sm font-medium text-red-600">{error}</p>
@@ -347,8 +383,8 @@ export function AssetsModule({
                 </button>
 
                 <button
-                  type="button"
-                  onClick={() => void handleSubmit()}
+                  type="submit"
+                  form={assetsFormId}
                   disabled={isCreating || Boolean(savingAssetId)}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
