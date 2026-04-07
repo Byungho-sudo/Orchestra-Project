@@ -529,6 +529,28 @@ export function isProjectAssetsSchemaMissingError(error: unknown) {
   )
 }
 
+export function isProjectModuleNotesSchemaMissingError(error: unknown) {
+  const errorCode = (error as { code?: string } | null)?.code
+  const errorMessage = (error as { message?: string } | null)?.message || ""
+
+  return (
+    errorCode === "PGRST205" ||
+    errorMessage.includes("Could not find the table 'public.project_module_notes'")
+  )
+}
+
+export function isProjectModuleMetricsSchemaMissingError(error: unknown) {
+  const errorCode = (error as { code?: string } | null)?.code
+  const errorMessage = (error as { message?: string } | null)?.message || ""
+
+  return (
+    errorCode === "PGRST205" ||
+    errorMessage.includes(
+      "Could not find the table 'public.project_module_metrics'"
+    )
+  )
+}
+
 export function logSupabaseMutationResult(
   label: string,
   result: {

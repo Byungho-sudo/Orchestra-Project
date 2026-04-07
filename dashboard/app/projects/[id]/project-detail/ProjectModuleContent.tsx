@@ -1,6 +1,8 @@
 import { useState } from "react"
 import type { Project, ProjectMetadata } from "@/lib/projects"
 import { AssetsModule } from "./AssetsModule"
+import { MetricsModule } from "./MetricsModule"
+import { NotesModule } from "./NotesModule"
 import {
   fieldCardClassName,
   humanizeProjectModuleType,
@@ -62,12 +64,6 @@ type ProjectLinkDraft = {
   url: string
 }
 
-type ProjectMetricDraft = {
-  id: string
-  name: string
-  value: string
-}
-
 function createTextGridRowDraft(
   overrides?: Partial<Omit<TextGridRowDraft, "id">>
 ): TextGridRowDraft {
@@ -92,19 +88,6 @@ function createProjectLinkDraft(
         : `project-link-${Date.now()}-${Math.random()}`,
     label: overrides?.label ?? "",
     url: overrides?.url ?? "",
-  }
-}
-
-function createProjectMetricDraft(
-  overrides?: Partial<Omit<ProjectMetricDraft, "id">>
-): ProjectMetricDraft {
-  return {
-    id:
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `project-metric-${Date.now()}-${Math.random()}`,
-    name: overrides?.name ?? "",
-    value: overrides?.value ?? "",
   }
 }
 
@@ -152,11 +135,6 @@ export function ProjectModuleContent({
     moduleId: module.id,
     projectId: currentProject.id,
   })
-  const [notesText, setNotesText] = useState("")
-  const [projectMetrics, setProjectMetrics] = useState<ProjectMetricDraft[]>([])
-  const [newProjectMetric, setNewProjectMetric] = useState<ProjectMetricDraft>(
-    () => createProjectMetricDraft()
-  )
   const [projectLinks, setProjectLinks] = useState<ProjectLinkDraft[]>([])
   const [newProjectLink, setNewProjectLink] = useState<ProjectLinkDraft>(() =>
     createProjectLinkDraft()
@@ -194,37 +172,6 @@ export function ProjectModuleContent({
   function handleDeleteProjectLink(linkId: string) {
     setProjectLinks((currentLinks) =>
       currentLinks.filter((link) => link.id !== linkId)
-    )
-  }
-
-  function handleProjectMetricChange(
-    field: keyof Omit<ProjectMetricDraft, "id">,
-    value: string
-  ) {
-    setNewProjectMetric((currentMetric) => ({
-      ...currentMetric,
-      [field]: value,
-    }))
-  }
-
-  function handleAddProjectMetric() {
-    const normalizedMetric = {
-      ...newProjectMetric,
-      name: newProjectMetric.name.trim(),
-      value: newProjectMetric.value.trim(),
-    }
-
-    if (!normalizedMetric.name) {
-      return
-    }
-
-    setProjectMetrics((currentMetrics) => [...currentMetrics, normalizedMetric])
-    setNewProjectMetric(createProjectMetricDraft())
-  }
-
-  function handleDeleteProjectMetric(metricId: string) {
-    setProjectMetrics((currentMetrics) =>
-      currentMetrics.filter((metric) => metric.id !== metricId)
     )
   }
 
@@ -493,25 +440,7 @@ export function ProjectModuleContent({
   }
 
   if (module.type === "notes") {
-    return (
-      <>
-        <div className="px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            {humanizeProjectModuleType(module.type).toUpperCase()}
-          </p>
-        </div>
-
-        <div className="mt-6">
-          <textarea
-            value={notesText}
-            onChange={(event) => setNotesText(event.target.value)}
-            placeholder="Write notes here..."
-            rows={12}
-            className="min-h-[280px] w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-          />
-        </div>
-      </>
-    )
+    return <NotesModule moduleId={module.id} projectId={currentProject.id} />
   }
 
   if (module.type === "links") {
@@ -598,78 +527,7 @@ export function ProjectModuleContent({
   }
 
   if (module.type === "metrics") {
-    return (
-      <>
-        <div className="px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            {humanizeProjectModuleType(module.type).toUpperCase()}
-          </p>
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,220px)_auto]">
-            <input
-              type="text"
-              value={newProjectMetric.name}
-              onChange={(event) =>
-                handleProjectMetricChange("name", event.target.value)
-              }
-              placeholder="Metric Name"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-            />
-            <input
-              type="text"
-              value={newProjectMetric.value}
-              onChange={(event) =>
-                handleProjectMetricChange("value", event.target.value)
-              }
-              placeholder="Value"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-            />
-            <button
-              type="button"
-              onClick={handleAddProjectMetric}
-              disabled={!newProjectMetric.name.trim()}
-              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Add Metric
-            </button>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {projectMetrics.length === 0 ? (
-              <p className="text-sm text-slate-400">No metrics added yet.</p>
-            ) : (
-              projectMetrics.map((metric) => (
-                <div
-                  key={metric.id}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors duration-200 hover:bg-slate-50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        {metric.name}
-                      </p>
-                      <p className="mt-2 break-words text-2xl font-semibold text-slate-900">
-                        {metric.value || "Not added yet"}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteProjectMetric(metric.id)}
-                      className="shrink-0 text-sm font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </>
-    )
+    return <MetricsModule moduleId={module.id} projectId={currentProject.id} />
   }
 
   if (module.type === "checklist") {
