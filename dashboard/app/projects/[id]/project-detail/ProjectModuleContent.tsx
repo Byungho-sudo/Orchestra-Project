@@ -1,11 +1,13 @@
 import { useState } from "react"
 import type { Project, ProjectMetadata } from "@/lib/projects"
+import { AssetsModule } from "./AssetsModule"
 import {
   fieldCardClassName,
   humanizeProjectModuleType,
   isProjectModuleInstanceId,
   taskDeleteUndoDurationMs,
 } from "./helpers"
+import { TimelineModule } from "./TimelineModule"
 import { useProjectTasks } from "./hooks/useProjectTasks"
 import type {
   ProjectModuleType,
@@ -853,27 +855,19 @@ export function ProjectModuleContent({
 
   if (module.type === "timeline") {
     return (
-      <>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-          {module.title}
-        </p>
-        <p className="mt-4 text-sm leading-6 text-slate-600">
-          Timeline details can be organized here in a future pass.
-        </p>
-      </>
+      <TimelineModule
+        moduleId={isProjectModuleInstanceId(module.id) ? module.id : null}
+        projectId={currentProject.id}
+      />
     )
   }
 
   if (module.type === "assets") {
     return (
-      <>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-          {module.title}
-        </p>
-        <p className="mt-4 text-sm leading-6 text-slate-600">
-          Project assets can be organized here in a future pass.
-        </p>
-      </>
+      <AssetsModule
+        moduleId={isProjectModuleInstanceId(module.id) ? module.id : null}
+        projectId={currentProject.id}
+      />
     )
   }
 

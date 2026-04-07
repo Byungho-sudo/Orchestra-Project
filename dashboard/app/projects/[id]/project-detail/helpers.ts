@@ -33,6 +33,8 @@ export const customProjectModuleOptions: Array<{
   { label: "Text Grid", value: "text_grid" },
   { label: "Notes", value: "notes" },
   { label: "Checklist", value: "checklist" },
+  { label: "Timeline", value: "timeline" },
+  { label: "Assets", value: "assets" },
   { label: "Metrics", value: "metrics" },
   { label: "Links", value: "links" },
 ]
@@ -396,6 +398,28 @@ export function isProjectMetadataSchemaMissingError(error: unknown) {
   return (
     errorCode === "PGRST205" ||
     errorMessage.includes("Could not find the table 'public.project_metadata'")
+  )
+}
+
+export function isProjectTimelineEventsSchemaMissingError(error: unknown) {
+  const errorCode = (error as { code?: string } | null)?.code
+  const errorMessage = (error as { message?: string } | null)?.message || ""
+
+  return (
+    errorCode === "PGRST205" ||
+    errorMessage.includes(
+      "Could not find the table 'public.project_timeline_events'"
+    )
+  )
+}
+
+export function isProjectAssetsSchemaMissingError(error: unknown) {
+  const errorCode = (error as { code?: string } | null)?.code
+  const errorMessage = (error as { message?: string } | null)?.message || ""
+
+  return (
+    errorCode === "PGRST205" ||
+    errorMessage.includes("Could not find the table 'public.project_assets'")
   )
 }
 
