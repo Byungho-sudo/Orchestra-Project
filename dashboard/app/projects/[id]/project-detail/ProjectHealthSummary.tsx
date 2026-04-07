@@ -7,18 +7,34 @@ import { detailCardClassName } from "./helpers"
 import { useProjectHealthSummary } from "./hooks/useProjectHealthSummary"
 
 function SummaryMetric({
+  emphasis = "primary",
   label,
   value,
 }: {
+  emphasis?: "primary" | "secondary"
   label: string
   value: string
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.03)]">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+    <div
+      className={`rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.03)] ${
+        emphasis === "secondary" ? "bg-slate-50/70" : ""
+      }`}
+    >
+      <p
+        className={`text-xs font-semibold uppercase tracking-[0.16em] ${
+          emphasis === "secondary" ? "text-slate-400" : "text-slate-500"
+        }`}
+      >
         {label}
       </p>
-      <p className="mt-2 text-lg font-semibold text-slate-900">{value}</p>
+      <p
+        className={`mt-2 font-semibold text-slate-900 ${
+          emphasis === "secondary" ? "text-base" : "text-lg"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   )
 }
@@ -49,6 +65,7 @@ export function ProjectHealthSummary({
   summaryError: string
 }) {
   const { error, isLoading, summary } = useProjectHealthSummary({ project })
+  const [isExpanded, setIsExpanded] = useState(false)
   const [isEditingSummary, setIsEditingSummary] = useState(false)
   const [draftStatus, setDraftStatus] = useState(project.status)
   const [draftHealth, setDraftHealth] = useState(project.health)
@@ -77,8 +94,8 @@ export function ProjectHealthSummary({
             Project Health
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Lifecycle and health are edited here. Progress and execution metrics
-            are derived from checklist and timeline activity.
+            Default view answers whether the project looks healthy. Details below
+            explain why.
           </p>
         </div>
 
@@ -191,42 +208,67 @@ export function ProjectHealthSummary({
           }
         />
 
-        <SummaryMetric
-          label="Tasks"
-          value={
-            isLoading
-              ? "Loading..."
-              : `${summary.completedTaskCount}/${summary.totalTaskCount} complete`
-          }
-        />
-      </div>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryMetric label="Due Date State" value={summary.deadlineStatus} />
-        <SummaryMetric
-          label="Overdue Tasks"
-          value={isLoading ? "Loading..." : String(summary.overdueTaskCount)}
-        />
-        <SummaryMetric
-          label="Total Tasks"
-          value={isLoading ? "Loading..." : String(summary.totalTaskCount)}
-        />
-        <SummaryMetric
-          label="Milestones"
-          value={
-            isLoading
-              ? "Loading..."
-              : `${summary.completedMilestoneCount}/${summary.totalMilestoneCount} complete`
-          }
-        />
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <SummaryMetric
-          label="Blocked Milestones"
-          value={isLoading ? "Loading..." : String(summary.blockedMilestoneCount)}
-        />
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+        >
+          <span aria-hidden="true" className="text-base leading-none">
+            {isExpanded ? "▾" : "▸"}
+          </span>
+          {isExpanded ? "Hide Details" : "Show Details"}
+        </button>
       </div>
+
+      {isExpanded && (
+        <div className="mt-4 border-t border-slate-200 pt-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Execution Details
+          </p>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <SummaryMetric
+              emphasis="secondary"
+              label="Tasks"
+              value={
+                isLoading
+                  ? "Loading..."
+                  : `${summary.completedTaskCount}/${summary.totalTaskCount} complete`
+              }
+            />
+            <SummaryMetric
+              emphasis="secondary"
+              label="Milestones"
+              value={
+                isLoading
+                  ? "Loading..."
+                  : `${summary.completedMilestoneCount}/${summary.totalMilestoneCount} complete`
+              }
+            />
+            <SummaryMetric
+              emphasis="secondary"
+              label="Overdue Tasks"
+              value={isLoading ? "Loading..." : String(summary.overdueTaskCount)}
+            />
+            <SummaryMetric
+              emphasis="secondary"
+              label="Total Tasks"
+              value={isLoading ? "Loading..." : String(summary.totalTaskCount)}
+            />
+            <SummaryMetric
+              emphasis="secondary"
+              label="Blocked Milestones"
+              value={
+                isLoading ? "Loading..." : String(summary.blockedMilestoneCount)
+              }
+            />
+          </div>
+        </div>
+      )}
     </section>
   )
 }
