@@ -178,10 +178,12 @@ export default function ProjectDetailClient({
     clearMetadataError,
     deleteMetadataField,
     isSavingMetadata,
+    metadataSaveState,
     metadataError,
     metadataForm,
     saveMetadata,
     sortedProjectMetadata,
+    stopEditingMetadata,
     updateMetadataField,
   } = useProjectMetadata({
     projectId: currentProject.id,
@@ -304,6 +306,7 @@ export default function ProjectDetailClient({
 
     closeMetadataEditModal()
     clearMetadataError()
+    stopEditingMetadata()
   }
 
   function handleCloseAddModuleModal() {
@@ -359,11 +362,11 @@ export default function ProjectDetailClient({
     }
   }
 
-  async function handleSaveProjectMetadata() {
-    const didSaveMetadata = await saveMetadata()
+  async function handleDoneEditingProjectMetadata() {
+    const didSaveMetadata = hasMetadataChanges ? await saveMetadata() : true
 
     if (didSaveMetadata) {
-      closeMetadataEditModal()
+      handleCloseMetadataEditModal()
     }
   }
 
@@ -858,12 +861,34 @@ export default function ProjectDetailClient({
         >
           {({ requestClose }) => (
             <>
-            <h2 className="text-xl font-bold text-slate-900">
-              Edit Metadata
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Add only the custom fields that are relevant to this project.
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Edit Metadata
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Add only the custom fields that are relevant to this project.
+                </p>
+              </div>
+
+              <p
+                className={`text-xs font-semibold uppercase tracking-[0.2em] ${
+                  metadataSaveState === "error"
+                    ? "text-red-600"
+                    : metadataSaveState === "saved"
+                      ? "text-emerald-600"
+                      : "text-slate-500"
+                }`}
+              >
+                {metadataSaveState === "saving"
+                  ? "Saving..."
+                  : metadataSaveState === "saved"
+                    ? "Saved"
+                    : metadataSaveState === "error"
+                      ? "Error"
+                      : "Autosave on"}
+              </p>
+            </div>
 
             <div className="mt-6 space-y-4">
               {metadataForm.length === 0 && (
@@ -952,11 +977,11 @@ export default function ProjectDetailClient({
 
               <button
                 type="button"
-                onClick={handleSaveProjectMetadata}
+                onClick={handleDoneEditingProjectMetadata}
                 disabled={isSavingMetadata}
                 className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSavingMetadata ? "Saving..." : "Save Metadata"}
+                {isSavingMetadata ? "Saving..." : "Done"}
               </button>
             </div>
             </>

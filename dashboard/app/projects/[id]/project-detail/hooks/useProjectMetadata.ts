@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { ProjectMetadata } from "@/lib/projects"
 import { supabase } from "@/lib/supabase"
@@ -20,6 +20,14 @@ export function useProjectMetadata({ projectId }: { projectId: number }) {
   const [metadataForm, setMetadataForm] = useState<ProjectMetadataDraft[]>([])
   const [metadataError, setMetadataError] = useState("")
   const [isSavingMetadata, setIsSavingMetadata] = useState(false)
+  const [metadataSaveState, setMetadataSaveState] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle")
+  const [isMetadataEditing, setIsMetadataEditing] = useState(false)
+  const sortedProjectMetadata = useMemo(
+    () => mapProjectMetadata(projectMetadata),
+    [projectMetadata]
+  )
 
   const loadProjectMetadata = useCallback(async () => {
     const { data, error, status, statusText } = await supabase
@@ -61,7 +69,14 @@ export function useProjectMetadata({ projectId }: { projectId: number }) {
   const beginEditingMetadata = useCallback(() => {
     setMetadataForm(createMetadataDrafts(projectMetadata))
     setMetadataError("")
+    setMetadataSaveState("idle")
+    setIsMetadataEditing(true)
   }, [projectMetadata])
+
+  const stopEditingMetadata = useCallback(() => {
+    setIsMetadataEditing(false)
+    setMetadataSaveState("idle")
+  }, [])
 
   const clearMetadataError = useCallback(() => {
     setMetadataError("")
@@ -85,6 +100,8 @@ export function useProjectMetadata({ projectId }: { projectId: number }) {
       if (metadataError) {
         setMetadataError("")
       }
+
+      setMetadataSaveState("idle")
     },
     [metadataError]
   )
@@ -103,6 +120,8 @@ export function useProjectMetadata({ projectId }: { projectId: number }) {
       if (metadataError) {
         setMetadataError("")
       }
+
+      setMetadataSaveState("idle")
     },
     [metadataError]
   )
@@ -122,6 +141,7 @@ export function useProjectMetadata({ projectId }: { projectId: number }) {
 
     setMetadataError("")
     setIsSavingMetadata(true)
+    setMetadataSaveState("saving")
 
     try {
       await supabase
@@ -155,6 +175,7 @@ export function useProjectMetadata({ projectId }: { projectId: number }) {
       }
 
       await loadProjectMetadata()
+      setMetadataSaveState("saved")
       router.refresh()
       return true
     } catch (error) {
@@ -164,13 +185,68 @@ export function useProjectMetadata({ projectId }: { projectId: number }) {
         JSON.stringify(error, null, 2)
       )
       setMetadataError("Failed to save metadata. Please try again.")
+      setMetadataSaveState("error")
       return false
     } finally {
       setIsSavingMetadata(false)
     }
   }, [isSavingMetadata, loadProjectMetadata, metadataForm, projectId, router])
 
-  const sortedProjectMetadata = mapProjectMetadata(projectMetadata)
+  useEffect(() => {
+    if (!isMetadataEditing || isSavingMetadata) return
+
+    const normalizedMetadata = normalizeMetadataDrafts(metadataForm)
+    const hasIncompleteMetadataField = normalizedMetadata.some(
+      (metadata) => !metadata.key || !metadata.value
+    )
+    const normalizedPersistedMetadata = sortedProjectMetadata.map(
+      (metadata, metadataIndex) => ({
+        id: metadata.id,
+        key: metadata.key,
+        value: metadata.value,
+        order: metadataIndex + 1,
+      })
+    )
+
+    if (
+      JSON.stringify(normalizedMetadata) ===
+      JSON.stringify(normalizedPersistedMetadata)
+    ) {
+      return
+    }
+
+    if (hasIncompleteMetadataField) {
+      return
+    }
+
+    const autosaveTimeout = setTimeout(() => {
+      void saveMetadata()
+    }, 700)
+
+    return () => {
+      clearTimeout(autosaveTimeout)
+    }
+  }, [
+    isMetadataEditing,
+    isSavingMetadata,
+    metadataForm,
+    saveMetadata,
+    sortedProjectMetadata,
+  ])
+
+  useEffect(() => {
+    if (metadataSaveState !== "saved") return
+
+    const saveStateTimeout = setTimeout(() => {
+      setMetadataSaveState((currentState) =>
+        currentState === "saved" ? "idle" : currentState
+      )
+    }, 1400)
+
+    return () => {
+      clearTimeout(saveStateTimeout)
+    }
+  }, [metadataSaveState])
 
   return {
     addMetadataField,
@@ -178,10 +254,13 @@ export function useProjectMetadata({ projectId }: { projectId: number }) {
     clearMetadataError,
     deleteMetadataField,
     isSavingMetadata,
+    isMetadataEditing,
+    metadataSaveState,
     metadataError,
     metadataForm,
     saveMetadata,
     sortedProjectMetadata,
+    stopEditingMetadata,
     updateMetadataField,
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
@@ -48,6 +48,40 @@ function createMetricDraft(metric?: ProjectMetricRecord | null): ProjectMetricDr
   }
 }
 
+function canAutosaveMetricDraft(draft: ProjectMetricDraft) {
+  if (!draft.name.trim()) return false
+
+  if (!draft.current_value.trim() || Number.isNaN(Number(draft.current_value))) {
+    return false
+  }
+
+  if (!draft.target_value.trim()) return true
+
+  const parsedTarget = Number(draft.target_value)
+
+  return Number.isFinite(parsedTarget) && parsedTarget >= 0
+}
+
+function getMetricSaveStateLabel(
+  saveState: "idle" | "saving" | "saved" | "error"
+) {
+  if (saveState === "saving") return "Saving..."
+  if (saveState === "saved") return "Saved"
+  if (saveState === "error") return "Error"
+  return "Autosave on"
+}
+
+function getMetricSaveStateClassName(
+  saveState: "idle" | "saving" | "saved" | "error"
+) {
+  if (saveState === "saving") return "text-slate-500"
+  if (saveState === "saved") return "text-emerald-600"
+  if (saveState === "error") return "text-red-600"
+  return "text-slate-500"
+}
+
+const autosaveDelayMs = 700
+
 export function MetricsModule({
   moduleId,
   projectId,
@@ -78,6 +112,9 @@ export function MetricsModule({
     null
   )
   const [draft, setDraft] = useState<ProjectMetricDraft>(emptyProjectMetricDraft)
+  const [editSaveState, setEditSaveState] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle")
 
   const hasDraftChanges = useMemo(() => {
     const initialDraft = createMetricDraft(editingMetric)
@@ -88,12 +125,14 @@ export function MetricsModule({
   const openCreateModal = useCallback(() => {
     setEditingMetric(null)
     setDraft(emptyProjectMetricDraft)
+    setEditSaveState("idle")
     setIsModalOpen(true)
   }, [])
 
   const openEditModal = useCallback((metric: ProjectMetricRecord) => {
     setEditingMetric(metric)
     setDraft(createMetricDraft(metric))
+    setEditSaveState("idle")
     setIsModalOpen(true)
   }, [])
 
@@ -111,19 +150,82 @@ export function MetricsModule({
         ...currentDraft,
         [field]: value,
       }))
+      setEditSaveState("idle")
     },
     []
   )
 
+  useEffect(() => {
+    if (!isModalOpen || !editingMetric) return
+
+    const nextEditingMetric = metrics.find((metric) => metric.id === editingMetric.id)
+
+    if (!nextEditingMetric) return
+
+    setEditingMetric(nextEditingMetric)
+  }, [editingMetric, isModalOpen, metrics])
+
+  useEffect(() => {
+    if (!editingMetric || !isModalOpen || savingMetricId === editingMetric.id) {
+      return
+    }
+
+    if (!hasDraftChanges || !canAutosaveMetricDraft(draft)) {
+      return
+    }
+
+    const autosaveTimeout = setTimeout(() => {
+      setEditSaveState("saving")
+      void updateMetric(editingMetric.id, draft).then((didSave) => {
+        setEditSaveState(didSave ? "saved" : "error")
+      })
+    }, autosaveDelayMs)
+
+    return () => {
+      clearTimeout(autosaveTimeout)
+    }
+  }, [draft, editingMetric, hasDraftChanges, isModalOpen, savingMetricId, updateMetric])
+
+  useEffect(() => {
+    if (editSaveState !== "saved") return
+
+    const saveStateTimeout = setTimeout(() => {
+      setEditSaveState((currentState) =>
+        currentState === "saved" ? "idle" : currentState
+      )
+    }, 1400)
+
+    return () => {
+      clearTimeout(saveStateTimeout)
+    }
+  }, [editSaveState])
+
   const handleSubmit = useCallback(async () => {
-    const didSave = editingMetric
-      ? await updateMetric(editingMetric.id, draft)
-      : await createMetric(draft)
+    if (editingMetric) {
+      const didSave = hasDraftChanges
+        ? await updateMetric(editingMetric.id, draft)
+        : true
+
+      if (didSave) {
+        closeModal()
+      }
+
+      return
+    }
+
+    const didSave = await createMetric(draft)
 
     if (didSave) {
       closeModal()
     }
-  }, [closeModal, createMetric, draft, editingMetric, updateMetric])
+  }, [
+    closeModal,
+    createMetric,
+    draft,
+    editingMetric,
+    hasDraftChanges,
+    updateMetric,
+  ])
 
   return (
     <>
@@ -273,6 +375,16 @@ export function MetricsModule({
                 Track a KPI with a current value, target, and optional unit.
               </p>
 
+              {editingMetric && (
+                <p
+                  className={`mt-4 text-xs font-semibold uppercase tracking-[0.2em] ${getMetricSaveStateClassName(
+                    editSaveState
+                  )}`}
+                >
+                  {getMetricSaveStateLabel(editSaveState)}
+                </p>
+              )}
+
               <div className="mt-6 space-y-4">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -348,18 +460,27 @@ export function MetricsModule({
                   Cancel
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => void handleSubmit()}
-                  disabled={isCreating || Boolean(savingMetricId)}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isCreating || Boolean(savingMetricId)
-                    ? "Saving..."
-                    : editingMetric
-                      ? "Save Changes"
+                {editingMetric ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleSubmit()}
+                    disabled={savingMetricId === editingMetric.id}
+                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {savingMetricId === editingMetric.id ? "Saving..." : "Done"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleSubmit()}
+                    disabled={isCreating || Boolean(savingMetricId)}
+                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isCreating || Boolean(savingMetricId)
+                      ? "Saving..."
                       : "Add Metric"}
-                </button>
+                  </button>
+                )}
               </div>
             </>
           )}

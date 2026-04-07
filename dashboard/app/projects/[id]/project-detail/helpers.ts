@@ -551,6 +551,18 @@ export function isProjectModuleMetricsSchemaMissingError(error: unknown) {
   )
 }
 
+export function isProjectModuleTextGridSchemaMissingError(error: unknown) {
+  const errorCode = (error as { code?: string } | null)?.code
+  const errorMessage = (error as { message?: string } | null)?.message || ""
+
+  return (
+    errorCode === "PGRST205" ||
+    errorMessage.includes(
+      "Could not find the table 'public.project_module_text_grid_rows'"
+    )
+  )
+}
+
 export function logSupabaseMutationResult(
   label: string,
   result: {

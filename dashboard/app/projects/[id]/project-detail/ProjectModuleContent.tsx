@@ -3,6 +3,7 @@ import type { Project, ProjectMetadata } from "@/lib/projects"
 import { AssetsModule } from "./AssetsModule"
 import { MetricsModule } from "./MetricsModule"
 import { NotesModule } from "./NotesModule"
+import { TextGridModule } from "./TextGridModule"
 import {
   fieldCardClassName,
   humanizeProjectModuleType,
@@ -51,31 +52,10 @@ function CustomProjectModulePlaceholder({
   )
 }
 
-type TextGridRowDraft = {
-  id: string
-  field1: string
-  field2: string
-  field3: string
-}
-
 type ProjectLinkDraft = {
   id: string
   label: string
   url: string
-}
-
-function createTextGridRowDraft(
-  overrides?: Partial<Omit<TextGridRowDraft, "id">>
-): TextGridRowDraft {
-  return {
-    id:
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `text-grid-row-${Date.now()}-${Math.random()}`,
-    field1: overrides?.field1 ?? "",
-    field2: overrides?.field2 ?? "",
-    field3: overrides?.field3 ?? "",
-  }
 }
 
 function createProjectLinkDraft(
@@ -139,10 +119,6 @@ export function ProjectModuleContent({
   const [newProjectLink, setNewProjectLink] = useState<ProjectLinkDraft>(() =>
     createProjectLinkDraft()
   )
-  const [textGridRows, setTextGridRows] = useState<TextGridRowDraft[]>([])
-  const [newTextGridRow, setNewTextGridRow] = useState<TextGridRowDraft>(() =>
-    createTextGridRowDraft()
-  )
 
   function handleProjectLinkChange(
     field: keyof Omit<ProjectLinkDraft, "id">,
@@ -172,59 +148,6 @@ export function ProjectModuleContent({
   function handleDeleteProjectLink(linkId: string) {
     setProjectLinks((currentLinks) =>
       currentLinks.filter((link) => link.id !== linkId)
-    )
-  }
-
-  function handleTextGridRowChange(
-    field: keyof Omit<TextGridRowDraft, "id">,
-    value: string
-  ) {
-    setNewTextGridRow((currentRow) => ({
-      ...currentRow,
-      [field]: value,
-    }))
-  }
-
-  function handleAddTextGridRow() {
-    const normalizedRow = {
-      ...newTextGridRow,
-      field1: newTextGridRow.field1.trim(),
-      field2: newTextGridRow.field2.trim(),
-      field3: newTextGridRow.field3.trim(),
-    }
-
-    if (
-      !normalizedRow.field1 &&
-      !normalizedRow.field2 &&
-      !normalizedRow.field3
-    ) {
-      return
-    }
-
-    setTextGridRows((currentRows) => [...currentRows, normalizedRow])
-    setNewTextGridRow(createTextGridRowDraft())
-  }
-
-  function handleDeleteTextGridRow(rowId: string) {
-    setTextGridRows((currentRows) =>
-      currentRows.filter((row) => row.id !== rowId)
-    )
-  }
-
-  function handleUpdateTextGridRow(
-    rowId: string,
-    field: keyof Omit<TextGridRowDraft, "id">,
-    value: string
-  ) {
-    setTextGridRows((currentRows) =>
-      currentRows.map((row) =>
-        row.id === rowId
-          ? {
-              ...row,
-              [field]: value,
-            }
-          : row
-      )
     )
   }
 
@@ -314,129 +237,7 @@ export function ProjectModuleContent({
   }
 
   if (module.type === "text_grid") {
-    return (
-      <>
-        <div className="px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            {humanizeProjectModuleType(module.type).toUpperCase()}
-          </p>
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-            <input
-              type="text"
-              value={newTextGridRow.field1}
-              onChange={(event) =>
-                handleTextGridRowChange("field1", event.target.value)
-              }
-              placeholder="Field 1"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-            />
-            <input
-              type="text"
-              value={newTextGridRow.field2}
-              onChange={(event) =>
-                handleTextGridRowChange("field2", event.target.value)
-              }
-              placeholder="Field 2"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-            />
-            <input
-              type="text"
-              value={newTextGridRow.field3}
-              onChange={(event) =>
-                handleTextGridRowChange("field3", event.target.value)
-              }
-              placeholder="Field 3"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-            />
-            <button
-              type="button"
-              onClick={handleAddTextGridRow}
-              disabled={
-                !newTextGridRow.field1.trim() &&
-                !newTextGridRow.field2.trim() &&
-                !newTextGridRow.field3.trim()
-              }
-              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Add Row
-            </button>
-          </div>
-
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.03)]">
-            <div className="grid gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-              <span>Text</span>
-              <span>Text</span>
-              <span>Text</span>
-              <span className="text-right">Delete</span>
-            </div>
-
-            {textGridRows.length === 0 ? (
-              <p className="px-4 py-5 text-sm text-slate-400">
-                No rows added yet.
-              </p>
-            ) : (
-              <div className="divide-y divide-slate-200">
-                {textGridRows.map((row) => (
-                  <div
-                    key={row.id}
-                    className="grid gap-3 px-4 py-4 transition-colors duration-200 hover:bg-slate-50 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
-                  >
-                    <input
-                      type="text"
-                      value={row.field1}
-                      onChange={(event) =>
-                        handleUpdateTextGridRow(
-                          row.id,
-                          "field1",
-                          event.target.value
-                        )
-                      }
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-                    />
-                    <input
-                      type="text"
-                      value={row.field2}
-                      onChange={(event) =>
-                        handleUpdateTextGridRow(
-                          row.id,
-                          "field2",
-                          event.target.value
-                        )
-                      }
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-                    />
-                    <input
-                      type="text"
-                      value={row.field3}
-                      onChange={(event) =>
-                        handleUpdateTextGridRow(
-                          row.id,
-                          "field3",
-                          event.target.value
-                        )
-                      }
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-indigo-500"
-                    />
-                    <div className="flex items-center md:justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTextGridRow(row.id)}
-                        className="text-sm font-medium text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </>
-    )
+    return <TextGridModule moduleId={module.id} projectId={currentProject.id} />
   }
 
   if (module.type === "notes") {
