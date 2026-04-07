@@ -7,6 +7,7 @@ import {
 } from "@/lib/project-modules"
 import { supabase } from "@/lib/supabase"
 import {
+  isProjectModuleInstanceId,
   isProjectModulesSchemaMissingError,
   isRetiredProjectModuleType,
   logSupabaseMutationResult,
@@ -208,6 +209,34 @@ export function useProjectModules({ projectId }: { projectId: number }) {
     setEditModuleForm(emptyModuleForm)
   }
 
+  async function loadPersistedProjectModules() {
+    const { data, error, status, statusText } = await supabase
+      .from("project_modules")
+      .select("id,title,type,order")
+      .eq("project_id", projectId)
+      .order("order", { ascending: true })
+      .order("created_at", { ascending: true })
+
+    logSupabaseMutationResult("Project modules reorder fetch", {
+      data,
+      error,
+      status,
+      statusText,
+    })
+
+    if (error) {
+      return {
+        error,
+        modules: [] as ProjectWorkspaceModule[],
+      }
+    }
+
+    return {
+      error: null,
+      modules: mapWorkspaceModules((data as ProjectModuleRecord[]) || []),
+    }
+  }
+
   async function persistWorkspaceModuleOrder(
     nextModules: ProjectWorkspaceModule[],
     activeModuleId: string | null,
@@ -223,29 +252,109 @@ export function useProjectModules({ projectId }: { projectId: number }) {
       options?.errorMessage ?? "Failed to reorder module. Please try again."
     const restoreOnFailure = options?.restoreOnFailure ?? true
     const useTemporaryOrders = options?.useTemporaryOrders ?? true
+    const hasOnlyPersistedModuleIds = normalizedModules.every((module) =>
+      isProjectModuleInstanceId(module.id)
+    )
 
     setModuleError("")
     setMovingModuleId(activeModuleId)
     setWorkspaceModules(normalizedModules)
 
-    if (useTemporaryOrders && normalizedModules.length > 0) {
-      const { error: reserveTemporaryOrdersError } = await supabase
+    if (!hasOnlyPersistedModuleIds) {
+      console.warn(
+        "Project module reorder was attempted before persisted module ids were available.",
+        {
+          projectId,
+          moduleIds: normalizedModules.map((module) => module.id),
+        }
+      )
+      if (restoreOnFailure) {
+        setWorkspaceModules(previousModules)
+      }
+      setMovingModuleId(null)
+      setModuleError("Modules are still loading. Please try reordering again.")
+      await loadWorkspaceModules()
+      return false
+    }
+
+    const {
+      error: persistedModulesError,
+      modules: persistedModules,
+    } = await loadPersistedProjectModules()
+
+    if (persistedModulesError) {
+      console.error(
+        "Project module reorder failed while loading persisted modules:",
+        persistedModulesError
+      )
+      if (restoreOnFailure) {
+        setWorkspaceModules(previousModules)
+      }
+      setMovingModuleId(null)
+      setModuleError(errorMessage)
+      await loadWorkspaceModules()
+      return false
+    }
+
+    const activeModuleIds = new Set(normalizedModules.map((module) => module.id))
+    const hiddenLegacyModules = persistedModules.filter(
+      (module) =>
+        isRetiredProjectModuleType(module.type) && !activeModuleIds.has(module.id)
+    )
+    const modulesToPersist = normalizeWorkspaceModuleOrder([
+      ...normalizedModules,
+      ...hiddenLegacyModules,
+    ])
+    const persistedOrderFloor = persistedModules.reduce(
+      (lowestOrder, module) => Math.min(lowestOrder, module.order),
+      0
+    )
+    const temporaryOrderBase =
+      persistedOrderFloor - modulesToPersist.length - 1000
+    const reserveTemporaryOrderPayload = modulesToPersist.map(
+      (module, moduleIndex) => ({
+        id: module.id,
+        project_id: projectId,
+        title: module.title,
+        type: module.type,
+        order: temporaryOrderBase - moduleIndex,
+      })
+    )
+    const finalizeOrderPayload = modulesToPersist.map((module) => ({
+      id: module.id,
+      project_id: projectId,
+      title: module.title,
+      type: module.type,
+      order: module.order,
+    }))
+
+    if (useTemporaryOrders && modulesToPersist.length > 0) {
+      const {
+        error: reserveTemporaryOrdersError,
+        status: reserveTemporaryOrdersStatus,
+        statusText: reserveTemporaryOrdersStatusText,
+      } = await supabase
         .from("project_modules")
-        .upsert(
-          normalizedModules.map((module, moduleIndex) => ({
-            id: module.id,
-            project_id: projectId,
-            title: module.title,
-            type: module.type,
-            order: -1 * (moduleIndex + 1),
-          })),
-          { onConflict: "id" }
-        )
+        .upsert(reserveTemporaryOrderPayload, { onConflict: "id" })
+
+      logSupabaseMutationResult("Project module temporary reorder reservation", {
+        data: reserveTemporaryOrderPayload,
+        error: reserveTemporaryOrdersError,
+        status: reserveTemporaryOrdersStatus,
+        statusText: reserveTemporaryOrdersStatusText,
+      })
 
       if (reserveTemporaryOrdersError) {
         console.error(
           "Project module reorder failed while reserving temporary orders:",
-          reserveTemporaryOrdersError
+          reserveTemporaryOrdersError,
+          {
+            projectId,
+            activeModuleIds: [...activeModuleIds],
+            hiddenLegacyModuleIds: hiddenLegacyModules.map((module) => module.id),
+            temporaryOrderBase,
+            reserveTemporaryOrderPayload,
+          }
         )
         if (restoreOnFailure) {
           setWorkspaceModules(previousModules)
@@ -257,25 +366,34 @@ export function useProjectModules({ projectId }: { projectId: number }) {
       }
     }
 
-    const { error: finalizeOrderError } = await supabase
+    const {
+      error: finalizeOrderError,
+      status: finalizeOrderStatus,
+      statusText: finalizeOrderStatusText,
+    } = await supabase
       .from("project_modules")
-      .upsert(
-        normalizedModules.map((module) => ({
-          id: module.id,
-          project_id: projectId,
-          title: module.title,
-          type: module.type,
-          order: module.order,
-        })),
-        { onConflict: "id" }
-      )
+      .upsert(finalizeOrderPayload, { onConflict: "id" })
+
+    logSupabaseMutationResult("Project module reorder finalize", {
+      data: finalizeOrderPayload,
+      error: finalizeOrderError,
+      status: finalizeOrderStatus,
+      statusText: finalizeOrderStatusText,
+    })
 
     setMovingModuleId(null)
 
     if (finalizeOrderError) {
       console.error(
         "Project module reorder failed while finalizing orders:",
-        finalizeOrderError
+        finalizeOrderError,
+        {
+          projectId,
+          activeModuleIds: [...activeModuleIds],
+          hiddenLegacyModuleIds: hiddenLegacyModules.map((module) => module.id),
+          temporaryOrderBase,
+          finalizeOrderPayload,
+        }
       )
       if (restoreOnFailure) {
         setWorkspaceModules(previousModules)
