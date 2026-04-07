@@ -19,6 +19,7 @@ import type { Project, ProjectVisibility } from "@/lib/projects"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
+import { ProjectHealthSummary } from "./project-detail/ProjectHealthSummary"
 import { ProjectMobileContext } from "./project-detail/ProjectMobileContext"
 import { ProjectMobileNavigation } from "./project-detail/ProjectMobileNavigation"
 import { ProjectModuleContent } from "./project-detail/ProjectModuleContent"
@@ -552,6 +553,7 @@ export default function ProjectDetailClient({
               style={{ scrollMarginTop: `${projectSectionAnchorOffsetPx}px` }}
             >
               <ProjectDetailHeader project={currentProject} />
+              <ProjectHealthSummary project={currentProject} />
             </section>
 
             <div className="mt-5 space-y-4 lg:hidden">
