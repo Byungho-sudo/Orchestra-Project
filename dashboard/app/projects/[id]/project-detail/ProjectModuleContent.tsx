@@ -5,6 +5,7 @@ import {
   fieldCardClassName,
   humanizeProjectModuleType,
   isProjectModuleInstanceId,
+  taskFilterOptions,
   taskDeleteUndoDurationMs,
 } from "./helpers"
 import { TimelineModule } from "./TimelineModule"
@@ -715,6 +716,33 @@ export function ProjectModuleContent({
             onChange={(event) => taskUi.setNewTaskDueDate(event.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
           />
+          <select
+            value={taskUi.newTaskPriority}
+            onChange={(event) =>
+              taskUi.setNewTaskPriority(
+                event.target.value as typeof taskUi.newTaskPriority
+              )
+            }
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
+          >
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+          </select>
+          <select
+            value={taskUi.newTaskStatus}
+            onChange={(event) =>
+              taskUi.setNewTaskStatus(
+                event.target.value as typeof taskUi.newTaskStatus
+              )
+            }
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
+          >
+            <option value="not_started">Not Started</option>
+            <option value="in_progress">In Progress</option>
+            <option value="blocked">Blocked</option>
+            <option value="completed">Completed</option>
+          </select>
           <button
             onClick={() => void taskUi.handleAddTask()}
             disabled={taskUi.isSavingTask || !taskUi.newTaskText.trim()}
@@ -730,6 +758,32 @@ export function ProjectModuleContent({
           </p>
         )}
 
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {taskFilterOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => taskUi.setSelectedTaskFilter(option.value)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                  taskUi.selectedTaskFilter === option.value
+                    ? "bg-slate-900 text-white"
+                    : "bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span>Total {taskUi.taskCounts.total}</span>
+            <span>Completed {taskUi.taskCounts.completed}</span>
+            <span>Upcoming {taskUi.taskCounts.upcoming}</span>
+            <span>Overdue {taskUi.taskCounts.overdue}</span>
+          </div>
+        </div>
+
         <div className="mt-6 space-y-3">
           {taskUi.sortedTasks.length === 0 && (
             <p className="text-sm text-slate-400">Not added yet</p>
@@ -737,6 +791,8 @@ export function ProjectModuleContent({
 
           {taskUi.sortedTasks.map((task) => {
             const taskStatusBadge = taskUi.getTaskStatusBadge(task)
+            const taskPriorityBadge = taskUi.getTaskPriorityBadge(task)
+            const isOverdueTask = taskUi.isTaskOverdue(task)
 
             return (
               <div
@@ -748,7 +804,11 @@ export function ProjectModuleContent({
                 className={`flex flex-col gap-3 rounded-xl border border-slate-200 p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors duration-200 sm:flex-row sm:items-center sm:justify-between ${
                   task.completed
                     ? "bg-slate-50 opacity-80"
-                    : "bg-white opacity-100"
+                    : isOverdueTask
+                      ? "border-red-200 bg-red-50/60 opacity-100"
+                      : task.priority === "high"
+                        ? "border-amber-200 bg-amber-50/60 opacity-100"
+                        : "bg-white opacity-100"
                 } hover:bg-slate-50 ${taskUi.isSavingTasks ? "cursor-not-allowed" : "cursor-pointer"}`}
               >
                 <div className="flex flex-1 items-center gap-3 text-sm">
@@ -764,7 +824,9 @@ export function ProjectModuleContent({
                     className={
                       task.completed
                         ? "text-slate-400 line-through transition-all duration-200"
-                        : "text-slate-700 transition-all duration-200"
+                        : isOverdueTask
+                          ? "text-red-700 transition-all duration-200"
+                          : "text-slate-700 transition-all duration-200"
                     }
                     >
                       {task.text}
@@ -786,12 +848,63 @@ export function ProjectModuleContent({
                     className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
+                  <select
+                    value={task.priority}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={(event) =>
+                      void taskUi.handleUpdateTaskPriority(
+                        task.id,
+                        event.target.value as typeof task.priority
+                      )
+                    }
+                    disabled={taskUi.isSavingTasks}
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+
+                  <select
+                    value={task.status}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={(event) =>
+                      void taskUi.handleUpdateTaskStatus(
+                        task.id,
+                        event.target.value as typeof task.status
+                      )
+                    }
+                    disabled={taskUi.isSavingTasks}
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <option value="not_started">Not Started</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="blocked">Blocked</option>
+                    <option value="completed">Completed</option>
+                  </select>
+
                   <span
                     onClick={(event) => event.stopPropagation()}
                     className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskStatusBadge.className}`}
                   >
                     {taskStatusBadge.label}
                   </span>
+
+                  <span
+                    onClick={(event) => event.stopPropagation()}
+                    className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskPriorityBadge.className}`}
+                  >
+                    {taskPriorityBadge.label}
+                  </span>
+
+                  {isOverdueTask && (
+                    <span
+                      onClick={(event) => event.stopPropagation()}
+                      className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-semibold text-red-700"
+                    >
+                      Overdue
+                    </span>
+                  )}
 
                   <button
                     onClick={(event) => {

@@ -6,6 +6,12 @@ export type ProjectStatus =
   | "in_progress"
   | "blocked"
   | "completed"
+export type ProjectTaskPriority = "low" | "medium" | "high"
+export type ProjectTaskStatus =
+  | "not_started"
+  | "in_progress"
+  | "completed"
+  | "blocked"
 export type SortOption = "due_date" | "created_at" | "name" | "progress"
 
 export type ProjectTask = {
@@ -16,6 +22,8 @@ export type ProjectTask = {
   completed: boolean
   completed_at: string | null
   due_date: string | null
+  priority: ProjectTaskPriority
+  status: ProjectTaskStatus
   created_at: string
 }
 

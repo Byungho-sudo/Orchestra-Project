@@ -1,4 +1,9 @@
-import type { ProjectMetadata, ProjectTask } from "@/lib/projects"
+import type {
+  ProjectMetadata,
+  ProjectTask,
+  ProjectTaskPriority,
+  ProjectTaskStatus,
+} from "@/lib/projects"
 import type {
   ModuleDropPosition,
   ProjectMetadataDraft,
@@ -25,6 +30,15 @@ export const fieldCardClassName =
 export const taskDeleteUndoDurationMs = 8000
 export const projectSectionAnchorOffsetPx = 24
 export const projectModuleStackGapClassName = "space-y-8"
+export const taskFilterOptions: Array<{
+  label: string
+  value: "all" | "overdue" | "upcoming" | "completed"
+}> = [
+  { label: "All", value: "all" },
+  { label: "Overdue", value: "overdue" },
+  { label: "Upcoming", value: "upcoming" },
+  { label: "Completed", value: "completed" },
+]
 
 export const customProjectModuleOptions: Array<{
   label: string
@@ -81,7 +95,7 @@ export function normalizeTaskDueDateInput(dateValue: string) {
 }
 
 function getTaskStatusByDueDate(task: ProjectTask): TaskDueStatus {
-  if (task.completed) return "completed"
+  if (task.completed || task.status === "completed") return "completed"
 
   const dueDate = parseTaskDateInput(getTaskDueDateValue(task.due_date))
 
@@ -99,6 +113,50 @@ function getTaskStatusByDueDate(task: ProjectTask): TaskDueStatus {
   if (dayDifference <= 2) return "due_soon"
 
   return "future"
+}
+
+export function isTaskOverdue(task: ProjectTask) {
+  return getTaskStatusByDueDate(task) === "overdue"
+}
+
+export function getTaskWorkflowStatusBadge(task: ProjectTask) {
+  const statusLabels: Record<ProjectTaskStatus, string> = {
+    not_started: "Not Started",
+    in_progress: "In Progress",
+    completed: "Completed",
+    blocked: "Blocked",
+  }
+
+  const classNames: Record<ProjectTaskStatus, string> = {
+    not_started: "bg-slate-100 text-slate-600",
+    in_progress: "bg-blue-100 text-blue-700",
+    completed: "bg-green-100 text-green-700",
+    blocked: "bg-red-100 text-red-700",
+  }
+
+  return {
+    label: statusLabels[task.status] ?? "Unknown",
+    className: classNames[task.status] ?? "bg-slate-100 text-slate-600",
+  }
+}
+
+export function getTaskPriorityBadge(task: ProjectTask) {
+  const priorityLabels: Record<ProjectTaskPriority, string> = {
+    low: "Low Priority",
+    medium: "Medium Priority",
+    high: "High Priority",
+  }
+
+  const classNames: Record<ProjectTaskPriority, string> = {
+    low: "bg-slate-100 text-slate-600",
+    medium: "bg-amber-100 text-amber-700",
+    high: "bg-rose-100 text-rose-700",
+  }
+
+  return {
+    label: priorityLabels[task.priority] ?? "Unknown Priority",
+    className: classNames[task.priority] ?? "bg-slate-100 text-slate-600",
+  }
 }
 
 export function getTaskStatusBadge(task: ProjectTask) {
@@ -153,6 +211,16 @@ export function sortTasksByUrgency(tasks: ProjectTask[]) {
   return [...tasks].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1
 
+    const priorityRank: Record<ProjectTaskPriority, number> = {
+      high: 0,
+      medium: 1,
+      low: 2,
+    }
+
+    if (priorityRank[a.priority] !== priorityRank[b.priority]) {
+      return priorityRank[a.priority] - priorityRank[b.priority]
+    }
+
     if (a.completed && b.completed) {
       const aCompletedAt = a.completed_at ?? ""
       const bCompletedAt = b.completed_at ?? ""
@@ -180,6 +248,44 @@ export function sortTasksByUrgency(tasks: ProjectTask[]) {
 
     return b.id - a.id
   })
+}
+
+export function filterTasksByView(
+  tasks: ProjectTask[],
+  filter: "all" | "overdue" | "upcoming" | "completed"
+) {
+  if (filter === "completed") {
+    return tasks.filter((task) => task.completed || task.status === "completed")
+  }
+
+  if (filter === "overdue") {
+    return tasks.filter((task) => isTaskOverdue(task))
+  }
+
+  if (filter === "upcoming") {
+    return tasks.filter((task) => {
+      const dueStatus = getTaskStatusByDueDate(task)
+
+      return dueStatus === "due_today" || dueStatus === "due_soon" || dueStatus === "future"
+    })
+  }
+
+  return tasks
+}
+
+export function getTaskCounts(tasks: ProjectTask[]) {
+  return {
+    total: tasks.length,
+    completed: tasks.filter(
+      (task) => task.completed || task.status === "completed"
+    ).length,
+    overdue: tasks.filter((task) => isTaskOverdue(task)).length,
+    upcoming: tasks.filter((task) => {
+      const dueStatus = getTaskStatusByDueDate(task)
+
+      return dueStatus === "due_today" || dueStatus === "due_soon" || dueStatus === "future"
+    }).length,
+  }
 }
 
 export function getTaskSaveStateLabel(taskSaveState: TaskSaveState) {

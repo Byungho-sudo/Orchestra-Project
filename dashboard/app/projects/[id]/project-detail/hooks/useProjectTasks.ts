@@ -11,38 +11,63 @@ import { useRouter } from "next/navigation"
 import type { ProjectTask } from "@/lib/projects"
 import { supabase } from "@/lib/supabase"
 import {
+  filterTasksByView,
+  getTaskCounts,
   getTaskDueDateValue,
+  getTaskPriorityBadge,
   getTaskSaveStateClassName,
   getTaskSaveStateLabel,
   getTaskStatusBadge,
+  getTaskWorkflowStatusBadge,
+  isTaskOverdue,
   logSupabaseMutationResult,
   normalizeTaskDueDateInput,
   sortTasksByUrgency,
   taskDeleteUndoDurationMs,
 } from "../helpers"
-import type { ProjectModuleTaskUiProps, TaskSaveState } from "../types"
+import type {
+  ProjectModuleTaskUiProps,
+  TaskFilterOption,
+  TaskSaveState,
+} from "../types"
 
 const emptyTaskUi: ProjectModuleTaskUiProps = {
   getTaskDueDateValue,
+  getTaskPriorityBadge,
   getTaskSaveStateClassName,
   getTaskSaveStateLabel,
   getTaskStatusBadge,
   handleAddTask: () => {},
   handleDeleteTask: () => {},
   handleNewTaskKeyDown: () => {},
+  handleUpdateTaskPriority: () => {},
+  handleUpdateTaskStatus: () => {},
   handleToggleTask: () => {},
   handleUndoDeleteTask: () => {},
   handleUpdateTaskDueDate: () => {},
+  isTaskOverdue,
   isSavingTask: false,
   isSavingTasks: false,
   isUndoTimerRunning: false,
   newTaskDueDate: "",
   newTaskInputRef: { current: null },
+  newTaskPriority: "medium",
+  newTaskStatus: "not_started",
   newTaskText: "",
   pendingDeletedTask: null,
+  selectedTaskFilter: "all",
+  setNewTaskPriority: () => "medium",
+  setNewTaskStatus: () => "not_started",
   setNewTaskDueDate: () => "",
   setNewTaskText: () => "",
+  setSelectedTaskFilter: () => "all",
   setTaskInputError: () => false,
+  taskCounts: {
+    completed: 0,
+    overdue: 0,
+    total: 0,
+    upcoming: 0,
+  },
   sortedTasks: [],
   taskError: "",
   taskInputError: false,
@@ -66,6 +91,12 @@ export function useProjectTasks({
   const [isSavingTasks, setIsSavingTasks] = useState(false)
   const [newTaskText, setNewTaskText] = useState("")
   const [newTaskDueDate, setNewTaskDueDate] = useState("")
+  const [newTaskPriority, setNewTaskPriority] = useState<"low" | "medium" | "high">("medium")
+  const [newTaskStatus, setNewTaskStatus] = useState<
+    "not_started" | "in_progress" | "completed" | "blocked"
+  >("not_started")
+  const [selectedTaskFilter, setSelectedTaskFilter] =
+    useState<TaskFilterOption>("all")
   const [taskInputError, setTaskInputError] = useState(false)
   const [pendingDeletedTask, setPendingDeletedTask] =
     useState<ProjectTask | null>(null)
@@ -187,6 +218,74 @@ export function useProjectTasks({
     setTasks((data as ProjectTask[]) || [])
   }, [enabled, moduleId, projectId])
 
+  const updateTaskFields = useCallback(
+    async (
+      taskId: number,
+      fields: Partial<
+        Pick<ProjectTask, "due_date" | "priority" | "status" | "completed" | "completed_at">
+      >
+    ) => {
+      if (!enabled || isSavingTasks) return false
+
+      const previousTasks = tasks
+      const optimisticTasks = previousTasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              ...fields,
+            }
+          : task
+      )
+
+      setTaskError("")
+      setIsSavingTasks(true)
+      updateTaskSaveState("saving")
+      setTasks(optimisticTasks)
+
+      try {
+        const { data, error, status, statusText } = await supabase
+          .from("project_tasks")
+          .update(fields)
+          .eq("id", taskId)
+          .eq("project_id", projectId)
+          .eq("module_id", moduleId)
+          .select("*")
+          .single()
+
+        logSupabaseMutationResult("Task field update", {
+          data,
+          error,
+          status,
+          statusText,
+        })
+
+        if (error) {
+          throw error
+        }
+
+        setTasks((current) =>
+          current.map((task) => (task.id === taskId ? (data as ProjectTask) : task))
+        )
+        updateTaskSaveState("saved")
+        router.refresh()
+        return true
+      } catch (error) {
+        console.error("Task field update failed:", error)
+        console.error(
+          "Task field update failed JSON:",
+          JSON.stringify(error, null, 2)
+        )
+        setTasks(previousTasks)
+        setTaskError("Failed to update task. Please try again.")
+        updateTaskSaveState("error")
+        return false
+      } finally {
+        setIsSavingTasks(false)
+      }
+    },
+    [enabled, isSavingTasks, moduleId, projectId, router, tasks, updateTaskSaveState]
+  )
+
   useEffect(() => {
     void loadProjectTasks()
   }, [loadProjectTasks])
@@ -220,9 +319,12 @@ export function useProjectTasks({
       project_id: projectId,
       module_id: moduleId,
       text: taskText,
-      completed: false,
-      completed_at: null,
+      completed: newTaskStatus === "completed",
+      completed_at:
+        newTaskStatus === "completed" ? new Date().toISOString() : null,
       due_date: normalizedDueDate,
+      priority: newTaskPriority,
+      status: newTaskStatus,
       created_at: new Date().toISOString(),
     }
 
@@ -242,9 +344,12 @@ export function useProjectTasks({
             project_id: projectId,
             module_id: moduleId,
             text: taskText,
-            completed: false,
-            completed_at: null,
+            completed: newTaskStatus === "completed",
+            completed_at:
+              newTaskStatus === "completed" ? new Date().toISOString() : null,
             due_date: normalizedDueDate,
+            priority: newTaskPriority,
+            status: newTaskStatus,
           },
         ])
         .select("*")
@@ -268,6 +373,8 @@ export function useProjectTasks({
       )
       setNewTaskText("")
       setNewTaskDueDate("")
+      setNewTaskPriority("medium")
+      setNewTaskStatus("not_started")
       updateTaskSaveState("saved")
       newTaskInputRef.current?.focus()
       router.refresh()
@@ -288,6 +395,8 @@ export function useProjectTasks({
     isSavingTask,
     isSavingTasks,
     newTaskDueDate,
+    newTaskPriority,
+    newTaskStatus,
     newTaskText,
     enabled,
     moduleId,
@@ -314,57 +423,11 @@ export function useProjectTasks({
 
   const handleUpdateTaskDueDate = useCallback(
     async (taskId: number, dueDate: string) => {
-      if (!enabled || isSavingTasks) return
-
-      setTaskError("")
-      setIsSavingTasks(true)
-      updateTaskSaveState("saving")
-
-      try {
-        const normalizedDueDate = normalizeTaskDueDateInput(dueDate)
-
-        console.log("Updating projectId/moduleId:", { projectId, moduleId })
-
-        const { data, error, status, statusText } = await supabase
-          .from("project_tasks")
-          .update({ due_date: normalizedDueDate })
-          .eq("id", taskId)
-          .eq("project_id", projectId)
-          .eq("module_id", moduleId)
-          .select("*")
-          .single()
-
-        logSupabaseMutationResult("Task due date update", {
-          data,
-          error,
-          status,
-          statusText,
-        })
-
-        if (error) {
-          throw error
-        }
-
-        setTasks((current) =>
-          current.map((task) =>
-            task.id === taskId ? (data as ProjectTask) : task
-          )
-        )
-        updateTaskSaveState("saved")
-        router.refresh()
-      } catch (error) {
-        console.error("Task due date update failed:", error)
-        console.error(
-          "Task due date update failed JSON:",
-          JSON.stringify(error, null, 2)
-        )
-        setTaskError("Failed to update task due date. Please try again.")
-        updateTaskSaveState("error")
-      } finally {
-        setIsSavingTasks(false)
-      }
+      await updateTaskFields(taskId, {
+        due_date: normalizeTaskDueDateInput(dueDate),
+      })
     },
-    [enabled, isSavingTasks, moduleId, projectId, router, updateTaskSaveState]
+    [updateTaskFields]
   )
 
   const handleToggleTask = useCallback(
@@ -375,55 +438,36 @@ export function useProjectTasks({
 
       if (!taskToUpdate) return
 
-      setTaskError("")
-      setIsSavingTasks(true)
-      updateTaskSaveState("saving")
+      const nextCompleted = !taskToUpdate.completed
 
-      try {
-        const nextCompleted = !taskToUpdate.completed
-
-        console.log("Updating projectId/moduleId:", { projectId, moduleId })
-
-        const { data, error, status, statusText } = await supabase
-          .from("project_tasks")
-          .update({
-            completed: nextCompleted,
-            completed_at: nextCompleted ? new Date().toISOString() : null,
-          })
-          .eq("id", taskId)
-          .eq("project_id", projectId)
-          .eq("module_id", moduleId)
-          .select("*")
-          .single()
-
-        logSupabaseMutationResult("Task update", {
-          data,
-          error,
-          status,
-          statusText,
-        })
-
-        if (error) {
-          throw error
-        }
-
-        setTasks((current) =>
-          current.map((task) =>
-            task.id === taskId ? (data as ProjectTask) : task
-          )
-        )
-        updateTaskSaveState("saved")
-        router.refresh()
-      } catch (error) {
-        console.error("Task update failed:", error)
-        console.error("Task update failed JSON:", JSON.stringify(error, null, 2))
-        setTaskError("Failed to update tasks. Please try again.")
-        updateTaskSaveState("error")
-      } finally {
-        setIsSavingTasks(false)
-      }
+      await updateTaskFields(taskId, {
+        completed: nextCompleted,
+        completed_at: nextCompleted ? new Date().toISOString() : null,
+        status: nextCompleted ? "completed" : "not_started",
+      })
     },
-    [enabled, isSavingTasks, moduleId, projectId, router, tasks, updateTaskSaveState]
+    [enabled, isSavingTasks, tasks, updateTaskFields]
+  )
+
+  const handleUpdateTaskStatus = useCallback(
+    async (
+      taskId: number,
+      status: "not_started" | "in_progress" | "completed" | "blocked"
+    ) => {
+      await updateTaskFields(taskId, {
+        status,
+        completed: status === "completed",
+        completed_at: status === "completed" ? new Date().toISOString() : null,
+      })
+    },
+    [updateTaskFields]
+  )
+
+  const handleUpdateTaskPriority = useCallback(
+    async (taskId: number, priority: "low" | "medium" | "high") => {
+      await updateTaskFields(taskId, { priority })
+    },
+    [updateTaskFields]
   )
 
   const handleDeleteTask = useCallback(
@@ -492,26 +536,37 @@ export function useProjectTasks({
   const taskUi: ProjectModuleTaskUiProps = enabled
     ? {
     getTaskDueDateValue,
+    getTaskPriorityBadge,
     getTaskSaveStateClassName,
     getTaskSaveStateLabel,
-    getTaskStatusBadge,
+    getTaskStatusBadge: getTaskWorkflowStatusBadge,
     handleAddTask,
     handleDeleteTask,
     handleNewTaskKeyDown,
+    handleUpdateTaskPriority,
+    handleUpdateTaskStatus,
     handleToggleTask,
     handleUndoDeleteTask,
     handleUpdateTaskDueDate,
+    isTaskOverdue,
     isSavingTask,
     isSavingTasks,
     isUndoTimerRunning,
     newTaskDueDate,
     newTaskInputRef,
+    newTaskPriority,
+    newTaskStatus,
     newTaskText,
     pendingDeletedTask,
+    selectedTaskFilter,
+    setNewTaskPriority,
+    setNewTaskStatus,
     setNewTaskDueDate,
     setNewTaskText,
+    setSelectedTaskFilter,
     setTaskInputError,
-    sortedTasks: sortTasksByUrgency(tasks),
+    taskCounts: getTaskCounts(tasks),
+    sortedTasks: sortTasksByUrgency(filterTasksByView(tasks, selectedTaskFilter)),
     taskError,
     taskInputError,
     taskSaveState,
