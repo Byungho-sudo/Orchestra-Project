@@ -8,6 +8,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import {
   isProjectModulesSchemaMissingError,
+  isRetiredProjectModuleType,
   logSupabaseMutationResult,
   mapWorkspaceModules,
   normalizeWorkspaceModuleOrder,
@@ -93,7 +94,7 @@ export function useProjectModules({ projectId }: { projectId: number }) {
 
     if (moduleRows.length > 0) {
       const normalizedModules = mapWorkspaceModules(moduleRows).filter(
-        (module) => module.type !== "workspace_plan"
+        (module) => !isRetiredProjectModuleType(module.type)
       )
 
       if (
@@ -154,7 +155,7 @@ export function useProjectModules({ projectId }: { projectId: number }) {
 
     const normalizedDefaultModules = mapWorkspaceModules(
       (defaultModulesData as ProjectModuleRecord[]) || []
-    ).filter((module) => module.type !== "workspace_plan")
+    ).filter((module) => !isRetiredProjectModuleType(module.type))
 
     setWorkspaceModules(normalizedDefaultModules)
 

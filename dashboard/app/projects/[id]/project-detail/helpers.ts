@@ -51,6 +51,10 @@ export const customProjectModuleOptions: Array<{
   { label: "Links", value: "links" },
 ]
 
+export function isRetiredProjectModuleType(type: ProjectModuleType | "tasks") {
+  return type === "workspace_plan" || type === "planning_operations"
+}
+
 export function getTaskDueDateValue(dueDate: string | null) {
   return dueDate ? dueDate.slice(0, 10) : ""
 }

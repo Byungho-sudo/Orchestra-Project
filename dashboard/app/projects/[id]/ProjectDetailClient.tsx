@@ -21,6 +21,7 @@ import {
   customProjectModuleOptions,
   getProjectModuleDisplayTitle,
   getProjectModuleAnchor,
+  isRetiredProjectModuleType,
   normalizeMetadataDrafts,
   projectSectionAnchorOffsetPx,
 } from "./project-detail/helpers"
@@ -119,7 +120,7 @@ export default function ProjectDetailClient({
     openMetadataEditModal,
   } = useProjectModals()
   const visibleWorkspaceModules = sortedWorkspaceModules.filter(
-    (module) => module.type !== "workspace_plan"
+    (module) => !isRetiredProjectModuleType(module.type)
   )
   const projectWorkspaceNavigation = [
     { id: "project-details", label: "Project Details", moduleId: null },
@@ -601,7 +602,6 @@ export default function ProjectDetailClient({
                   <ProjectModuleContent
                     currentProject={currentProject}
                     module={module}
-                    sortedProjectMetadata={sortedProjectMetadata}
                   />
                 )}
               />

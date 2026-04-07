@@ -1,14 +1,14 @@
 import { useState } from "react"
-import type { Project, ProjectMetadata } from "@/lib/projects"
+import type { Project } from "@/lib/projects"
 import { AssetsModule } from "./AssetsModule"
 import { ChecklistDueDate } from "./ChecklistDueDate"
 import { MetricsModule } from "./MetricsModule"
 import { NotesModule } from "./NotesModule"
 import { TextGridModule } from "./TextGridModule"
 import {
-  fieldCardClassName,
   humanizeProjectModuleType,
   isProjectModuleInstanceId,
+  isRetiredProjectModuleType,
   taskFilterOptions,
   taskDeleteUndoDurationMs,
 } from "./helpers"
@@ -18,14 +18,6 @@ import type {
   ProjectModuleType,
   ProjectWorkspaceModule,
 } from "./types"
-
-function WorkspaceValue({ value }: { value: string | null }) {
-  return (
-    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-      {value?.trim() || <span className="text-slate-400">Not added yet</span>}
-    </p>
-  )
-}
 
 function CustomProjectModulePlaceholder({
   module,
@@ -104,11 +96,9 @@ function getOpenableProjectLinkUrl(url: string) {
 export function ProjectModuleContent({
   currentProject,
   module,
-  sortedProjectMetadata,
 }: {
   currentProject: Project
   module: ProjectWorkspaceModule
-  sortedProjectMetadata: ProjectMetadata[]
 }) {
   const { taskUi } = useProjectTasks({
     enabled:
@@ -152,35 +142,8 @@ export function ProjectModuleContent({
     )
   }
 
-  if (module.type === "workspace_plan") {
+  if (isRetiredProjectModuleType(module.type)) {
     return null
-  }
-
-  if (module.type === "planning_operations") {
-    return (
-      <>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-          {module.title}
-        </p>
-
-        {sortedProjectMetadata.length === 0 ? (
-          <p className="mt-4 text-sm leading-6 text-slate-600">
-            No custom metadata has been added for this project yet.
-          </p>
-        ) : (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {sortedProjectMetadata.map((metadata) => (
-              <div key={metadata.id} className={fieldCardClassName}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {metadata.key}
-                </p>
-                <WorkspaceValue value={metadata.value} />
-              </div>
-            ))}
-          </div>
-        )}
-      </>
-    )
   }
 
   if (module.type === "text_grid") {
