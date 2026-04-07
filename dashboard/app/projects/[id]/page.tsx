@@ -1,7 +1,12 @@
 import Link from "next/link"
 import { AppLayout } from "@/app/components/layout/AppLayout"
 import { createSupabaseServerClient } from "@/lib/supabase-server"
-import type { Project } from "@/lib/projects"
+import {
+  mergeProjectWithProgress,
+  type Project,
+  type ProjectProgressRow,
+  type ProjectRow,
+} from "@/lib/projects"
 import ProjectDetailClient from "./ProjectDetailClient"
 
 export default async function ProjectDetailPage({
@@ -86,5 +91,18 @@ export default async function ProjectDetailPage({
     )
   }
 
-  return <ProjectDetailClient project={project as Project} />
+  const { data: projectProgress } = await supabase
+    .from("project_progress")
+    .select("*")
+    .eq("project_id", Number(id))
+    .maybeSingle()
+
+  return (
+    <ProjectDetailClient
+      project={mergeProjectWithProgress(
+        project as ProjectRow,
+        (projectProgress as ProjectProgressRow | null) ?? null
+      ) as Project}
+    />
+  )
 }

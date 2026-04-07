@@ -121,13 +121,21 @@ export function useProjectHealthSummary({ project }: { project: Project }) {
       completedMilestoneCount,
       completedTaskCount,
       deadlineStatus: getDeadlineStatus(project.due_date),
+      health: project.health,
       overdueTaskCount,
       progress: project.progress,
       status: project.status,
       totalMilestoneCount,
       totalTaskCount,
     }
-  }, [project.due_date, project.progress, project.status, taskRows, timelineRows])
+  }, [
+    project.due_date,
+    project.health,
+    project.progress,
+    project.status,
+    taskRows,
+    timelineRows,
+  ])
 
   return {
     error,

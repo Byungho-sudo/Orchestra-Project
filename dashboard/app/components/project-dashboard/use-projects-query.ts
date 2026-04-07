@@ -4,8 +4,11 @@ import { useEffect, useState } from "react"
 import type { DeadlineFilter } from "@/lib/project-deadline"
 import {
   filterProjects,
+  mergeProjectWithProgress,
   sortProjects,
   type Project,
+  type ProjectProgressRow,
+  type ProjectRow,
   type SortOption,
 } from "@/lib/projects"
 import { supabase } from "@/lib/supabase"
@@ -74,7 +77,41 @@ export function useProjectsQuery(): UseProjectsQueryResult {
         console.error("hint:", error?.hint)
         setErrorMessage("Failed to load projects. Please try again.")
       } else {
-        setProjects(data || [])
+        const projectRows = (data as ProjectRow[]) || []
+
+        if (projectRows.length === 0) {
+          setProjects([])
+          setLoading(false)
+          return
+        }
+
+        const { data: progressRows, error: progressError } = await supabase
+          .from("project_progress")
+          .select("*")
+          .in(
+            "project_id",
+            projectRows.map((project) => project.id)
+          )
+
+        if (progressError) {
+          console.error("Project progress load failed:", progressError)
+        }
+
+        const progressByProjectId = new Map(
+          ((progressRows as ProjectProgressRow[]) || []).map((progress) => [
+            progress.project_id,
+            progress,
+          ])
+        )
+
+        setProjects(
+          projectRows.map((project) =>
+            mergeProjectWithProgress(
+              project,
+              progressByProjectId.get(project.id) ?? null
+            )
+          )
+        )
       }
 
       setLoading(false)

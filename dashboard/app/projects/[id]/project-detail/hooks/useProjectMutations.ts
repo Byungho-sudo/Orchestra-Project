@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import type { Project, ProjectVisibility } from "@/lib/projects"
+import type {
+  Project,
+  ProjectHealth,
+  ProjectVisibility,
+} from "@/lib/projects"
 import {
   validateProjectForm,
   type ProjectFormErrors,
@@ -13,7 +17,7 @@ export type ProjectEditForm = {
   name: string
   description: string
   status: Project["status"]
-  progress: string
+  health: ProjectHealth
   due_date: string
   visibility: ProjectVisibility
 }
@@ -23,7 +27,7 @@ function createProjectEditForm(project: Project): ProjectEditForm {
     name: project.name,
     description: project.description ?? "",
     status: project.status,
-    progress: String(project.progress),
+    health: project.health,
     due_date: project.due_date ?? "",
     visibility: project.visibility,
   }
@@ -52,7 +56,7 @@ export function useProjectMutations({
       editForm.name !== currentProject.name ||
       editForm.description !== (currentProject.description ?? "") ||
       editForm.status !== currentProject.status ||
-      editForm.progress !== String(currentProject.progress) ||
+      editForm.health !== currentProject.health ||
       editForm.due_date !== (currentProject.due_date ?? "") ||
       editForm.visibility !== currentProject.visibility,
     [currentProject, editForm]
@@ -78,7 +82,6 @@ export function useProjectMutations({
         name: editForm.name,
         description: editForm.description,
         due_date: editForm.due_date,
-        progress: editForm.progress,
         visibility: editForm.visibility,
       },
       editForm.visibility === "private" || canCreatePrivateProject
@@ -90,28 +93,48 @@ export function useProjectMutations({
 
     setIsSaving(true)
 
-    const updates = {
+    const projectUpdates = {
       name: validation.values.name,
       description: validation.values.description,
-      status: editForm.status,
-      progress: validation.values.progress ?? currentProject.progress,
       due_date: validation.values.due_date,
       visibility: validation.values.visibility,
     }
 
-    const { error } = await supabase
+    const { error: projectError } = await supabase
       .from("projects")
-      .update(updates)
+      .update(projectUpdates)
       .eq("id", currentProject.id)
 
-    setIsSaving(false)
-
-    if (error) {
+    if (projectError) {
+      setIsSaving(false)
       setSaveError("Failed to update project. Please try again.")
       return false
     }
 
-    setCurrentProject((current) => ({ ...current, ...updates }))
+    const { error: progressError } = await supabase
+      .from("project_progress")
+      .upsert(
+        {
+          project_id: currentProject.id,
+          status: editForm.status,
+          health: editForm.health,
+        },
+        { onConflict: "project_id" }
+      )
+
+    setIsSaving(false)
+
+    if (progressError) {
+      setSaveError("Failed to update project progress. Please try again.")
+      return false
+    }
+
+    setCurrentProject((current) => ({
+      ...current,
+      ...projectUpdates,
+      status: editForm.status,
+      health: editForm.health,
+    }))
     router.refresh()
     return true
   }

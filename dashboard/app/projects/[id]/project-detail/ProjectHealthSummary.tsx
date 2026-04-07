@@ -20,12 +20,12 @@ function SummaryMetric({
   )
 }
 
-function humanizeProjectStatus(status: Project["status"]) {
-  if (!status) {
+function humanizeProjectValue(value?: string | null) {
+  if (!value) {
     return "Unknown"
   }
 
-  return status
+  return value
     .split("_")
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ")
@@ -66,7 +66,11 @@ export function ProjectHealthSummary({
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryMetric
           label="Project Status"
-          value={humanizeProjectStatus(summary.status)}
+          value={humanizeProjectValue(summary.status)}
+        />
+        <SummaryMetric
+          label="Health"
+          value={humanizeProjectValue(summary.health)}
         />
         <SummaryMetric
           label="Progress"

@@ -6,7 +6,12 @@ import {
   validateProjectForm,
   type ProjectFormErrors,
 } from "@/lib/project-validation"
-import type { Project, ProjectVisibility } from "@/lib/projects"
+import {
+  mergeProjectWithProgress,
+  type Project,
+  type ProjectVisibility,
+  type ProjectRow,
+} from "@/lib/projects"
 import { supabase } from "@/lib/supabase"
 
 type UseCreateProjectFormParams = {
@@ -98,7 +103,7 @@ export function useCreateProjectForm({
     }
 
     if (data) {
-      onProjectCreated(data)
+      onProjectCreated(mergeProjectWithProgress(data as ProjectRow, null))
     }
 
     resetForm()

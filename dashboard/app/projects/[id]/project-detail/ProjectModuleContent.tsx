@@ -375,33 +375,6 @@ export function ProjectModuleContent({
             onChange={(event) => taskUi.setNewTaskDueDate(event.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
           />
-          <select
-            value={taskUi.newTaskPriority}
-            onChange={(event) =>
-              taskUi.setNewTaskPriority(
-                event.target.value as typeof taskUi.newTaskPriority
-              )
-            }
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
-          >
-            <option value="low">Low Priority</option>
-            <option value="medium">Medium Priority</option>
-            <option value="high">High Priority</option>
-          </select>
-          <select
-            value={taskUi.newTaskStatus}
-            onChange={(event) =>
-              taskUi.setNewTaskStatus(
-                event.target.value as typeof taskUi.newTaskStatus
-              )
-            }
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 sm:w-40"
-          >
-            <option value="not_started">Not Started</option>
-            <option value="in_progress">In Progress</option>
-            <option value="blocked">Blocked</option>
-            <option value="completed">Completed</option>
-          </select>
           <button
             onClick={() => void taskUi.handleAddTask()}
             disabled={taskUi.isSavingTask || !taskUi.newTaskText.trim()}
@@ -449,9 +422,8 @@ export function ProjectModuleContent({
           )}
 
           {taskUi.sortedTasks.map((task) => {
-            const taskStatusBadge = taskUi.getTaskStatusBadge(task)
-            const taskPriorityBadge = taskUi.getTaskPriorityBadge(task)
             const isOverdueTask = taskUi.isTaskOverdue(task)
+            const taskDueBadge = taskUi.getTaskStatusBadge(task)
 
             return (
               <div
@@ -465,9 +437,7 @@ export function ProjectModuleContent({
                     ? "bg-slate-50 opacity-80"
                     : isOverdueTask
                       ? "border-red-200 bg-red-50/60 opacity-100"
-                      : task.priority === "high"
-                        ? "border-amber-200 bg-amber-50/60 opacity-100"
-                        : "bg-white opacity-100"
+                      : "bg-white opacity-100"
                 } hover:bg-slate-50 ${taskUi.isSavingTasks ? "cursor-not-allowed" : "cursor-pointer"}`}
               >
                 <div className="flex flex-1 items-center gap-3 text-sm">
@@ -487,9 +457,9 @@ export function ProjectModuleContent({
                           ? "text-red-700 transition-all duration-200"
                           : "text-slate-700 transition-all duration-200"
                     }
-                    >
-                      {task.text}
-                    </span>
+                  >
+                    {task.text}
+                  </span>
                 </div>
 
                 <div
@@ -507,61 +477,21 @@ export function ProjectModuleContent({
                     className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
-                  <select
-                    value={task.priority}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) =>
-                      void taskUi.handleUpdateTaskPriority(
-                        task.id,
-                        event.target.value as typeof task.priority
-                      )
-                    }
-                    disabled={taskUi.isSavingTasks}
-                    className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-
-                  <select
-                    value={task.status}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) =>
-                      void taskUi.handleUpdateTaskStatus(
-                        task.id,
-                        event.target.value as typeof task.status
-                      )
-                    }
-                    disabled={taskUi.isSavingTasks}
-                    className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <option value="not_started">Not Started</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="blocked">Blocked</option>
-                    <option value="completed">Completed</option>
-                  </select>
-
-                  <span
-                    onClick={(event) => event.stopPropagation()}
-                    className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskStatusBadge.className}`}
-                  >
-                    {taskStatusBadge.label}
-                  </span>
-
-                  <span
-                    onClick={(event) => event.stopPropagation()}
-                    className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskPriorityBadge.className}`}
-                  >
-                    {taskPriorityBadge.label}
-                  </span>
-
                   {isOverdueTask && (
                     <span
                       onClick={(event) => event.stopPropagation()}
                       className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-semibold text-red-700"
                     >
                       Overdue
+                    </span>
+                  )}
+
+                  {task.due_date && !isOverdueTask && (
+                    <span
+                      onClick={(event) => event.stopPropagation()}
+                      className={`rounded-full px-2 py-1 text-[10px] font-semibold ${taskDueBadge.className}`}
+                    >
+                      {taskDueBadge.label}
                     </span>
                   )}
 

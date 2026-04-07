@@ -28,8 +28,6 @@ import {
   getProjectModuleDisplayTitle,
   getProjectModuleAnchor,
   normalizeMetadataDrafts,
-  normalizeProgressInputValue,
-  normalizeProgressOnBlur,
   projectSectionAnchorOffsetPx,
 } from "./project-detail/helpers"
 import { ProjectModuleList } from "./project-detail/ProjectModuleList"
@@ -729,46 +727,30 @@ export default function ProjectDetailClient({
                 >
                   <option value="not_started">Not started</option>
                   <option value="in_progress">In progress</option>
-                  <option value="blocked">Blocked</option>
+                  <option value="paused">Paused</option>
                   <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Progress
+                  Health
                 </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={editForm.progress}
-                  onChange={(e) => {
+                <select
+                  value={editForm.health}
+                  onChange={(e) =>
                     setEditForm({
                       ...editForm,
-                      progress: normalizeProgressInputValue(e.target.value),
+                      health: e.target.value as typeof editForm.health,
                     })
-                    setSaveFieldErrors((current) => ({
-                      ...current,
-                      progress: undefined,
-                    }))
-                  }}
-                  onBlur={() =>
-                    setEditForm((current) => ({
-                      ...current,
-                      progress: normalizeProgressOnBlur(
-                        current.progress,
-                        currentProject.progress
-                      ),
-                    }))
                   }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                />
-                {saveFieldErrors.progress && (
-                  <p className="mt-1 text-xs font-medium text-red-600">
-                    {saveFieldErrors.progress}
-                  </p>
-                )}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+                >
+                  <option value="on_track">On track</option>
+                  <option value="at_risk">At risk</option>
+                  <option value="off_track">Off track</option>
+                </select>
               </div>
 
               <div>

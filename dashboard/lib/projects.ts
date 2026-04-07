@@ -1,17 +1,18 @@
 import { getDeadlineStatus, type DeadlineFilter } from "@/lib/project-deadline"
 
 export type ProjectVisibility = "public" | "private"
+export type LegacyProjectStatus =
+  | "not_started"
+  | "in_progress"
+  | "blocked"
+  | "completed"
 export type ProjectStatus =
   | "not_started"
   | "in_progress"
-  | "blocked"
+  | "paused"
   | "completed"
-export type ProjectTaskPriority = "low" | "medium" | "high"
-export type ProjectTaskStatus =
-  | "not_started"
-  | "in_progress"
-  | "completed"
-  | "blocked"
+  | "cancelled"
+export type ProjectHealth = "on_track" | "at_risk" | "off_track"
 export type SortOption = "due_date" | "created_at" | "name" | "progress"
 
 export type ProjectTask = {
@@ -20,11 +21,11 @@ export type ProjectTask = {
   module_id: string | null
   text: string
   completed: boolean
-  completed_at: string | null
   due_date: string | null
-  priority: ProjectTaskPriority
-  status: ProjectTaskStatus
+  notes: string | null
+  order: number
   created_at: string
+  updated_at: string
 }
 
 export type ProjectMetadata = {
@@ -46,6 +47,10 @@ export type Project = {
   user_id: string | null
   visibility: ProjectVisibility
   status: ProjectStatus
+  health: ProjectHealth
+  confidence: number | null
+  summary: string | null
+  last_reviewed_at: string | null
   intention: string | null
   idea: string | null
   target_buyer: string | null
@@ -55,6 +60,47 @@ export type Project = {
   supplier: string | null
   budget: string | null
   notes: string | null
+}
+
+export type ProjectRow = Omit<
+  Project,
+  "status" | "health" | "confidence" | "summary" | "last_reviewed_at"
+> & {
+  status: LegacyProjectStatus
+}
+
+export type ProjectProgressRow = {
+  project_id: number
+  status: ProjectStatus
+  health: ProjectHealth
+  progress_percent: number
+  confidence: number | null
+  summary: string | null
+  last_reviewed_at: string | null
+  updated_at: string
+}
+
+export function mapLegacyProjectStatus(status: LegacyProjectStatus): ProjectStatus {
+  if (status === "blocked") {
+    return "paused"
+  }
+
+  return status
+}
+
+export function mergeProjectWithProgress(
+  project: ProjectRow,
+  progress: ProjectProgressRow | null
+): Project {
+  return {
+    ...project,
+    status: progress?.status ?? mapLegacyProjectStatus(project.status),
+    health: progress?.health ?? "on_track",
+    progress: progress?.progress_percent ?? project.progress ?? 0,
+    confidence: progress?.confidence ?? null,
+    summary: progress?.summary ?? null,
+    last_reviewed_at: progress?.last_reviewed_at ?? null,
+  }
 }
 
 export function sortProjects(projects: Project[], sortBy: SortOption) {

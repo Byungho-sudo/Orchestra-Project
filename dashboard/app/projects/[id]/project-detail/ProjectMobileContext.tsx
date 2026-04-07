@@ -50,6 +50,15 @@ export function ProjectMobileContext({
             </p>
           </div>
 
+          <div className={fieldCardClassName}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Health
+            </p>
+            <p className="mt-2 text-sm font-medium text-slate-900">
+              {currentProject.health}
+            </p>
+          </div>
+
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-700">
