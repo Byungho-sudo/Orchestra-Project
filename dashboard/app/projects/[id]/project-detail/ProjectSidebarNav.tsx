@@ -1,5 +1,11 @@
 import Link from "next/link"
-import type { MouseEvent, PointerEvent, RefObject } from "react"
+import {
+  useLayoutEffect,
+  useRef,
+  type MouseEvent,
+  type PointerEvent,
+  type RefObject,
+} from "react"
 import {
   Sidebar,
   SidebarItem,
@@ -46,7 +52,6 @@ export function ProjectSidebarNav({
   isAddDisabled,
   moduleDropSlotIndex,
   navDropSlotIndex,
-  projectedDropSurface,
   navListRef,
   onAddModule,
   onFixedItemClick,
@@ -69,7 +74,6 @@ export function ProjectSidebarNav({
   isAddDisabled: boolean
   moduleDropSlotIndex: number | null
   navDropSlotIndex: number | null
-  projectedDropSurface: DragSurface
   navListRef: RefObject<HTMLDivElement | null>
   onAddModule: () => void
   onFixedItemClick: (event: MouseEvent<HTMLAnchorElement>) => void
@@ -89,17 +93,23 @@ export function ProjectSidebarNav({
   ) => void
   sortableItems: NavigationItem[]
 }) {
-  const visibleDropSlotIndex =
-    projectedDropSurface === "nav" ? navDropSlotIndex : null
+  const navItemElementRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const previousNavItemTopsRef = useRef<Record<string, number>>({})
+  const previousRenderedNavOrderSignatureRef = useRef<string | null>(null)
   const isNavDragging = activeDragSurface === "nav" && Boolean(draggedModuleId)
   const isModuleDragging = activeDragSurface === "module" && Boolean(draggedModuleId)
+  const visibleDropSlotIndex = isNavDragging ? navDropSlotIndex : null
   const dragHighlightedSectionId =
     draggedModuleId && activeDragSurface
       ? sortableItems.find((item) => item.moduleId === draggedModuleId)?.id ?? null
       : null
   const highlightedSectionId = dragHighlightedSectionId ?? activeSection
   const renderedSortableItems = isNavDragging
-    ? sortableItems.filter((item) => item.moduleId !== draggedModuleId)
+    ? reorderNavigationItemsBySlot(
+        sortableItems,
+        draggedModuleId!,
+        navDropSlotIndex
+      ).filter((item) => item.moduleId !== draggedModuleId)
     : isModuleDragging && draggedModuleId
       ? reorderNavigationItemsBySlot(
           sortableItems,
@@ -107,10 +117,58 @@ export function ProjectSidebarNav({
           moduleDropSlotIndex
         )
       : sortableItems
+  const renderedNavOrderSignature = renderedSortableItems
+    .map((item) => item.id)
+    .join(":")
   const draggedSortableItem =
     isNavDragging && draggedModuleId
       ? sortableItems.find((item) => item.moduleId === draggedModuleId) ?? null
       : null
+
+  useLayoutEffect(() => {
+    const nextNavItemTops: Record<string, number> = {}
+    const previousRenderedNavOrderSignature =
+      previousRenderedNavOrderSignatureRef.current
+    const shouldAnimate =
+      previousRenderedNavOrderSignature !== null &&
+      previousRenderedNavOrderSignature !== renderedNavOrderSignature
+
+    for (const item of renderedSortableItems) {
+      if (!item.moduleId) continue
+
+      const element = navItemElementRefs.current[item.moduleId]
+
+      if (!element) continue
+
+      const nextTop = element.getBoundingClientRect().top
+      nextNavItemTops[item.moduleId] = nextTop
+
+      if (!shouldAnimate) {
+        element.style.transform = ""
+        element.style.transition = ""
+        continue
+      }
+
+      const previousTop = previousNavItemTopsRef.current[item.moduleId]
+      const deltaY = previousTop === undefined ? 0 : previousTop - nextTop
+
+      if (Math.abs(deltaY) < 1) {
+        element.style.transform = ""
+        element.style.transition = ""
+        continue
+      }
+
+      element.style.transition = "none"
+      element.style.transform = `translate3d(0, ${deltaY}px, 0)`
+      element.getBoundingClientRect()
+      element.style.transition =
+        "transform 140ms cubic-bezier(0.22, 1, 0.36, 1)"
+      element.style.transform = "translate3d(0, 0, 0)"
+    }
+
+    previousNavItemTopsRef.current = nextNavItemTops
+    previousRenderedNavOrderSignatureRef.current = renderedNavOrderSignature
+  }, [renderedNavOrderSignature, renderedSortableItems])
 
   return (
     <Sidebar title="Navigation">
@@ -136,7 +194,10 @@ export function ProjectSidebarNav({
                 <div
                   ref={(element) =>
                     item.moduleId
-                      ? onModuleItemRefChange(item.moduleId, element)
+                      ? (() => {
+                          navItemElementRefs.current[item.moduleId] = element
+                          onModuleItemRefChange(item.moduleId, element)
+                        })()
                       : undefined
                   }
                   onPointerDown={(event) =>

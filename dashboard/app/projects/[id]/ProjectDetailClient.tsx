@@ -154,7 +154,6 @@ export default function ProjectDetailClient({
     moduleDropSlotIndex,
     projectedDropSurface,
     startSharedDrag,
-    updateProjectedDropSurface,
   } = useModuleDnD({
     isDragDisabled: isModuleDragDisabled,
     persistWorkspaceModuleOrder,
@@ -174,7 +173,6 @@ export default function ProjectDetailClient({
     isDragDisabled: isModuleDragDisabled,
     sortedWorkspaceModules,
     startSharedDrag,
-    updateProjectedDropSurface,
   })
   const {
     addMetadataField,
@@ -536,7 +534,6 @@ export default function ProjectDetailClient({
               }
               moduleDropSlotIndex={moduleDropSlotIndex}
               navDropSlotIndex={navDropSlotIndex}
-              projectedDropSurface={projectedDropSurface}
               navListRef={navListRef}
               onAddModule={handleOpenAddModuleModal}
               onFixedItemClick={(event) =>
@@ -586,18 +583,18 @@ export default function ProjectDetailClient({
             </div>
 
               <ProjectModuleList
-                activeDragSurface={activeDragSurface}
-                deletingModuleId={deletingModuleId}
-                draggedModuleFrame={draggedModuleFrame}
-                draggedModuleId={draggedModuleId}
-                isCreatingModule={isCreatingModule}
-                isResettingModules={isResettingModules}
-                moduleDropSlotIndex={moduleDropSlotIndex}
-                navDropSlotIndex={navDropSlotIndex}
-                projectedDropSurface={projectedDropSurface}
-                moduleError={moduleError}
-                modules={visibleWorkspaceModules}
-                movingModuleId={movingModuleId}
+                  activeDragSurface={activeDragSurface}
+                  deletingModuleId={deletingModuleId}
+                  draggedModuleFrame={draggedModuleFrame}
+                  draggedModuleId={draggedModuleId}
+                  isCreatingModule={isCreatingModule}
+                  isResettingModules={isResettingModules}
+                  moduleDropSlotIndex={moduleDropSlotIndex}
+                  navDropSlotIndex={navDropSlotIndex}
+                  projectedDropSurface={projectedDropSurface}
+                  moduleError={moduleError}
+                  modules={visibleWorkspaceModules}
+                  movingModuleId={movingModuleId}
                 onAddModule={handleOpenAddModuleModal}
                 onDeleteModule={handleDeleteWorkspaceModule}
                 onEditModule={handleOpenEditModuleModal}

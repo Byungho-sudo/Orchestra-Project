@@ -16,7 +16,6 @@ export function useNavDnD({
   isDragDisabled,
   sortedWorkspaceModules,
   startSharedDrag,
-  updateProjectedDropSurface,
 }: {
   activeDragSurface: DragSurface
   activeDragModuleId: string | null
@@ -27,7 +26,6 @@ export function useNavDnD({
     moduleId: string,
     dragSurface: Exclude<DragSurface, null>
   ) => void
-  updateProjectedDropSurface: (nextSurface: DragSurface) => void
 }) {
   const [draggedNavItemFrame, setDraggedNavItemFrame] = useState<{
     moduleId: string
@@ -56,6 +54,7 @@ export function useNavDnD({
   const navPointerPositionRef = useRef<{ y: number } | null>(null)
   const navVisualFrameRef = useRef<number | null>(null)
   const navPointerListenersRef = useRef<{
+    cancel: (event: globalThis.PointerEvent) => void
     move: (event: globalThis.PointerEvent) => void
     up: () => void
   } | null>(null)
@@ -63,6 +62,7 @@ export function useNavDnD({
   const navListRef = useRef<HTMLDivElement | null>(null)
   const suppressNavClickRef = useRef<string | null>(null)
   const navDropSlotIndexRef = useRef<number | null>(null)
+  const navSlotMidpointsRef = useRef<number[] | null>(null)
 
   const detachNavPointerListeners = useCallback(() => {
     if (!navPointerListenersRef.current || typeof window === "undefined") {
@@ -70,6 +70,10 @@ export function useNavDnD({
     }
 
     window.removeEventListener("pointermove", navPointerListenersRef.current.move)
+    window.removeEventListener(
+      "pointercancel",
+      navPointerListenersRef.current.cancel
+    )
     window.removeEventListener("pointerup", navPointerListenersRef.current.up)
     navPointerListenersRef.current = null
   }, [])
@@ -113,31 +117,72 @@ export function useNavDnD({
   }, [])
 
   const getNavDropSlotIndexFromPointer = useCallback(
-    (clientY: number, draggedId: string) => {
-      const sortableItems = sortedWorkspaceModules.filter(
-        (workspaceModule) => workspaceModule.id !== draggedId
-      )
+    (clientY: number) => {
+      const slotMidpoints = navSlotMidpointsRef.current
 
-      if (sortableItems.length === 0) {
+      if (!slotMidpoints || slotMidpoints.length === 0) {
         return null
       }
 
-      for (let slotIndex = 0; slotIndex < sortableItems.length; slotIndex += 1) {
-        const navItemElement = navItemRefs.current[sortableItems[slotIndex].id]
-
-        if (!navItemElement) continue
-
-        const bounds = navItemElement.getBoundingClientRect()
-        const itemMidpoint = bounds.top + bounds.height / 2
+      for (let slotIndex = 0; slotIndex < slotMidpoints.length; slotIndex += 1) {
+        const itemMidpoint = slotMidpoints[slotIndex]
 
         if (clientY < itemMidpoint) {
-          return slotIndex
+          const nextSlotIndex = slotIndex
+          const currentSlotIndex = navDropSlotIndexRef.current
+
+          if (
+            currentSlotIndex === null ||
+            currentSlotIndex === nextSlotIndex ||
+            Math.abs(currentSlotIndex - nextSlotIndex) > 1
+          ) {
+            return nextSlotIndex
+          }
+
+          const boundaryIndex = Math.min(currentSlotIndex, nextSlotIndex)
+          const boundaryMidpoint = slotMidpoints[boundaryIndex]
+          const hysteresisBufferPx = 14
+
+          if (boundaryMidpoint === undefined) {
+            return nextSlotIndex
+          }
+
+          if (nextSlotIndex > currentSlotIndex) {
+            return clientY > boundaryMidpoint + hysteresisBufferPx
+              ? nextSlotIndex
+              : currentSlotIndex
+          }
+
+          return clientY < boundaryMidpoint - hysteresisBufferPx
+            ? nextSlotIndex
+            : currentSlotIndex
         }
       }
 
-      return sortableItems.length
+      const nextSlotIndex = slotMidpoints.length
+      const currentSlotIndex = navDropSlotIndexRef.current
+
+      if (
+        currentSlotIndex === null ||
+        currentSlotIndex === nextSlotIndex ||
+        Math.abs(currentSlotIndex - nextSlotIndex) > 1
+      ) {
+        return nextSlotIndex
+      }
+
+      const boundaryIndex = nextSlotIndex - 1
+      const boundaryMidpoint = slotMidpoints[boundaryIndex]
+      const hysteresisBufferPx = 14
+
+      if (boundaryMidpoint === undefined) {
+        return nextSlotIndex
+      }
+
+      return clientY > boundaryMidpoint + hysteresisBufferPx
+        ? nextSlotIndex
+        : currentSlotIndex
     },
-    [sortedWorkspaceModules]
+    []
   )
 
   const handleNavItemPointerDown = useCallback(
@@ -179,6 +224,20 @@ export function useNavDnD({
           suppressNavClickRef.current = dragContext.itemId
           navPointerPositionRef.current = { y: moveEvent.clientY }
           startSharedDrag(moduleId, "nav")
+          navSlotMidpointsRef.current = sortedWorkspaceModules
+            .filter((workspaceModule) => workspaceModule.id !== moduleId)
+            .map((workspaceModule) => {
+              const navItemElement = navItemRefs.current[workspaceModule.id]
+
+              if (!navItemElement) {
+                return null
+              }
+
+              const bounds = navItemElement.getBoundingClientRect()
+
+              return bounds.top + bounds.height / 2
+            })
+            .filter((midpoint): midpoint is number => midpoint !== null)
           const nextDraggedNavItemFrame = {
             moduleId,
             left: navItemBounds.left,
@@ -186,32 +245,32 @@ export function useNavDnD({
             width: navItemBounds.width,
             height: navItemBounds.height,
           }
+          const initialSlotIndex = sortedWorkspaceModules.findIndex(
+            (workspaceModule) => workspaceModule.id === moduleId
+          )
           draggedNavItemFrameRef.current = nextDraggedNavItemFrame
           setDraggedNavItemFrame(nextDraggedNavItemFrame)
-          navDropSlotIndexRef.current = null
-          setNavDropSlotIndex(null)
-          updateProjectedDropSurface(null)
+          navDropSlotIndexRef.current =
+            initialSlotIndex === -1 ? null : initialSlotIndex
+          setNavDropSlotIndex(initialSlotIndex === -1 ? null : initialSlotIndex)
         }
 
         navPointerPositionRef.current = { y: moveEvent.clientY }
         updateDraggedNavItemVisualPosition(moduleId)
-        const nextSlotIndex = getNavDropSlotIndexFromPointer(
-          moveEvent.clientY,
-          moduleId
-        )
+        const nextSlotIndex = getNavDropSlotIndexFromPointer(moveEvent.clientY)
         navDropSlotIndexRef.current = nextSlotIndex
         setNavDropSlotIndex((currentSlotIndex) =>
           currentSlotIndex === nextSlotIndex ? currentSlotIndex : nextSlotIndex
         )
-        updateProjectedDropSurface(nextSlotIndex === null ? null : "nav")
       }
 
-      const handlePointerUp = async () => {
+      const finalizeNavPointerDrag = async (options?: { cancel?: boolean }) => {
         const dragContext = navDragContextRef.current
 
         navDragContextRef.current = null
         draggedNavItemFrameRef.current = null
         navPointerPositionRef.current = null
+        navSlotMidpointsRef.current = null
         detachNavPointerListeners()
         setNavDropSlotIndex(null)
         if (navVisualFrameRef.current) {
@@ -224,10 +283,19 @@ export function useNavDnD({
         }
 
         if (!dragContext.startedDragging) {
+          if (options?.cancel) {
+            setDraggedNavItemFrame(null)
+            await commitModuleDrop(null, null)
+          }
           return
         }
 
         setDraggedNavItemFrame(null)
+
+        if (options?.cancel) {
+          await commitModuleDrop(null, null)
+          return
+        }
 
         await commitModuleDrop(
           dragContext.moduleId,
@@ -241,12 +309,22 @@ export function useNavDnD({
         }, 0)
       }
 
+      const handlePointerUp = async () => {
+        await finalizeNavPointerDrag()
+      }
+
+      const handlePointerCancel = async () => {
+        await finalizeNavPointerDrag({ cancel: true })
+      }
+
       navPointerListenersRef.current = {
+        cancel: handlePointerCancel,
         move: handlePointerMove,
         up: handlePointerUp,
       }
 
       window.addEventListener("pointermove", handlePointerMove)
+      window.addEventListener("pointercancel", handlePointerCancel)
       window.addEventListener("pointerup", handlePointerUp, { once: true })
     },
     [
@@ -254,9 +332,9 @@ export function useNavDnD({
       detachNavPointerListeners,
       getNavDropSlotIndexFromPointer,
       isDragDisabled,
+      sortedWorkspaceModules,
       startSharedDrag,
       updateDraggedNavItemVisualPosition,
-      updateProjectedDropSurface,
     ]
   )
 
@@ -294,6 +372,7 @@ export function useNavDnD({
 
   useEffect(() => {
     if (activeDragSurface !== "nav") {
+      navSlotMidpointsRef.current = null
       navDropSlotIndexRef.current = null
       setNavDropSlotIndex(null)
     }
@@ -301,16 +380,50 @@ export function useNavDnD({
 
   useEffect(() => {
     if (!activeDragModuleId || activeDragSurface !== "nav") {
+      navSlotMidpointsRef.current = null
       draggedNavItemFrameRef.current = null
       setDraggedNavItemFrame(null)
     }
   }, [activeDragModuleId, activeDragSurface])
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const handleWindowBlur = () => {
+      if (!navDragContextRef.current) {
+        return
+      }
+
+      navDragContextRef.current = null
+      draggedNavItemFrameRef.current = null
+      navPointerPositionRef.current = null
+      navSlotMidpointsRef.current = null
+      navDropSlotIndexRef.current = null
+      setDraggedNavItemFrame(null)
+      setNavDropSlotIndex(null)
+      if (navVisualFrameRef.current) {
+        cancelAnimationFrame(navVisualFrameRef.current)
+        navVisualFrameRef.current = null
+      }
+      detachNavPointerListeners()
+      void commitModuleDrop(null, null)
+    }
+
+    window.addEventListener("blur", handleWindowBlur)
+
+    return () => {
+      window.removeEventListener("blur", handleWindowBlur)
+    }
+  }, [commitModuleDrop, detachNavPointerListeners])
+
+  useEffect(() => {
     return () => {
       if (navVisualFrameRef.current) {
         cancelAnimationFrame(navVisualFrameRef.current)
       }
+      navSlotMidpointsRef.current = null
       detachNavPointerListeners()
     }
   }, [detachNavPointerListeners])

@@ -66,6 +66,7 @@ export function ProjectModuleList({
 }) {
   const moduleItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const previousModuleTopsRef = useRef<Record<string, number>>({})
+  const previousModuleOrderSignatureRef = useRef<string | null>(null)
   const visibleDropSlotIndex =
     projectedDropSurface === "module" ? moduleDropSlotIndex : null
   const isModuleDragging =
@@ -74,12 +75,9 @@ export function ProjectModuleList({
   const renderedModules = isModuleDragging
     ? modules.filter((module) => module.id !== draggedModuleId)
     : isNavDragging && draggedModuleId
-      ? reorderWorkspaceModulesBySlot(
-          modules,
-          draggedModuleId,
-          navDropSlotIndex
-        )
+      ? reorderWorkspaceModulesBySlot(modules, draggedModuleId, navDropSlotIndex)
     : modules
+  const moduleOrderSignature = renderedModules.map((module) => module.id).join(":")
   const draggedModule =
     isModuleDragging && draggedModuleId
       ? modules.find((module) => module.id === draggedModuleId) ?? null
@@ -92,6 +90,11 @@ export function ProjectModuleList({
 
   useLayoutEffect(() => {
     const nextModuleTops: Record<string, number> = {}
+    const previousModuleOrderSignature = previousModuleOrderSignatureRef.current
+    const shouldAnimate =
+      !isModuleDragging &&
+      previousModuleOrderSignature !== null &&
+      previousModuleOrderSignature !== moduleOrderSignature
 
     for (const workspaceModule of renderedModules) {
       const element = moduleItemRefs.current[workspaceModule.id]
@@ -101,13 +104,7 @@ export function ProjectModuleList({
       const nextTop = element.getBoundingClientRect().top
       nextModuleTops[workspaceModule.id] = nextTop
 
-      if (!isNavDragging) {
-        element.style.transform = ""
-        element.style.transition = ""
-        continue
-      }
-
-      if (workspaceModule.id === draggedModuleId) {
+      if (!shouldAnimate) {
         element.style.transform = ""
         element.style.transition = ""
         continue
@@ -123,15 +120,16 @@ export function ProjectModuleList({
       }
 
       element.style.transition = "none"
-      element.style.transform = `translateY(${deltaY}px)`
+      element.style.transform = `translate3d(0, ${deltaY}px, 0)`
       element.getBoundingClientRect()
       element.style.transition =
-        "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)"
+        "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
       element.style.transform = "translate3d(0, 0, 0)"
     }
 
     previousModuleTopsRef.current = nextModuleTops
-  }, [draggedModuleId, isNavDragging, renderedModules])
+    previousModuleOrderSignatureRef.current = moduleOrderSignature
+  }, [isModuleDragging, moduleOrderSignature, renderedModules])
 
   return (
     <div className={`mt-9 ${projectModuleStackGapClassName}`}>
@@ -153,8 +151,7 @@ export function ProjectModuleList({
           <ProjectModuleSection
             module={module}
             isDragging={
-              (activeDragSurface === "module" || activeDragSurface === "nav") &&
-              draggedModuleId === module.id
+              activeDragSurface === "module" && draggedModuleId === module.id
             }
             isDeleting={deletingModuleId === module.id || isResettingModules}
             isMoving={movingModuleId === module.id || isResettingModules}
