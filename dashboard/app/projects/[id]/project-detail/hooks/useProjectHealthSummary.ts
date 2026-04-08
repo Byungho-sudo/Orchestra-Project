@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { getDeadlineStatus } from "@/lib/project-deadline"
+import { calculateProjectProgressFromTimeline } from "@/lib/project-progress"
 import type { Project } from "@/lib/projects"
 import { supabase } from "@/lib/supabase"
 import {
@@ -115,6 +116,8 @@ export function useProjectHealthSummary({ project }: { project: Project }) {
     const blockedMilestoneCount = timelineRows.filter(
       (event) => event.status === "blocked"
     ).length
+    const timelineProgress = calculateProjectProgressFromTimeline(timelineRows)
+    const hasTimelineProgress = totalMilestoneCount > 0
 
     return {
       blockedMilestoneCount,
@@ -123,7 +126,9 @@ export function useProjectHealthSummary({ project }: { project: Project }) {
       deadlineStatus: getDeadlineStatus(project.due_date),
       health: project.health,
       overdueTaskCount,
-      progress: project.progress,
+      progress: hasTimelineProgress
+        ? timelineProgress.progress_percent
+        : project.progress,
       status: project.status,
       totalMilestoneCount,
       totalTaskCount,

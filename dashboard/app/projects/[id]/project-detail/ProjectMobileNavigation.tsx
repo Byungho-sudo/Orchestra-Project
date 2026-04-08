@@ -29,8 +29,8 @@ export function ProjectMobileNavigation({
 
   return (
     <ModalShell
-      overlayClassName="fixed inset-0 z-50 bg-slate-900/40 lg:hidden"
-      panelClassName="absolute left-0 top-0 h-full w-full max-w-sm overflow-y-auto rounded-r-2xl bg-slate-50 p-5 shadow-xl"
+      overlayClassName="fixed inset-0 z-50 bg-slate-900/40 overscroll-none lg:hidden"
+      panelClassName="absolute left-0 top-0 h-full w-full max-w-sm overflow-y-auto overscroll-contain rounded-r-2xl bg-slate-50 p-5 shadow-xl"
       onClose={onClose}
     >
       {({ requestClose }) => (
@@ -58,8 +58,10 @@ export function ProjectMobileNavigation({
             <button
               type="button"
               onClick={() => {
-                onSelectSection(fixedItem.id)
                 requestClose()
+                requestAnimationFrame(() => {
+                  onSelectSection(fixedItem.id)
+                })
               }}
               className={`flex w-full items-center rounded-lg px-3 py-3 text-left transition-colors ${
                 activeSection === fixedItem.id
@@ -75,8 +77,10 @@ export function ProjectMobileNavigation({
                 type="button"
                 key={item.id}
                 onClick={() => {
-                  onSelectSection(item.id)
                   requestClose()
+                  requestAnimationFrame(() => {
+                    onSelectSection(item.id)
+                  })
                 }}
                 className={`mt-1.5 flex w-full items-center rounded-lg px-3 py-3 text-left transition-colors ${
                   activeSection === item.id

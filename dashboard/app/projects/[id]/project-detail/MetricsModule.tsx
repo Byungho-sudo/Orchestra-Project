@@ -9,6 +9,7 @@ import {
   formatMetricValue,
   getMetricCompletionState,
   getMetricProgress,
+  summarizeProjectMetrics,
   useProjectMetrics,
   type ProjectMetricDraft,
   type ProjectMetricRecord,
@@ -118,6 +119,10 @@ export function MetricsModule({
     "idle" | "saving" | "saved" | "error"
   >("idle")
   const primaryInputRef = useRef<HTMLInputElement | null>(null)
+  const pendingAutosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  )
+  const metricsSummary = useMemo(() => summarizeProjectMetrics(metrics), [metrics])
 
   const hasDraftChanges = useMemo(() => {
     const initialDraft = createMetricDraft(editingMetric)
@@ -190,7 +195,7 @@ export function MetricsModule({
       return
     }
 
-    const autosaveTimeout = setTimeout(() => {
+    pendingAutosaveTimeoutRef.current = setTimeout(() => {
       setEditSaveState("saving")
       void updateMetric(editingMetric.id, draft).then((didSave) => {
         setEditSaveState(didSave ? "saved" : "error")
@@ -198,9 +203,20 @@ export function MetricsModule({
     }, autosaveDelayMs)
 
     return () => {
-      clearTimeout(autosaveTimeout)
+      if (pendingAutosaveTimeoutRef.current) {
+        clearTimeout(pendingAutosaveTimeoutRef.current)
+        pendingAutosaveTimeoutRef.current = null
+      }
     }
   }, [draft, editingMetric, hasDraftChanges, isModalOpen, savingMetricId, updateMetric])
+
+  useEffect(() => {
+    return () => {
+      if (pendingAutosaveTimeoutRef.current) {
+        clearTimeout(pendingAutosaveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (editSaveState !== "saved") return
@@ -217,6 +233,11 @@ export function MetricsModule({
   }, [editSaveState])
 
   const handleSubmit = useCallback(async () => {
+    if (pendingAutosaveTimeoutRef.current) {
+      clearTimeout(pendingAutosaveTimeoutRef.current)
+      pendingAutosaveTimeoutRef.current = null
+    }
+
     if (editingMetric) {
       const didSave = hasDraftChanges
         ? await updateMetric(editingMetric.id, draft)
@@ -281,6 +302,66 @@ export function MetricsModule({
       {error && <p className="mt-4 text-sm font-medium text-red-600">{error}</p>}
 
       <div className="mt-6 space-y-4">
+        {metrics.length > 0 && (
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Total Metrics
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {metricsSummary.totalCount}
+              </p>
+              <p className="mt-2 text-sm text-slate-500">
+                Active numeric checkpoints in this module.
+              </p>
+            </div>
+
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Completed
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {metricsSummary.completedCount}
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-[width]"
+                  style={{
+                    width: `${
+                      metricsSummary.totalCount === 0
+                        ? 0
+                        : (metricsSummary.completedCount / metricsSummary.totalCount) *
+                          100
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className={fieldCardClassName}>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Average Progress
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {metricsSummary.averageProgress === null
+                  ? "--"
+                  : `${Math.round(metricsSummary.averageProgress)}%`}
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-[width]"
+                  style={{
+                    width: `${Math.round(metricsSummary.averageProgress ?? 0)}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-sm text-slate-500">
+                Based on {metricsSummary.withTargetCount} target-based metrics.
+              </p>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <p className="text-sm text-slate-500">Loading metrics...</p>
         ) : metrics.length === 0 ? (

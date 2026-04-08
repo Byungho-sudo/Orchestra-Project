@@ -216,8 +216,8 @@ export function useProjectMetrics({
         return "Target value must be a valid number."
       }
 
-      if (targetValue < 0) {
-        return "Target value must be zero or greater."
+      if (targetValue <= 0) {
+        return "Target value must be greater than zero."
       }
     }
 

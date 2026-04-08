@@ -19,8 +19,10 @@ import { ProjectMobileNavigation } from "./project-detail/ProjectMobileNavigatio
 import { ProjectModuleContent } from "./project-detail/ProjectModuleContent"
 import {
   customProjectModuleOptions,
+  getEditableProjectModuleOptions,
   getProjectModuleDisplayTitle,
   getProjectModuleAnchor,
+  isEnterCommitEvent,
   isRetiredProjectModuleType,
   normalizeMetadataDrafts,
   projectSectionAnchorOffsetPx,
@@ -43,6 +45,9 @@ export default function ProjectDetailClient({
 }: {
   project: Project
 }) {
+  const editProjectFormId = "edit-project-form"
+  const editModuleFormId = "edit-module-form"
+  const addModuleFormId = "add-module-form"
   const router = useRouter()
   const { currentUser, logout } = useCurrentUser()
   const [activeSection, setActiveSection] = useState("")
@@ -424,10 +429,12 @@ export default function ProjectDetailClient({
       pendingNavigationTimeoutRef.current = null
     }, 1200)
 
+    const isMobileViewport = window.matchMedia("(max-width: 1023px)").matches
+
     window.history.replaceState(null, "", href)
     targetElement.scrollIntoView({
       behavior: "smooth",
-      block: "center",
+      block: isMobileViewport ? "start" : "center",
     })
   }
 
@@ -636,10 +643,7 @@ export default function ProjectDetailClient({
         isOpen={isMobileNavOpen}
         onAddModule={handleOpenAddModuleModal}
         onClose={() => setIsMobileNavOpen(false)}
-        onSelectSection={(sectionId) => {
-          handleSelectSection(sectionId)
-          setIsMobileNavOpen(false)
-        }}
+        onSelectSection={handleSelectSection}
         sortableItems={sortableProjectWorkspaceNavigation}
       />
 
@@ -658,7 +662,14 @@ export default function ProjectDetailClient({
               Update the project details below.
             </p>
 
-            <div className="mt-6 space-y-4">
+            <form
+              id={editProjectFormId}
+              className="mt-6 space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleUpdateProject()
+              }}
+            >
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Name
@@ -719,6 +730,12 @@ export default function ProjectDetailClient({
                       due_date: undefined,
                     }))
                   }}
+                  onKeyDown={(event) => {
+                    if (!isEnterCommitEvent(event)) return
+
+                    event.preventDefault()
+                    void handleUpdateProject()
+                  }}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                 />
                 {saveFieldErrors.due_date && (
@@ -744,6 +761,12 @@ export default function ProjectDetailClient({
                       visibility: undefined,
                     }))
                   }}
+                  onKeyDown={(event) => {
+                    if (!isEnterCommitEvent(event)) return
+
+                    event.preventDefault()
+                    void handleUpdateProject()
+                  }}
                   className="w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                 >
                   <option value="private">Private</option>
@@ -759,7 +782,7 @@ export default function ProjectDetailClient({
               {saveError && (
                 <p className="text-sm font-medium text-red-600">{saveError}</p>
               )}
-            </div>
+            </form>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -772,8 +795,8 @@ export default function ProjectDetailClient({
               </button>
 
               <button
-                type="button"
-                onClick={handleUpdateProject}
+                type="submit"
+                form={editProjectFormId}
                 disabled={isSaving || !editForm.name.trim()}
                 className="inline-flex cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -937,7 +960,14 @@ export default function ProjectDetailClient({
                 Update the selected module title and behavior type.
               </p>
 
-              <div className="mt-6 space-y-4">
+              <form
+                id={editModuleFormId}
+                className="mt-6 space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void handleUpdateWorkspaceModule()
+                }}
+              >
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Module Title
@@ -972,7 +1002,7 @@ export default function ProjectDetailClient({
                     }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                   >
-                    {customProjectModuleOptions.map((option) => (
+                    {getEditableProjectModuleOptions(editModuleForm.type).map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -985,7 +1015,7 @@ export default function ProjectDetailClient({
                     {moduleError}
                   </p>
                 )}
-              </div>
+              </form>
 
               <div className="mt-6 flex justify-end gap-3">
                 <button
@@ -998,8 +1028,8 @@ export default function ProjectDetailClient({
                 </button>
 
                 <button
-                  type="button"
-                  onClick={handleUpdateWorkspaceModule}
+                  type="submit"
+                  form={editModuleFormId}
                   disabled={isUpdatingModule || !hasEditModuleChanges}
                   className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -1025,7 +1055,14 @@ export default function ProjectDetailClient({
                 Create a new workspace module in the center column.
               </p>
 
-              <div className="mt-6 space-y-4">
+              <form
+                id={addModuleFormId}
+                className="mt-6 space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void handleCreateWorkspaceModule()
+                }}
+              >
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Module Title
@@ -1067,7 +1104,7 @@ export default function ProjectDetailClient({
                     ))}
                   </select>
                 </div>
-              </div>
+              </form>
 
               {moduleError && (
                 <p className="mt-4 text-sm font-medium text-red-600">
@@ -1086,8 +1123,8 @@ export default function ProjectDetailClient({
                 </button>
 
                 <button
-                  type="button"
-                  onClick={handleCreateWorkspaceModule}
+                  type="submit"
+                  form={addModuleFormId}
                   disabled={isCreatingModule || !createModuleForm.title.trim()}
                   className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                 >

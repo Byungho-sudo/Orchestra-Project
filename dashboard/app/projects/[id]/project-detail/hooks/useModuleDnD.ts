@@ -37,7 +37,15 @@ export function useModuleDnD({
     height: number
   } | null>(null)
   const dragAutoScrollFrameRef = useRef<number | null>(null)
+  const draggedModuleFrameRef = useRef<{
+    moduleId: string
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const dragAutoScrollVelocityRef = useRef(0)
+  const dragVisualFrameRef = useRef<number | null>(null)
   const dragUsesTouchScrollRef = useRef(false)
   const projectedDropSurfaceRef = useRef<DragSurface>(null)
   const moduleDropSlotIndexRef = useRef<number | null>(null)
@@ -45,6 +53,9 @@ export function useModuleDnD({
     moduleId: string
     grabOffsetX: number
     grabOffsetY: number
+    hasStartedDragging: boolean
+    startX: number
+    startY: number
   } | null>(null)
   const pointerPositionRef = useRef<{ x: number; y: number } | null>(null)
   const pointerDragListenersRef = useRef<{
@@ -149,9 +160,14 @@ export function useModuleDnD({
   const clearDragState = useCallback(() => {
     stopDragAutoScroll()
     dragUsesTouchScrollRef.current = false
+    draggedModuleFrameRef.current = null
     pointerPositionRef.current = null
     projectedDropSurfaceRef.current = null
     moduleDropSlotIndexRef.current = null
+    if (dragVisualFrameRef.current) {
+      cancelAnimationFrame(dragVisualFrameRef.current)
+      dragVisualFrameRef.current = null
+    }
     setActiveDragSurface(null)
     setProjectedDropSurface(null)
     setModuleDropSlotIndex(null)
@@ -163,6 +179,7 @@ export function useModuleDnD({
     (moduleId: string, dragSurface: Exclude<DragSurface, null>) => {
       setActiveDragSurface(dragSurface)
       setDraggedModuleId(moduleId)
+      draggedModuleFrameRef.current = null
       setDraggedModuleFrame(null)
       moduleDropSlotIndexRef.current = null
       setModuleDropSlotIndex(null)
@@ -240,24 +257,36 @@ export function useModuleDnD({
   )
 
   const updateDraggedModuleVisualPosition = useCallback((moduleId: string) => {
-    const dragContext = pointerDragContextRef.current
-    const pointerPosition = pointerPositionRef.current
     const sectionElement = moduleSectionRefs.current[moduleId]
 
-    if (
-      !dragContext ||
-      dragContext.moduleId !== moduleId ||
-      !pointerPosition ||
-      !sectionElement
-    ) {
+    if (!sectionElement || dragVisualFrameRef.current) {
       return
     }
 
-    const desiredLeft = pointerPosition.x - dragContext.grabOffsetX
-    const desiredTop = pointerPosition.y - dragContext.grabOffsetY
+    dragVisualFrameRef.current = window.requestAnimationFrame(() => {
+      dragVisualFrameRef.current = null
 
-    sectionElement.style.left = `${desiredLeft}px`
-    sectionElement.style.top = `${desiredTop}px`
+      const dragContext = pointerDragContextRef.current
+      const pointerPosition = pointerPositionRef.current
+      const dragFrame = draggedModuleFrameRef.current
+
+      if (
+        !dragContext ||
+        dragContext.moduleId !== moduleId ||
+        !pointerPosition ||
+        !sectionElement ||
+        !dragFrame
+      ) {
+        return
+      }
+
+      const desiredLeft = pointerPosition.x - dragContext.grabOffsetX
+      const desiredTop = pointerPosition.y - dragContext.grabOffsetY
+      const offsetX = desiredLeft - dragFrame.left
+      const offsetY = desiredTop - dragFrame.top
+
+      sectionElement.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`
+    })
   }, [])
 
   const handleModulePointerDragStart = useCallback(
@@ -270,24 +299,28 @@ export function useModuleDnD({
         return
       }
 
-      event.preventDefault()
-
       const sectionElement = moduleSectionRefs.current[moduleId]
       const sectionBounds = sectionElement?.getBoundingClientRect()
+      const isTouchPointer = event.pointerType !== "mouse"
 
       pointerDragContextRef.current = {
         moduleId,
         grabOffsetX: sectionBounds ? event.clientX - sectionBounds.left : 0,
         grabOffsetY: sectionBounds ? event.clientY - sectionBounds.top : 0,
+        hasStartedDragging: !isTouchPointer,
+        startX: event.clientX,
+        startY: event.clientY,
       }
       pointerPositionRef.current = {
         x: event.clientX,
         y: event.clientY,
       }
-      dragUsesTouchScrollRef.current = event.pointerType !== "mouse"
-      startSharedDrag(moduleId, "module")
-      setDraggedModuleFrame(
-        sectionBounds
+      dragUsesTouchScrollRef.current = isTouchPointer
+
+      if (!isTouchPointer) {
+        event.preventDefault()
+        startSharedDrag(moduleId, "module")
+        const nextDraggedModuleFrame = sectionBounds
           ? {
               moduleId,
               left: sectionBounds.left,
@@ -296,7 +329,9 @@ export function useModuleDnD({
               height: sectionBounds.height,
             }
           : null
-      )
+        draggedModuleFrameRef.current = nextDraggedModuleFrame
+        setDraggedModuleFrame(nextDraggedModuleFrame)
+      }
       detachPointerDragListeners()
 
       const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
@@ -304,6 +339,32 @@ export function useModuleDnD({
 
         if (!dragContext || dragContext.moduleId !== moduleId) {
           return
+        }
+
+        if (!dragContext.hasStartedDragging) {
+          const moveDistanceX = Math.abs(moveEvent.clientX - dragContext.startX)
+          const moveDistanceY = Math.abs(moveEvent.clientY - dragContext.startY)
+
+          if (Math.max(moveDistanceX, moveDistanceY) < 8) {
+            return
+          }
+
+          dragContext.hasStartedDragging = true
+          moveEvent.preventDefault()
+          startSharedDrag(moduleId, "module")
+          const latestSectionBounds =
+            moduleSectionRefs.current[moduleId]?.getBoundingClientRect() ?? null
+          const nextDraggedModuleFrame = latestSectionBounds
+            ? {
+                moduleId,
+                left: latestSectionBounds.left,
+                top: latestSectionBounds.top,
+                width: latestSectionBounds.width,
+                height: latestSectionBounds.height,
+              }
+            : null
+          draggedModuleFrameRef.current = nextDraggedModuleFrame
+          setDraggedModuleFrame(nextDraggedModuleFrame)
         }
 
         pointerPositionRef.current = {
@@ -335,7 +396,7 @@ export function useModuleDnD({
         stopDragAutoScroll()
 
         await commitModuleDrop(
-          dragContext?.moduleId ?? null,
+          dragContext?.hasStartedDragging ? dragContext.moduleId : null,
           moduleDropSlotIndexRef.current
         )
       }
@@ -364,6 +425,10 @@ export function useModuleDnD({
   const handleModuleSectionRefChange = useCallback(
     (moduleId: string, element: HTMLElement | null) => {
       moduleSectionRefs.current[moduleId] = element
+
+      if (element && draggedModuleId !== moduleId) {
+        element.style.transform = ""
+      }
 
       if (draggedModuleId === moduleId) {
         updateDraggedModuleVisualPosition(moduleId)
