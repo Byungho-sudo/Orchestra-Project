@@ -238,6 +238,7 @@ export function useModuleDnD({
       const sortableModules = sortedWorkspaceModules.filter(
         (workspaceModule) => workspaceModule.id !== draggedId
       )
+      const slotBoundaryMidpoints: number[] = []
 
       if (sortableModules.length === 0) {
         return null
@@ -250,13 +251,62 @@ export function useModuleDnD({
 
         const bounds = sectionElement.getBoundingClientRect()
         const moduleMidpoint = bounds.top + bounds.height / 2
+        slotBoundaryMidpoints[slotIndex] = moduleMidpoint
 
         if (clientY < moduleMidpoint) {
-          return slotIndex
+          const nextSlotIndex = slotIndex
+          const currentSlotIndex = moduleDropSlotIndexRef.current
+
+          if (
+            currentSlotIndex === null ||
+            currentSlotIndex === nextSlotIndex ||
+            Math.abs(currentSlotIndex - nextSlotIndex) > 1
+          ) {
+            return nextSlotIndex
+          }
+
+          const boundaryIndex = Math.min(currentSlotIndex, nextSlotIndex)
+          const boundaryMidpoint = slotBoundaryMidpoints[boundaryIndex]
+          const hysteresisBufferPx = 18
+
+          if (boundaryMidpoint === undefined) {
+            return nextSlotIndex
+          }
+
+          if (nextSlotIndex > currentSlotIndex) {
+            return clientY > boundaryMidpoint + hysteresisBufferPx
+              ? nextSlotIndex
+              : currentSlotIndex
+          }
+
+          return clientY < boundaryMidpoint - hysteresisBufferPx
+            ? nextSlotIndex
+            : currentSlotIndex
         }
       }
 
-      return sortableModules.length
+      const nextSlotIndex = sortableModules.length
+      const currentSlotIndex = moduleDropSlotIndexRef.current
+
+      if (
+        currentSlotIndex === null ||
+        currentSlotIndex === nextSlotIndex ||
+        Math.abs(currentSlotIndex - nextSlotIndex) > 1
+      ) {
+        return nextSlotIndex
+      }
+
+      const boundaryIndex = nextSlotIndex - 1
+      const boundaryMidpoint = slotBoundaryMidpoints[boundaryIndex]
+      const hysteresisBufferPx = 18
+
+      if (boundaryMidpoint === undefined) {
+        return nextSlotIndex
+      }
+
+      return clientY > boundaryMidpoint + hysteresisBufferPx
+        ? nextSlotIndex
+        : currentSlotIndex
     },
     [sortedWorkspaceModules]
   )

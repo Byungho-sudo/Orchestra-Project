@@ -109,7 +109,7 @@ export function ProjectModuleSection({
           <div
             data-module-drag-handle
             aria-hidden="true"
-            className={`mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 ${
+            className={`mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 lg:hidden ${
               isDeleting || isMoving
                 ? "cursor-not-allowed opacity-60"
                 : isDragging
