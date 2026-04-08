@@ -7,7 +7,7 @@ const navigationLinks = [
   { href: "/dashboard", label: "Overview" },
   { href: "/projects", label: "Projects" },
   { href: "/team", label: "Team" },
-  { href: "/reports", label: "Reports" },
+  { href: "/tickets", label: "Tickets" },
 ]
 
 export function DashboardSidebar() {
