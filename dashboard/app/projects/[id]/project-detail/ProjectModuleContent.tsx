@@ -4,7 +4,6 @@ import { AssetsModule } from "./AssetsModule"
 import { ChecklistDueDate } from "./ChecklistDueDate"
 import { MetricsModule } from "./MetricsModule"
 import { NotesModule } from "./NotesModule"
-import { TextGridModule } from "./TextGridModule"
 import {
   humanizeProjectModuleType,
   isProjectModuleInstanceId,
@@ -25,7 +24,6 @@ function CustomProjectModulePlaceholder({
   module: ProjectWorkspaceModule
 }) {
   const moduleDescriptions: Partial<Record<ProjectModuleType, string>> = {
-    text_grid: "Organize structured text fields in this module.",
     notes: "Capture long-form notes and working context here.",
     checklist: "Track custom checklist items in this module.",
     metrics: "Summarize key project metrics in this module.",
@@ -144,10 +142,6 @@ export function ProjectModuleContent({
 
   if (isRetiredProjectModuleType(module.type)) {
     return null
-  }
-
-  if (module.type === "text_grid") {
-    return <TextGridModule moduleId={module.id} projectId={currentProject.id} />
   }
 
   if (module.type === "notes") {

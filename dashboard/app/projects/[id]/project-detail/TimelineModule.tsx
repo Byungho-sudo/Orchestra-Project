@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { calculateProjectProgressFromTimeline } from "@/lib/project-progress"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
   emptyTimelineEventDraft,
@@ -85,6 +86,10 @@ export function TimelineModule({
   )
   const [draft, setDraft] = useState<TimelineEventDraft>(emptyTimelineEventDraft)
   const primaryInputRef = useRef<HTMLInputElement | null>(null)
+  const progressSummary = useMemo(
+    () => calculateProjectProgressFromTimeline(events),
+    [events]
+  )
 
   const hasDraftChanges = useMemo(() => {
     const initialDraft = createTimelineEventDraft(editingEvent)
@@ -191,6 +196,35 @@ export function TimelineModule({
       {error && <p className="mt-4 text-sm font-medium text-red-600">{error}</p>}
 
       <div className="mt-6 space-y-4">
+        <div className={fieldCardClassName}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Timeline Progress
+              </p>
+              <p className="mt-2 text-sm text-slate-600">
+                Derived from completed milestones in this timeline.
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-2xl font-semibold text-slate-900">
+                {progressSummary.progress_percent}%
+              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {progressSummary.status.replace("_", " ")}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-indigo-500 transition-[width]"
+              style={{ width: `${progressSummary.progress_percent}%` }}
+            />
+          </div>
+        </div>
+
         {isLoading ? (
           <p className="text-sm text-slate-500">Loading milestones...</p>
         ) : events.length === 0 ? (

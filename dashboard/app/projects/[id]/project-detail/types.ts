@@ -13,7 +13,6 @@ export type ProjectModuleType =
   | DefaultProjectModuleType
   | "workspace_plan"
   | "planning_operations"
-  | "text_grid"
   | "notes"
   | "metrics"
   | "links"

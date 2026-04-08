@@ -45,6 +45,41 @@ export function ModalShell({
     }
   })
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const { body, documentElement } = document
+    const scrollY = window.scrollY
+    const previousBodyOverflow = body.style.overflow
+    const previousBodyPosition = body.style.position
+    const previousBodyTop = body.style.top
+    const previousBodyWidth = body.style.width
+    const previousBodyLeft = body.style.left
+    const previousBodyRight = body.style.right
+    const previousOverscrollBehavior = documentElement.style.overscrollBehavior
+
+    body.style.overflow = "hidden"
+    body.style.position = "fixed"
+    body.style.top = `-${scrollY}px`
+    body.style.left = "0"
+    body.style.right = "0"
+    body.style.width = "100%"
+    documentElement.style.overscrollBehavior = "none"
+
+    return () => {
+      body.style.overflow = previousBodyOverflow
+      body.style.position = previousBodyPosition
+      body.style.top = previousBodyTop
+      body.style.width = previousBodyWidth
+      body.style.left = previousBodyLeft
+      body.style.right = previousBodyRight
+      documentElement.style.overscrollBehavior = previousOverscrollBehavior
+      window.scrollTo({ top: scrollY, left: 0, behavior: "auto" })
+    }
+  }, [])
+
   return (
     <div
       className={overlayClassName}

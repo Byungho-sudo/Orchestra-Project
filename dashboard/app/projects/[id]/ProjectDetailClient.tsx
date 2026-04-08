@@ -19,7 +19,6 @@ import { ProjectMobileNavigation } from "./project-detail/ProjectMobileNavigatio
 import { ProjectModuleContent } from "./project-detail/ProjectModuleContent"
 import {
   customProjectModuleOptions,
-  getEditableProjectModuleOptions,
   getProjectModuleDisplayTitle,
   getProjectModuleAnchor,
   isEnterCommitEvent,
@@ -1002,7 +1001,7 @@ export default function ProjectDetailClient({
                     }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
                   >
-                    {getEditableProjectModuleOptions(editModuleForm.type).map((option) => (
+                    {customProjectModuleOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>

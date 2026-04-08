@@ -71,8 +71,8 @@ export function ProjectModuleSection({
       id={getProjectModuleAnchor(module)}
       className={`relative ${
         isDragging
-          ? "z-20 will-change-[top,left] transition-[opacity,box-shadow] duration-150"
-          : "will-change-transform transition-[opacity,box-shadow,transform] duration-150"
+          ? "z-20 will-change-transform transition-[opacity,box-shadow,transform] duration-120"
+          : "will-change-transform transition-[opacity,box-shadow,transform] duration-120"
       } ${
         isDragging ? "opacity-90 shadow-xl ring-1 ring-indigo-200" : ""
       } ${sectionCardClassName}`}
@@ -84,11 +84,12 @@ export function ProjectModuleSection({
         top: isDragging && dragFrame ? `${dragFrame.top}px` : undefined,
         height: isDragging && dragFrame ? `${dragFrame.height}px` : undefined,
         width: isDragging && dragFrame ? `${dragFrame.width}px` : undefined,
+        transform: isDragging && dragFrame ? "translate3d(0, 0, 0)" : undefined,
       }}
     >
       <div
         onPointerDown={handleHeaderPointerDown}
-        className={`mb-6 flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white/80 px-6 py-4 transition-[border-color,background-color,box-shadow,color] ${
+        className={`mb-6 flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white/80 px-6 py-4 transition-[border-color,background-color,box-shadow,color] duration-120 ${
           isDeleting || isMoving
             ? "cursor-not-allowed"
             : isDragging

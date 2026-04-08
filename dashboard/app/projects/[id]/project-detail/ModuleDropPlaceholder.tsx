@@ -11,7 +11,7 @@ export function ModuleDropPlaceholder({
   return (
     <div
       aria-hidden="true"
-      className={`overflow-hidden transition-[max-height,opacity,margin] duration-150 ease-out ${
+      className={`overflow-hidden transition-[max-height,opacity,margin] duration-120 ease-out ${
         isVisible ? "my-5 opacity-100" : "my-0 max-h-0 opacity-0"
       }`}
       style={

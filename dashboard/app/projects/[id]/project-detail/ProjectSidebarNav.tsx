@@ -144,7 +144,7 @@ export function ProjectSidebarNav({
                       ? onModuleItemPointerDown(event, item.moduleId, item.id)
                       : undefined
                   }
-                  className={`relative transition-transform duration-150 ${
+                  className={`relative transition-transform duration-120 ${
                     item.moduleId ? "cursor-grab active:cursor-grabbing" : ""
                   } ${
                     activeDragSurface === "nav" && draggedModuleId === item.moduleId
@@ -206,7 +206,7 @@ export function ProjectSidebarNav({
                   ? onModuleItemRefChange(draggedSortableItem.moduleId, element)
                   : undefined
               }
-              className="relative scale-[0.985] cursor-grabbing transition-transform duration-150"
+              className="relative scale-[0.985] cursor-grabbing transition-transform duration-120"
               style={{
                 position: "fixed",
                 left: `${draggedNavItemFrame.left}px`,

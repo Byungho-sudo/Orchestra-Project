@@ -1,7 +1,5 @@
-import type {
-  ProjectMetadata,
-  ProjectTask,
-} from "@/lib/projects"
+import type { KeyboardEvent as ReactKeyboardEvent } from "react"
+import type { ProjectMetadata, ProjectTask } from "@/lib/projects"
 import type {
   ModuleDropPosition,
   ProjectMetadataDraft,
@@ -42,7 +40,6 @@ export const customProjectModuleOptions: Array<{
   label: string
   value: ProjectModuleType
 }> = [
-  { label: "Text Grid", value: "text_grid" },
   { label: "Notes", value: "notes" },
   { label: "Checklist", value: "checklist" },
   { label: "Timeline", value: "timeline" },
@@ -51,8 +48,39 @@ export const customProjectModuleOptions: Array<{
   { label: "Links", value: "links" },
 ]
 
+const supportedProjectModuleTypes: ProjectModuleType[] = [
+  "checklist",
+  "timeline",
+  "assets",
+  "workspace_plan",
+  "planning_operations",
+  "notes",
+  "metrics",
+  "links",
+]
+
+function isSupportedProjectModuleType(value: string): value is ProjectModuleType {
+  return supportedProjectModuleTypes.includes(value as ProjectModuleType)
+}
+
 export function isRetiredProjectModuleType(type: ProjectModuleType | "tasks") {
   return type === "workspace_plan" || type === "planning_operations"
+}
+
+export function isEnterCommitEvent(
+  event: ReactKeyboardEvent<HTMLInputElement | HTMLSelectElement>
+) {
+  const target = event.target as HTMLElement | null
+
+  return (
+    event.key === "Enter" &&
+    !event.shiftKey &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.nativeEvent.isComposing &&
+    target?.tagName !== "TEXTAREA"
+  )
 }
 
 export function getTaskDueDateValue(dueDate: string | null) {
@@ -268,7 +296,6 @@ export function humanizeProjectModuleType(type: ProjectModuleType | "tasks") {
   if (type === "workspace_plan") return "Workspace Plan"
   if (type === "planning_operations") return "Planning / Operations"
   if (type === "checklist" || type === "tasks") return "Checklist"
-  if (type === "text_grid") return "Text Grid"
 
   return type
     .split("_")
@@ -341,6 +368,7 @@ export function getProjectModuleAnchor(module: ProjectWorkspaceModule) {
 
 export function mapWorkspaceModules(moduleRows: ProjectModuleRecord[]) {
   return moduleRows
+    .filter((module) => module.type === "tasks" || isSupportedProjectModuleType(module.type))
     .map((module) => ({
       id: module.id,
       title: getProjectModuleDisplayTitle(module),
@@ -490,18 +518,6 @@ export function isProjectModuleMetricsSchemaMissingError(error: unknown) {
     errorCode === "PGRST205" ||
     errorMessage.includes(
       "Could not find the table 'public.project_module_metrics'"
-    )
-  )
-}
-
-export function isProjectModuleTextGridSchemaMissingError(error: unknown) {
-  const errorCode = (error as { code?: string } | null)?.code
-  const errorMessage = (error as { message?: string } | null)?.message || ""
-
-  return (
-    errorCode === "PGRST205" ||
-    errorMessage.includes(
-      "Could not find the table 'public.project_module_text_grid_rows'"
     )
   )
 }

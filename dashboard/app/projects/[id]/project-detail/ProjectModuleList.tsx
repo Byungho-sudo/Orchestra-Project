@@ -126,8 +126,8 @@ export function ProjectModuleList({
       element.style.transform = `translateY(${deltaY}px)`
       element.getBoundingClientRect()
       element.style.transition =
-        "transform 460ms cubic-bezier(0.22, 1, 0.36, 1)"
-      element.style.transform = "translateY(0)"
+        "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)"
+      element.style.transform = "translate3d(0, 0, 0)"
     }
 
     previousModuleTopsRef.current = nextModuleTops

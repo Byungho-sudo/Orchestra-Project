@@ -46,7 +46,15 @@ export function useNavDnD({
     itemHeight: number
     startedDragging: boolean
   } | null>(null)
+  const draggedNavItemFrameRef = useRef<{
+    moduleId: string
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const navPointerPositionRef = useRef<{ y: number } | null>(null)
+  const navVisualFrameRef = useRef<number | null>(null)
   const navPointerListenersRef = useRef<{
     move: (event: globalThis.PointerEvent) => void
     up: () => void
@@ -67,30 +75,41 @@ export function useNavDnD({
   }, [])
 
   const updateDraggedNavItemVisualPosition = useCallback((moduleId: string) => {
-    const dragContext = navDragContextRef.current
-    const pointerPosition = navPointerPositionRef.current
     const navItemElement = navItemRefs.current[moduleId]
-    const navListElement = navListRef.current
 
-    if (
-      !dragContext ||
-      dragContext.moduleId !== moduleId ||
-      !pointerPosition ||
-      !navItemElement ||
-      !navListElement
-    ) {
+    if (!navItemElement || navVisualFrameRef.current) {
       return
     }
 
-    const navListBounds = navListElement.getBoundingClientRect()
-    const unclampedTop = pointerPosition.y - dragContext.grabOffsetY
-    const clampedTop = Math.min(
-      Math.max(unclampedTop, navListBounds.top),
-      navListBounds.bottom - dragContext.itemHeight
-    )
+    navVisualFrameRef.current = window.requestAnimationFrame(() => {
+      navVisualFrameRef.current = null
 
-    navItemElement.style.left = `${navListBounds.left}px`
-    navItemElement.style.top = `${clampedTop}px`
+      const dragContext = navDragContextRef.current
+      const pointerPosition = navPointerPositionRef.current
+      const navListElement = navListRef.current
+      const dragFrame = draggedNavItemFrameRef.current
+
+      if (
+        !dragContext ||
+        dragContext.moduleId !== moduleId ||
+        !pointerPosition ||
+        !navItemElement ||
+        !navListElement ||
+        !dragFrame
+      ) {
+        return
+      }
+
+      const navListBounds = navListElement.getBoundingClientRect()
+      const unclampedTop = pointerPosition.y - dragContext.grabOffsetY
+      const clampedTop = Math.min(
+        Math.max(unclampedTop, navListBounds.top),
+        navListBounds.bottom - dragContext.itemHeight
+      )
+      const offsetY = clampedTop - dragFrame.top
+
+      navItemElement.style.transform = `translate3d(0, ${offsetY}px, 0)`
+    })
   }, [])
 
   const getNavDropSlotIndexFromPointer = useCallback(
@@ -160,13 +179,15 @@ export function useNavDnD({
           suppressNavClickRef.current = dragContext.itemId
           navPointerPositionRef.current = { y: moveEvent.clientY }
           startSharedDrag(moduleId, "nav")
-          setDraggedNavItemFrame({
+          const nextDraggedNavItemFrame = {
             moduleId,
             left: navItemBounds.left,
             top: navItemBounds.top,
             width: navItemBounds.width,
             height: navItemBounds.height,
-          })
+          }
+          draggedNavItemFrameRef.current = nextDraggedNavItemFrame
+          setDraggedNavItemFrame(nextDraggedNavItemFrame)
           navDropSlotIndexRef.current = null
           setNavDropSlotIndex(null)
           updateProjectedDropSurface(null)
@@ -189,9 +210,14 @@ export function useNavDnD({
         const dragContext = navDragContextRef.current
 
         navDragContextRef.current = null
+        draggedNavItemFrameRef.current = null
         navPointerPositionRef.current = null
         detachNavPointerListeners()
         setNavDropSlotIndex(null)
+        if (navVisualFrameRef.current) {
+          cancelAnimationFrame(navVisualFrameRef.current)
+          navVisualFrameRef.current = null
+        }
 
         if (!dragContext) {
           return
@@ -238,6 +264,10 @@ export function useNavDnD({
     (moduleId: string, element: HTMLDivElement | null) => {
       navItemRefs.current[moduleId] = element
 
+      if (element && draggedNavItemFrame?.moduleId !== moduleId) {
+        element.style.transform = ""
+      }
+
       if (draggedNavItemFrame?.moduleId === moduleId) {
         updateDraggedNavItemVisualPosition(moduleId)
       }
@@ -271,12 +301,16 @@ export function useNavDnD({
 
   useEffect(() => {
     if (!activeDragModuleId || activeDragSurface !== "nav") {
+      draggedNavItemFrameRef.current = null
       setDraggedNavItemFrame(null)
     }
   }, [activeDragModuleId, activeDragSurface])
 
   useEffect(() => {
     return () => {
+      if (navVisualFrameRef.current) {
+        cancelAnimationFrame(navVisualFrameRef.current)
+      }
       detachNavPointerListeners()
     }
   }, [detachNavPointerListeners])
