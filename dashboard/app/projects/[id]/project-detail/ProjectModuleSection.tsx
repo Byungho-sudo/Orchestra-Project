@@ -71,7 +71,7 @@ export function ProjectModuleSection({
       id={getProjectModuleAnchor(module)}
       className={`relative ${
         isDragging
-          ? "z-20 will-change-transform transition-[opacity,box-shadow,transform] duration-120"
+          ? "z-20 will-change-transform"
           : "will-change-transform transition-[opacity,box-shadow,transform] duration-120"
       } ${
         isDragging ? "opacity-90 shadow-xl ring-1 ring-indigo-200" : ""
@@ -85,6 +85,7 @@ export function ProjectModuleSection({
         height: isDragging && dragFrame ? `${dragFrame.height}px` : undefined,
         width: isDragging && dragFrame ? `${dragFrame.width}px` : undefined,
         transform: isDragging && dragFrame ? "translate3d(0, 0, 0)" : undefined,
+        transition: isDragging ? "none" : undefined,
       }}
     >
       <div

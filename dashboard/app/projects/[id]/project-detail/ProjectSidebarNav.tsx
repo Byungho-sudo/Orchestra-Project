@@ -206,13 +206,14 @@ export function ProjectSidebarNav({
                   ? onModuleItemRefChange(draggedSortableItem.moduleId, element)
                   : undefined
               }
-              className="relative scale-[0.985] cursor-grabbing transition-transform duration-120"
+              className="relative scale-[0.985] cursor-grabbing"
               style={{
                 position: "fixed",
                 left: `${draggedNavItemFrame.left}px`,
                 top: `${draggedNavItemFrame.top}px`,
                 width: `${draggedNavItemFrame.width}px`,
                 zIndex: 20,
+                transition: "none",
               }}
             >
               <div className="block rounded-xl border border-indigo-200 bg-indigo-50/95 px-3 py-3 text-sm font-medium text-indigo-900 shadow-md ring-1 ring-indigo-100 opacity-90">
