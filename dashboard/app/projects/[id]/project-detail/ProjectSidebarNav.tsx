@@ -1,6 +1,7 @@
 import Link from "next/link"
 import {
   useLayoutEffect,
+  useMemo,
   useRef,
   type MouseEvent,
   type PointerEvent,
@@ -12,7 +13,6 @@ import {
   getSidebarItemClassName,
 } from "@/app/components/layout/Sidebar"
 import type { DragSurface } from "./hooks/useModuleDnD"
-import { NavDropPlaceholder } from "./NavDropPlaceholder"
 
 type NavigationItem = {
   id: string
@@ -53,7 +53,9 @@ export function ProjectSidebarNav({
   moduleDropSlotIndex,
   navDropSlotIndex,
   navListRef,
+  settlingModuleDrop,
   onAddModule,
+  onDraggedNavItemOverlayRefChange,
   onFixedItemClick,
   onModuleItemClick,
   onModuleItemPointerDown,
@@ -75,7 +77,15 @@ export function ProjectSidebarNav({
   moduleDropSlotIndex: number | null
   navDropSlotIndex: number | null
   navListRef: RefObject<HTMLDivElement | null>
+  settlingModuleDrop: {
+    moduleId: string
+    slotIndex: number
+  } | null
   onAddModule: () => void
+  onDraggedNavItemOverlayRefChange: (
+    moduleId: string,
+    element: HTMLDivElement | null
+  ) => void
   onFixedItemClick: (event: MouseEvent<HTMLAnchorElement>) => void
   onModuleItemClick: (
     event: MouseEvent<HTMLAnchorElement>,
@@ -98,25 +108,42 @@ export function ProjectSidebarNav({
   const previousRenderedNavOrderSignatureRef = useRef<string | null>(null)
   const isNavDragging = activeDragSurface === "nav" && Boolean(draggedModuleId)
   const isModuleDragging = activeDragSurface === "module" && Boolean(draggedModuleId)
-  const visibleDropSlotIndex = isNavDragging ? navDropSlotIndex : null
   const dragHighlightedSectionId =
     draggedModuleId && activeDragSurface
       ? sortableItems.find((item) => item.moduleId === draggedModuleId)?.id ?? null
       : null
   const highlightedSectionId = dragHighlightedSectionId ?? activeSection
-  const renderedSortableItems = isNavDragging
-    ? reorderNavigationItemsBySlot(
-        sortableItems,
-        draggedModuleId!,
-        navDropSlotIndex
-      ).filter((item) => item.moduleId !== draggedModuleId)
-    : isModuleDragging && draggedModuleId
-      ? reorderNavigationItemsBySlot(
-          sortableItems,
-          draggedModuleId,
-          moduleDropSlotIndex
-        )
-      : sortableItems
+  const renderedSortableItems = useMemo(
+    () =>
+      isNavDragging
+        ? reorderNavigationItemsBySlot(
+            sortableItems,
+            draggedModuleId!,
+            navDropSlotIndex
+          )
+        : settlingModuleDrop
+          ? reorderNavigationItemsBySlot(
+              sortableItems,
+              settlingModuleDrop.moduleId,
+              settlingModuleDrop.slotIndex
+            )
+        : isModuleDragging && draggedModuleId
+          ? reorderNavigationItemsBySlot(
+              sortableItems,
+              draggedModuleId,
+              moduleDropSlotIndex
+            )
+          : sortableItems,
+    [
+      draggedModuleId,
+      isModuleDragging,
+      isNavDragging,
+      moduleDropSlotIndex,
+      navDropSlotIndex,
+      settlingModuleDrop,
+      sortableItems,
+    ]
+  )
   const renderedNavOrderSignature = renderedSortableItems
     .map((item) => item.id)
     .join(":")
@@ -187,8 +214,10 @@ export function ProjectSidebarNav({
         </div>
 
         <div ref={navListRef} className="mt-2">
-          <NavDropPlaceholder isVisible={visibleDropSlotIndex === 0} />
           {renderedSortableItems.map((item, itemIndex) => {
+            const isItemActive = highlightedSectionId === item.id
+            const isDragShell =
+              isNavDragging && draggedModuleId === item.moduleId
             return (
               <div key={item.id}>
                 <div
@@ -201,49 +230,41 @@ export function ProjectSidebarNav({
                       : undefined
                   }
                   onPointerDown={(event) =>
-                    item.moduleId
+                    item.moduleId && !isDragShell
                       ? onModuleItemPointerDown(event, item.moduleId, item.id)
                       : undefined
                   }
                   className={`relative transition-transform duration-120 ${
-                    item.moduleId ? "cursor-grab active:cursor-grabbing" : ""
+                    item.moduleId && !isDragShell
+                      ? "cursor-grab active:cursor-grabbing"
+                      : ""
                   } ${
-                    activeDragSurface === "nav" && draggedModuleId === item.moduleId
-                      ? "scale-[0.985]"
-                      : activeDragSurface === "module" &&
-                          draggedModuleId === item.moduleId
+                    activeDragSurface === "module" &&
+                    draggedModuleId === item.moduleId
                         ? "scale-[0.98]"
                       : ""
                   }`}
-                  style={
-                    activeDragSurface === "nav" &&
-                    draggedNavItemFrame?.moduleId === item.moduleId
-                      ? {
-                          position: "fixed",
-                          left: `${draggedNavItemFrame.left}px`,
-                          top: `${draggedNavItemFrame.top}px`,
-                          width: `${draggedNavItemFrame.width}px`,
-                          zIndex: 20,
-                        }
-                      : undefined
-                  }
                 >
+                  {isDragShell && (
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+                    />
+                  )}
                   <Link
                     href={`#${item.id}`}
                     draggable={false}
-                    aria-current={
-                      highlightedSectionId === item.id ? "location" : undefined
-                    }
+                    aria-current={isItemActive ? "location" : undefined}
                     onDragStart={(event) => event.preventDefault()}
-                    onClick={(event) =>
-                      onModuleItemClick(event, item.id, `#${item.id}`)
+                    onClick={
+                      isDragShell
+                        ? undefined
+                        : (event) =>
+                            onModuleItemClick(event, item.id, `#${item.id}`)
                     }
-                    className={`${getSidebarItemClassName(
-                      highlightedSectionId === item.id
-                    )} ${
-                      activeDragSurface === "nav" &&
-                      draggedModuleId === item.moduleId
-                        ? "border-indigo-200 bg-indigo-50/95 font-medium text-indigo-900 shadow-md ring-1 ring-indigo-100 opacity-90"
+                    className={`${getSidebarItemClassName(isItemActive)} ${
+                      isDragShell
+                        ? "pointer-events-none opacity-0"
                         : activeDragSurface === "module" &&
                             draggedModuleId === item.moduleId
                           ? "border-indigo-200 bg-indigo-50/95 font-medium text-indigo-900 shadow-sm ring-1 ring-indigo-100"
@@ -253,9 +274,6 @@ export function ProjectSidebarNav({
                     {item.label}
                   </Link>
                 </div>
-                <NavDropPlaceholder
-                  isVisible={visibleDropSlotIndex === itemIndex + 1}
-                />
               </div>
             )
           })}
@@ -264,7 +282,10 @@ export function ProjectSidebarNav({
             <div
               ref={(element) =>
                 draggedSortableItem.moduleId
-                  ? onModuleItemRefChange(draggedSortableItem.moduleId, element)
+                  ? onDraggedNavItemOverlayRefChange(
+                      draggedSortableItem.moduleId,
+                      element
+                    )
                   : undefined
               }
               className="relative scale-[0.985] cursor-grabbing"

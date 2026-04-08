@@ -59,6 +59,7 @@ export function useNavDnD({
     up: () => void
   } | null>(null)
   const navItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const draggedNavOverlayElementRef = useRef<HTMLDivElement | null>(null)
   const navListRef = useRef<HTMLDivElement | null>(null)
   const suppressNavClickRef = useRef<string | null>(null)
   const navDropSlotIndexRef = useRef<number | null>(null)
@@ -79,7 +80,7 @@ export function useNavDnD({
   }, [])
 
   const updateDraggedNavItemVisualPosition = useCallback((moduleId: string) => {
-    const navItemElement = navItemRefs.current[moduleId]
+    const navItemElement = draggedNavOverlayElementRef.current
 
     if (!navItemElement || navVisualFrameRef.current) {
       return
@@ -310,6 +311,9 @@ export function useNavDnD({
       }
 
       const handlePointerUp = async () => {
+        if (navDragContextRef.current) {
+          navPointerPositionRef.current = { y: navDragContextRef.current.startY }
+        }
         await finalizeNavPointerDrag()
       }
 
@@ -345,10 +349,23 @@ export function useNavDnD({
       if (element && draggedNavItemFrame?.moduleId !== moduleId) {
         element.style.transform = ""
       }
+    },
+    [draggedNavItemFrame?.moduleId]
+  )
 
-      if (draggedNavItemFrame?.moduleId === moduleId) {
-        updateDraggedNavItemVisualPosition(moduleId)
+  const handleDraggedNavItemOverlayRefChange = useCallback(
+    (moduleId: string, element: HTMLDivElement | null) => {
+      if (draggedNavItemFrame?.moduleId !== moduleId) {
+        return
       }
+
+      draggedNavOverlayElementRef.current = element
+
+      if (!element) {
+        return
+      }
+
+      updateDraggedNavItemVisualPosition(moduleId)
     },
     [draggedNavItemFrame?.moduleId, updateDraggedNavItemVisualPosition]
   )
@@ -382,6 +399,7 @@ export function useNavDnD({
     if (!activeDragModuleId || activeDragSurface !== "nav") {
       navSlotMidpointsRef.current = null
       draggedNavItemFrameRef.current = null
+      draggedNavOverlayElementRef.current = null
       setDraggedNavItemFrame(null)
     }
   }, [activeDragModuleId, activeDragSurface])
@@ -398,6 +416,7 @@ export function useNavDnD({
 
       navDragContextRef.current = null
       draggedNavItemFrameRef.current = null
+      draggedNavOverlayElementRef.current = null
       navPointerPositionRef.current = null
       navSlotMidpointsRef.current = null
       navDropSlotIndexRef.current = null
@@ -425,12 +444,14 @@ export function useNavDnD({
       }
       navSlotMidpointsRef.current = null
       detachNavPointerListeners()
+      draggedNavOverlayElementRef.current = null
     }
   }, [detachNavPointerListeners])
 
   return {
     draggedNavItemFrame,
     handleNavItemClick,
+    handleDraggedNavItemOverlayRefChange,
     handleNavItemPointerDown,
     handleNavItemRefChange,
     navListRef,

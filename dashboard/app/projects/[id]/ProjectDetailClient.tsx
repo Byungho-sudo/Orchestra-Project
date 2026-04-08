@@ -1,7 +1,9 @@
 "use client"
 
 import {
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MouseEvent,
@@ -49,11 +51,15 @@ export default function ProjectDetailClient({
   const addModuleFormId = "add-module-form"
   const router = useRouter()
   const { currentUser, logout } = useCurrentUser()
-  const [activeSection, setActiveSection] = useState("")
+  const [observedActiveSection, setObservedActiveSection] = useState("")
+  const [manualActiveSection, setManualActiveSection] = useState<string | null>(
+    null
+  )
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
+  const pendingNavigationTargetRef = useRef<string | null>(null)
   const observedSectionRefs = useRef<Record<string, HTMLElement | null>>({})
   const sectionVisibilityRatiosRef = useRef<Record<string, number>>({})
   const {
@@ -123,22 +129,45 @@ export default function ProjectDetailClient({
     openEditProjectModal,
     openMetadataEditModal,
   } = useProjectModals()
-  const visibleWorkspaceModules = sortedWorkspaceModules.filter(
-    (module) => !isRetiredProjectModuleType(module.type)
+  const visibleWorkspaceModules = useMemo(
+    () =>
+      sortedWorkspaceModules.filter(
+        (module) => !isRetiredProjectModuleType(module.type)
+      ),
+    [sortedWorkspaceModules]
   )
-  const projectWorkspaceNavigation = [
-    { id: "project-details", label: "Project Details", moduleId: null },
-    ...visibleWorkspaceModules.map((module) => ({
-      id: getProjectModuleAnchor(module),
-      label: getProjectModuleDisplayTitle(module),
-      moduleId: module.id,
-    })),
-  ]
-  const fixedProjectDetailsNavigationItem = projectWorkspaceNavigation[0]
-  const sortableProjectWorkspaceNavigation = projectWorkspaceNavigation.slice(1)
-  const projectWorkspaceNavigationIds = projectWorkspaceNavigation.map(
-    (item) => item.id
+  const projectWorkspaceNavigation = useMemo(
+    () => [
+      { id: "project-details", label: "Project Details", moduleId: null },
+      ...visibleWorkspaceModules.map((module) => ({
+        id: getProjectModuleAnchor(module),
+        label: getProjectModuleDisplayTitle(module),
+        moduleId: module.id,
+      })),
+    ],
+    [visibleWorkspaceModules]
   )
+  const fixedProjectDetailsNavigationItem = useMemo(
+    () => projectWorkspaceNavigation[0],
+    [projectWorkspaceNavigation]
+  )
+  const sortableProjectWorkspaceNavigation = useMemo(
+    () => projectWorkspaceNavigation.slice(1),
+    [projectWorkspaceNavigation]
+  )
+  const projectWorkspaceNavigationIds = useMemo(
+    () => projectWorkspaceNavigation.map((item) => item.id),
+    [projectWorkspaceNavigation]
+  )
+  const projectWorkspaceNavigationIdsSignature = useMemo(
+    () => projectWorkspaceNavigationIds.join(":"),
+    [projectWorkspaceNavigationIds]
+  )
+  const activeSection =
+    manualActiveSection ??
+    (projectWorkspaceNavigationIds.includes(observedActiveSection)
+      ? observedActiveSection
+      : projectWorkspaceNavigationIds[0] ?? "")
   const isModuleDragDisabled =
     Boolean(movingModuleId) ||
     Boolean(deletingModuleId) ||
@@ -150,9 +179,11 @@ export default function ProjectDetailClient({
     draggedModuleFrame,
     draggedModuleId,
     handleModulePointerDragStart,
+    handleDraggedModuleOverlayRefChange,
     handleModuleSectionRefChange,
     moduleDropSlotIndex,
     projectedDropSurface,
+    settlingModuleDrop,
     startSharedDrag,
   } = useModuleDnD({
     isDragDisabled: isModuleDragDisabled,
@@ -162,6 +193,7 @@ export default function ProjectDetailClient({
   const {
     draggedNavItemFrame,
     handleNavItemClick,
+    handleDraggedNavItemOverlayRefChange,
     handleNavItemPointerDown,
     handleNavItemRefChange,
     navListRef,
@@ -196,6 +228,7 @@ export default function ProjectDetailClient({
       if (pendingNavigationTimeoutRef.current) {
         clearTimeout(pendingNavigationTimeoutRef.current)
       }
+      pendingNavigationTargetRef.current = null
     }
   }, [])
 
@@ -262,7 +295,26 @@ export default function ProjectDetailClient({
           return
         }
 
-        setActiveSection((currentSection) =>
+        const pendingNavigationTarget = pendingNavigationTargetRef.current
+
+        if (
+          pendingNavigationTimeoutRef.current &&
+          pendingNavigationTarget &&
+          nextActiveSectionId !== pendingNavigationTarget
+        ) {
+          return
+        }
+
+        if (pendingNavigationTarget && nextActiveSectionId === pendingNavigationTarget) {
+          if (pendingNavigationTimeoutRef.current) {
+            clearTimeout(pendingNavigationTimeoutRef.current)
+            pendingNavigationTimeoutRef.current = null
+          }
+          pendingNavigationTargetRef.current = null
+          setManualActiveSection(null)
+        }
+
+        setObservedActiveSection((currentSection) =>
           currentSection === nextActiveSectionId
             ? currentSection
             : nextActiveSectionId
@@ -282,20 +334,21 @@ export default function ProjectDetailClient({
     return () => {
       observer.disconnect()
     }
-  }, [projectWorkspaceNavigationIds])
+  }, [projectWorkspaceNavigationIds, projectWorkspaceNavigationIdsSignature])
 
   useEffect(() => {
     if (projectWorkspaceNavigationIds.length === 0) {
-      setActiveSection("")
+      setObservedActiveSection("")
+      setManualActiveSection(null)
       return
     }
 
-    setActiveSection((currentSection) =>
+    setObservedActiveSection((currentSection) =>
       projectWorkspaceNavigationIds.includes(currentSection)
         ? currentSection
         : projectWorkspaceNavigationIds[0]
     )
-  }, [projectWorkspaceNavigationIds])
+  }, [projectWorkspaceNavigationIds, projectWorkspaceNavigationIdsSignature])
 
   function handleCloseEditProjectModal() {
     if (isSaving) return
@@ -407,7 +460,44 @@ export default function ProjectDetailClient({
     openDeleteProjectModal()
   }
 
-  function navigateToSection(targetId: string, href: string) {
+  const beginManualSectionSelection = useCallback((targetId: string, durationMs: number) => {
+    setManualActiveSection(targetId)
+
+    if (pendingNavigationTimeoutRef.current) {
+      clearTimeout(pendingNavigationTimeoutRef.current)
+    }
+
+    pendingNavigationTargetRef.current = targetId
+    pendingNavigationTimeoutRef.current = setTimeout(() => {
+      setManualActiveSection(null)
+      pendingNavigationTargetRef.current = null
+      pendingNavigationTimeoutRef.current = null
+    }, durationMs)
+  }, [])
+
+  const shouldScrollSectionIntoView = useCallback((targetElement: HTMLElement) => {
+    if (typeof window === "undefined") {
+      return false
+    }
+
+    const targetBounds = targetElement.getBoundingClientRect()
+    const isMobileViewport = window.matchMedia("(max-width: 1023px)").matches
+    const preferredTopBoundary = projectSectionAnchorOffsetPx + 36
+    const preferredBottomBoundary = Math.max(
+      preferredTopBoundary + 1,
+      window.innerHeight * (isMobileViewport ? 0.72 : 0.58)
+    )
+
+    return (
+      targetBounds.top < preferredTopBoundary ||
+      targetBounds.top > preferredBottomBoundary
+    )
+  }, [])
+
+  const selectSection = useCallback((
+    targetId: string,
+    options?: { href?: string; scroll?: boolean; source: string }
+  ) => {
     if (typeof window === "undefined") return
 
     if (!targetId) return
@@ -416,24 +506,26 @@ export default function ProjectDetailClient({
 
     if (!targetElement) return
 
-    setActiveSection(targetId)
+    const shouldScroll =
+      options?.scroll === true && shouldScrollSectionIntoView(targetElement)
 
-    if (pendingNavigationTimeoutRef.current) {
-      clearTimeout(pendingNavigationTimeoutRef.current)
-    }
-
-    pendingNavigationTimeoutRef.current = setTimeout(() => {
-      pendingNavigationTimeoutRef.current = null
-    }, 1200)
+    beginManualSectionSelection(targetId, shouldScroll ? 1500 : 900)
 
     const isMobileViewport = window.matchMedia("(max-width: 1023px)").matches
 
-    window.history.replaceState(null, "", href)
+    if (options?.href) {
+      window.history.replaceState(null, "", options.href)
+    }
+
+    if (!shouldScroll) {
+      return
+    }
+
     targetElement.scrollIntoView({
       behavior: "smooth",
       block: isMobileViewport ? "start" : "center",
     })
-  }
+  }, [beginManualSectionSelection, shouldScrollSectionIntoView])
 
   function handleObservedSectionRefChange(
     sectionId: string,
@@ -464,21 +556,25 @@ export default function ProjectDetailClient({
     )
   }
 
-  function handleNavigationClick(
+  const handleNavigationClick = useCallback((
     event: MouseEvent<HTMLAnchorElement>,
     href: string
-  ) {
+  ) => {
     const targetId = href.startsWith("#") ? href.slice(1) : href
 
     if (!targetId) return
 
     event.preventDefault()
-    navigateToSection(targetId, href)
-  }
+    selectSection(targetId, { href, scroll: true, source: "nav-click" })
+  }, [selectSection])
 
-  function handleSelectSection(targetId: string) {
-    navigateToSection(targetId, `#${targetId}`)
-  }
+  const handleSelectSection = useCallback((targetId: string, options?: { scroll?: boolean }) => {
+    selectSection(targetId, {
+      href: `#${targetId}`,
+      scroll: options?.scroll ?? false,
+      source: options?.scroll ? "mobile-nav-click" : "main-click",
+    })
+  }, [selectSection])
 
   const hasMetadataChanges =
     JSON.stringify(normalizeMetadataDrafts(metadataForm)) !==
@@ -535,7 +631,11 @@ export default function ProjectDetailClient({
               moduleDropSlotIndex={moduleDropSlotIndex}
               navDropSlotIndex={navDropSlotIndex}
               navListRef={navListRef}
+              settlingModuleDrop={settlingModuleDrop}
               onAddModule={handleOpenAddModuleModal}
+              onDraggedNavItemOverlayRefChange={
+                handleDraggedNavItemOverlayRefChange
+              }
               onFixedItemClick={(event) =>
                 handleNavigationClick(event, `#${fixedProjectDetailsNavigationItem.id}`)
               }
@@ -583,6 +683,7 @@ export default function ProjectDetailClient({
             </div>
 
               <ProjectModuleList
+                  activeSection={activeSection}
                   activeDragSurface={activeDragSurface}
                   deletingModuleId={deletingModuleId}
                   draggedModuleFrame={draggedModuleFrame}
@@ -592,6 +693,7 @@ export default function ProjectDetailClient({
                   moduleDropSlotIndex={moduleDropSlotIndex}
                   navDropSlotIndex={navDropSlotIndex}
                   projectedDropSurface={projectedDropSurface}
+                  settlingModuleDrop={settlingModuleDrop}
                   moduleError={moduleError}
                   modules={visibleWorkspaceModules}
                   movingModuleId={movingModuleId}
@@ -600,6 +702,12 @@ export default function ProjectDetailClient({
                 onEditModule={handleOpenEditModuleModal}
                 onHeaderPointerDown={handleModulePointerDragStart}
                 onResetModules={handleResetWorkspaceModules}
+                onSelectModule={(module) =>
+                  handleSelectSection(getProjectModuleAnchor(module))
+                }
+                onDraggedModuleOverlayRefChange={
+                  handleDraggedModuleOverlayRefChange
+                }
                 onSectionRefChange={handleWorkspaceModuleSectionRefChange}
                 renderModuleContent={(module) => (
                   <ProjectModuleContent

@@ -36,6 +36,10 @@ export function useModuleDnD({
     width: number
     height: number
   } | null>(null)
+  const [settlingModuleDrop, setSettlingModuleDrop] = useState<{
+    moduleId: string
+    slotIndex: number
+  } | null>(null)
   const dragAutoScrollFrameRef = useRef<number | null>(null)
   const draggedModuleFrameRef = useRef<{
     moduleId: string
@@ -63,7 +67,12 @@ export function useModuleDnD({
     move: (event: globalThis.PointerEvent) => void
     up: (event: globalThis.PointerEvent) => void
   } | null>(null)
+  const previousDocumentUserSelectRef = useRef<{
+    body: string
+    documentElement: string
+  } | null>(null)
   const moduleSectionRefs = useRef<Record<string, HTMLElement | null>>({})
+  const draggedOverlayElementRef = useRef<HTMLElement | null>(null)
 
   const stopDragAutoScroll = useCallback(() => {
     dragAutoScrollVelocityRef.current = 0
@@ -158,8 +167,34 @@ export function useModuleDnD({
     )
   }, [])
 
+  const disableDocumentTextSelection = useCallback(() => {
+    if (typeof document === "undefined" || previousDocumentUserSelectRef.current) {
+      return
+    }
+
+    previousDocumentUserSelectRef.current = {
+      body: document.body.style.userSelect,
+      documentElement: document.documentElement.style.userSelect,
+    }
+
+    document.body.style.userSelect = "none"
+    document.documentElement.style.userSelect = "none"
+  }, [])
+
+  const restoreDocumentTextSelection = useCallback(() => {
+    if (typeof document === "undefined" || !previousDocumentUserSelectRef.current) {
+      return
+    }
+
+    document.body.style.userSelect = previousDocumentUserSelectRef.current.body
+    document.documentElement.style.userSelect =
+      previousDocumentUserSelectRef.current.documentElement
+    previousDocumentUserSelectRef.current = null
+  }, [])
+
   const clearDragState = useCallback(() => {
     stopDragAutoScroll()
+    restoreDocumentTextSelection()
     dragUsesTouchScrollRef.current = false
     draggedModuleFrameRef.current = null
     pointerPositionRef.current = null
@@ -174,7 +209,7 @@ export function useModuleDnD({
     setModuleDropSlotIndex(null)
     setDraggedModuleId(null)
     setDraggedModuleFrame(null)
-  }, [stopDragAutoScroll])
+  }, [restoreDocumentTextSelection, stopDragAutoScroll])
 
   const startSharedDrag = useCallback(
     (moduleId: string, dragSurface: Exclude<DragSurface, null>) => {
@@ -189,11 +224,36 @@ export function useModuleDnD({
     [updateProjectedDropSurface]
   )
 
+  const startModuleDrag = useCallback(
+    (
+      moduleId: string,
+      dragFrame: {
+        moduleId: string
+        left: number
+        top: number
+        width: number
+        height: number
+      } | null,
+      initialSlotIndex: number
+    ) => {
+      disableDocumentTextSelection()
+      setActiveDragSurface("module")
+      setDraggedModuleId(moduleId)
+      draggedModuleFrameRef.current = dragFrame
+      setDraggedModuleFrame(dragFrame)
+      moduleDropSlotIndexRef.current = initialSlotIndex
+      setModuleDropSlotIndex(initialSlotIndex)
+      projectedDropSurfaceRef.current = "module"
+      setProjectedDropSurface("module")
+    },
+    [disableDocumentTextSelection]
+  )
+
   const commitModuleDrop = useCallback(
     async (draggedId: string | null, slotIndex: number | null) => {
-      clearDragState()
-
       if (!draggedId || slotIndex === null) {
+        setSettlingModuleDrop(null)
+        clearDragState()
         return
       }
 
@@ -208,10 +268,22 @@ export function useModuleDnD({
       )
 
       if (orderUnchanged) {
+        setSettlingModuleDrop(null)
+        clearDragState()
         return
       }
 
-      await persistWorkspaceModuleOrder(reorderedModules, draggedId)
+      setSettlingModuleDrop({
+        moduleId: draggedId,
+        slotIndex,
+      })
+      clearDragState()
+
+      try {
+        await persistWorkspaceModuleOrder(reorderedModules, draggedId)
+      } finally {
+        setSettlingModuleDrop(null)
+      }
     },
     [clearDragState, persistWorkspaceModuleOrder, sortedWorkspaceModules]
   )
@@ -241,7 +313,7 @@ export function useModuleDnD({
       const slotBoundaryMidpoints: number[] = []
 
       if (sortableModules.length === 0) {
-        return null
+        return 0
       }
 
       for (let slotIndex = 0; slotIndex < sortableModules.length; slotIndex += 1) {
@@ -312,7 +384,7 @@ export function useModuleDnD({
   )
 
   const updateDraggedModuleVisualPosition = useCallback((moduleId: string) => {
-    const sectionElement = moduleSectionRefs.current[moduleId]
+    const sectionElement = draggedOverlayElementRef.current
 
     if (!sectionElement || dragVisualFrameRef.current) {
       return
@@ -362,7 +434,7 @@ export function useModuleDnD({
         moduleId,
         grabOffsetX: sectionBounds ? event.clientX - sectionBounds.left : 0,
         grabOffsetY: sectionBounds ? event.clientY - sectionBounds.top : 0,
-        hasStartedDragging: !isTouchPointer,
+        hasStartedDragging: false,
         startX: event.clientX,
         startY: event.clientY,
       }
@@ -371,22 +443,6 @@ export function useModuleDnD({
         y: event.clientY,
       }
       dragUsesTouchScrollRef.current = isTouchPointer
-
-      if (!isTouchPointer) {
-        event.preventDefault()
-        startSharedDrag(moduleId, "module")
-        const nextDraggedModuleFrame = sectionBounds
-          ? {
-              moduleId,
-              left: sectionBounds.left,
-              top: sectionBounds.top,
-              width: sectionBounds.width,
-              height: sectionBounds.height,
-            }
-          : null
-        draggedModuleFrameRef.current = nextDraggedModuleFrame
-        setDraggedModuleFrame(nextDraggedModuleFrame)
-      }
       detachPointerDragListeners()
 
       const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
@@ -399,14 +455,14 @@ export function useModuleDnD({
         if (!dragContext.hasStartedDragging) {
           const moveDistanceX = Math.abs(moveEvent.clientX - dragContext.startX)
           const moveDistanceY = Math.abs(moveEvent.clientY - dragContext.startY)
+          const dragStartThresholdPx = isTouchPointer ? 8 : 4
 
-          if (Math.max(moveDistanceX, moveDistanceY) < 8) {
+          if (Math.max(moveDistanceX, moveDistanceY) < dragStartThresholdPx) {
             return
           }
 
           dragContext.hasStartedDragging = true
           moveEvent.preventDefault()
-          startSharedDrag(moduleId, "module")
           const latestSectionBounds =
             moduleSectionRefs.current[moduleId]?.getBoundingClientRect() ?? null
           const nextDraggedModuleFrame = latestSectionBounds
@@ -418,8 +474,18 @@ export function useModuleDnD({
                 height: latestSectionBounds.height,
               }
             : null
-          draggedModuleFrameRef.current = nextDraggedModuleFrame
-          setDraggedModuleFrame(nextDraggedModuleFrame)
+          const initialSlotIndex = Math.max(
+            0,
+            sortedWorkspaceModules.findIndex(
+              (workspaceModule) => workspaceModule.id === moduleId
+            )
+          )
+
+          startModuleDrag(
+            moduleId,
+            nextDraggedModuleFrame,
+            initialSlotIndex
+          )
         }
 
         pointerPositionRef.current = {
@@ -469,6 +535,11 @@ export function useModuleDnD({
       }
 
       const handlePointerUp = async (upEvent: globalThis.PointerEvent) => {
+        pointerPositionRef.current = {
+          x: upEvent.clientX,
+          y: upEvent.clientY,
+        }
+        updateDraggedModuleVisualPosition(moduleId)
         await finalizePointerDrag(upEvent)
       }
 
@@ -491,7 +562,8 @@ export function useModuleDnD({
       detachPointerDragListeners,
       getModuleDropSlotIndexFromPointer,
       isDragDisabled,
-      startSharedDrag,
+      sortedWorkspaceModules,
+      startModuleDrag,
       stopDragAutoScroll,
       updateDragAutoScroll,
       updateDraggedModuleVisualPosition,
@@ -506,20 +578,34 @@ export function useModuleDnD({
       if (element && draggedModuleId !== moduleId) {
         element.style.transform = ""
       }
+    },
+    [draggedModuleId]
+  )
 
-      if (draggedModuleId === moduleId) {
-        updateDraggedModuleVisualPosition(moduleId)
+  const handleDraggedModuleOverlayRefChange = useCallback(
+    (moduleId: string, element: HTMLElement | null) => {
+      if (draggedModuleId !== moduleId) {
+        return
       }
+
+      draggedOverlayElementRef.current = element
+
+      if (!element) {
+        return
+      }
+
+      updateDraggedModuleVisualPosition(moduleId)
     },
     [draggedModuleId, updateDraggedModuleVisualPosition]
   )
 
   useEffect(() => {
     return () => {
+      restoreDocumentTextSelection()
       stopDragAutoScroll()
       detachPointerDragListeners()
     }
-  }, [detachPointerDragListeners, stopDragAutoScroll])
+  }, [detachPointerDragListeners, restoreDocumentTextSelection, stopDragAutoScroll])
 
   return {
     activeDragSurface,
@@ -527,9 +613,11 @@ export function useModuleDnD({
     draggedModuleFrame,
     draggedModuleId,
     handleModulePointerDragStart,
+    handleDraggedModuleOverlayRefChange,
     handleModuleSectionRefChange,
     moduleDropSlotIndex,
     projectedDropSurface,
+    settlingModuleDrop,
     startSharedDrag,
     updateProjectedDropSurface,
   }

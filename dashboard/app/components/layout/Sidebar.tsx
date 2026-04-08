@@ -4,9 +4,9 @@ import Link from "next/link"
 import type { MouseEventHandler, ReactNode } from "react"
 
 export function getSidebarItemClassName(isActive: boolean) {
-  return `block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow,color,transform,opacity] duration-150 ${
+  return `block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow] duration-180 ${
     isActive
-      ? "border-indigo-200 bg-indigo-50/90 font-medium text-indigo-900 shadow-sm"
+      ? "border-slate-200 bg-indigo-50/90 text-indigo-900 shadow-sm ring-1 ring-indigo-100"
       : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
   }`
 }

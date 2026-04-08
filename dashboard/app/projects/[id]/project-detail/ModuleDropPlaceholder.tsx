@@ -11,16 +11,12 @@ export function ModuleDropPlaceholder({
   return (
     <div
       aria-hidden="true"
-      className={`overflow-hidden transition-[max-height,opacity,margin] duration-120 ease-out ${
-        isVisible ? "my-5 opacity-100" : "my-0 max-h-0 opacity-0"
+      className={`overflow-hidden transition-opacity duration-120 ease-out ${
+        isVisible ? "opacity-100" : "opacity-0"
       }`}
-      style={
-        isVisible
-          ? {
-              maxHeight: `${placeholderHeight}px`,
-            }
-          : undefined
-      }
+      style={{
+        height: isVisible ? `${placeholderHeight}px` : "0px",
+      }}
     >
       <div
         className="rounded-3xl border border-dashed border-indigo-200 bg-indigo-50/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"

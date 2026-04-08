@@ -1,20 +1,22 @@
 import {
   useLayoutEffect,
+  useMemo,
   useRef,
   type PointerEvent,
   type ReactNode,
 } from "react"
 import {
+  getProjectModuleAnchor,
   projectModuleStackGapClassName,
   reorderWorkspaceModulesBySlot,
 } from "./helpers"
-import { ModuleDropPlaceholder } from "./ModuleDropPlaceholder"
 import { ModuleStackFooter } from "./ModuleStackFooter"
 import { ProjectModuleSection } from "./ProjectModuleSection"
 import type { DragSurface } from "./hooks/useModuleDnD"
 import type { ProjectWorkspaceModule } from "./types"
 
 export function ProjectModuleList({
+  activeSection,
   activeDragSurface,
   deletingModuleId,
   draggedModuleFrame,
@@ -24,6 +26,7 @@ export function ProjectModuleList({
   moduleDropSlotIndex,
   navDropSlotIndex,
   projectedDropSurface,
+  settlingModuleDrop,
   moduleError,
   modules,
   movingModuleId,
@@ -32,9 +35,12 @@ export function ProjectModuleList({
   onEditModule,
   onHeaderPointerDown,
   onResetModules,
+  onSelectModule,
+  onDraggedModuleOverlayRefChange,
   onSectionRefChange,
   renderModuleContent,
 }: {
+  activeSection: string
   activeDragSurface: DragSurface
   deletingModuleId: string | null
   draggedModuleFrame: {
@@ -50,6 +56,10 @@ export function ProjectModuleList({
   moduleDropSlotIndex: number | null
   navDropSlotIndex: number | null
   projectedDropSurface: DragSurface
+  settlingModuleDrop: {
+    moduleId: string
+    slotIndex: number
+  } | null
   moduleError: string
   modules: ProjectWorkspaceModule[]
   movingModuleId: string | null
@@ -61,6 +71,11 @@ export function ProjectModuleList({
     moduleId: string
   ) => void
   onResetModules: () => void
+  onSelectModule: (module: ProjectWorkspaceModule) => void
+  onDraggedModuleOverlayRefChange: (
+    moduleId: string,
+    element: HTMLElement | null
+  ) => void
   onSectionRefChange: (moduleId: string, element: HTMLElement | null) => void
   renderModuleContent: (module: ProjectWorkspaceModule) => ReactNode
 }) {
@@ -72,21 +87,43 @@ export function ProjectModuleList({
   const isModuleDragging =
     activeDragSurface === "module" && Boolean(draggedModuleId)
   const isNavDragging = activeDragSurface === "nav" && Boolean(draggedModuleId)
-  const renderedModules = isModuleDragging
-    ? modules.filter((module) => module.id !== draggedModuleId)
-    : isNavDragging && draggedModuleId
-      ? reorderWorkspaceModulesBySlot(modules, draggedModuleId, navDropSlotIndex)
-    : modules
+  const renderedModules = useMemo(
+    () =>
+      isModuleDragging
+        ? reorderWorkspaceModulesBySlot(
+            modules,
+            draggedModuleId!,
+            visibleDropSlotIndex ?? moduleDropSlotIndex
+          )
+        : settlingModuleDrop
+          ? reorderWorkspaceModulesBySlot(
+              modules,
+              settlingModuleDrop.moduleId,
+              settlingModuleDrop.slotIndex
+            )
+        : isNavDragging && draggedModuleId
+          ? reorderWorkspaceModulesBySlot(
+              modules,
+              draggedModuleId,
+              navDropSlotIndex
+            )
+          : modules,
+    [
+      draggedModuleId,
+      isModuleDragging,
+      isNavDragging,
+      moduleDropSlotIndex,
+      modules,
+      navDropSlotIndex,
+      visibleDropSlotIndex,
+      settlingModuleDrop,
+    ]
+  )
   const moduleOrderSignature = renderedModules.map((module) => module.id).join(":")
   const draggedModule =
     isModuleDragging && draggedModuleId
       ? modules.find((module) => module.id === draggedModuleId) ?? null
       : null
-  const placeholderHeight =
-    draggedModuleFrame?.height ??
-    (draggedModuleId
-      ? moduleItemRefs.current[draggedModuleId]?.getBoundingClientRect().height ?? null
-      : null)
 
   useLayoutEffect(() => {
     const nextModuleTops: Record<string, number> = {}
@@ -136,12 +173,7 @@ export function ProjectModuleList({
       {moduleError && (
         <p className="text-sm font-medium text-red-600">{moduleError}</p>
       )}
-
-      <ModuleDropPlaceholder
-        height={placeholderHeight}
-        isVisible={visibleDropSlotIndex === 0}
-      />
-      {renderedModules.map((module, moduleIndex) => (
+      {renderedModules.map((module) => (
         <div
           key={module.id}
           ref={(element) => {
@@ -150,31 +182,32 @@ export function ProjectModuleList({
         >
           <ProjectModuleSection
             module={module}
-            isDragging={
-              activeDragSurface === "module" && draggedModuleId === module.id
-            }
+            isActive={activeSection === getProjectModuleAnchor(module)}
+            isDragShell={isModuleDragging && draggedModuleId === module.id}
+            isDragging={false}
             isDeleting={deletingModuleId === module.id || isResettingModules}
             isMoving={movingModuleId === module.id || isResettingModules}
-            dragFrame={
-              draggedModuleFrame?.moduleId === module.id ? draggedModuleFrame : null
+            dragFrame={null}
+          onDelete={onDeleteModule}
+          onEdit={onEditModule}
+          onHeaderPointerDown={onHeaderPointerDown}
+          onSelect={onSelectModule}
+          onOverlayRefChange={undefined}
+          onSectionRefChange={
+            isModuleDragging && draggedModuleId === module.id
+              ? () => {}
+                : onSectionRefChange
             }
-            onDelete={onDeleteModule}
-            onEdit={onEditModule}
-            onHeaderPointerDown={onHeaderPointerDown}
-            onSectionRefChange={onSectionRefChange}
           >
             {renderModuleContent(module)}
           </ProjectModuleSection>
-          <ModuleDropPlaceholder
-            height={placeholderHeight}
-            isVisible={visibleDropSlotIndex === moduleIndex + 1}
-          />
         </div>
       ))}
 
       {draggedModule && (
         <ProjectModuleSection
           module={draggedModule}
+          isActive={activeSection === getProjectModuleAnchor(draggedModule)}
           isDragging
           isDeleting={
             deletingModuleId === draggedModule.id || isResettingModules
@@ -188,6 +221,8 @@ export function ProjectModuleList({
           onDelete={onDeleteModule}
           onEdit={onEditModule}
           onHeaderPointerDown={onHeaderPointerDown}
+          onSelect={onSelectModule}
+          onOverlayRefChange={onDraggedModuleOverlayRefChange}
           onSectionRefChange={onSectionRefChange}
         >
           {renderModuleContent(draggedModule)}
