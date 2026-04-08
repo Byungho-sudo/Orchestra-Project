@@ -59,6 +59,7 @@ export function useModuleDnD({
   } | null>(null)
   const pointerPositionRef = useRef<{ x: number; y: number } | null>(null)
   const pointerDragListenersRef = useRef<{
+    cancel: (event: globalThis.PointerEvent) => void
     move: (event: globalThis.PointerEvent) => void
     up: (event: globalThis.PointerEvent) => void
   } | null>(null)
@@ -224,6 +225,10 @@ export function useModuleDnD({
       "pointermove",
       pointerDragListenersRef.current.move
     )
+    window.removeEventListener(
+      "pointercancel",
+      pointerDragListenersRef.current.cancel
+    )
     window.removeEventListener("pointerup", pointerDragListenersRef.current.up)
     pointerDragListenersRef.current = null
   }, [])
@@ -388,12 +393,24 @@ export function useModuleDnD({
         updateProjectedDropSurface(nextSlotIndex === null ? null : "module")
       }
 
-      const handlePointerUp = async () => {
+      const finalizePointerDrag = async (
+        pointerEvent?: globalThis.PointerEvent,
+        options?: { cancel?: boolean }
+      ) => {
         const dragContext = pointerDragContextRef.current
 
         pointerDragContextRef.current = null
         detachPointerDragListeners()
         stopDragAutoScroll()
+
+        if (options?.cancel) {
+          if (pointerEvent) {
+            pointerEvent.preventDefault()
+          }
+
+          await commitModuleDrop(null, null)
+          return
+        }
 
         await commitModuleDrop(
           dragContext?.hasStartedDragging ? dragContext.moduleId : null,
@@ -401,12 +418,22 @@ export function useModuleDnD({
         )
       }
 
+      const handlePointerUp = async (upEvent: globalThis.PointerEvent) => {
+        await finalizePointerDrag(upEvent)
+      }
+
+      const handlePointerCancel = async (cancelEvent: globalThis.PointerEvent) => {
+        await finalizePointerDrag(cancelEvent, { cancel: true })
+      }
+
       pointerDragListenersRef.current = {
+        cancel: handlePointerCancel,
         move: handlePointerMove,
         up: handlePointerUp,
       }
 
       window.addEventListener("pointermove", handlePointerMove)
+      window.addEventListener("pointercancel", handlePointerCancel)
       window.addEventListener("pointerup", handlePointerUp, { once: true })
     },
     [
