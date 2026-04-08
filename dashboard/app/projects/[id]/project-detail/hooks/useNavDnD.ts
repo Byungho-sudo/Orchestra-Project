@@ -56,7 +56,7 @@ export function useNavDnD({
   const navPointerListenersRef = useRef<{
     cancel: (event: globalThis.PointerEvent) => void
     move: (event: globalThis.PointerEvent) => void
-    up: () => void
+    up: (event: globalThis.PointerEvent) => void
   } | null>(null)
   const navItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const draggedNavOverlayElementRef = useRef<HTMLDivElement | null>(null)
@@ -270,6 +270,7 @@ export function useNavDnD({
 
         navDragContextRef.current = null
         draggedNavItemFrameRef.current = null
+        draggedNavOverlayElementRef.current = null
         navPointerPositionRef.current = null
         navSlotMidpointsRef.current = null
         detachNavPointerListeners()
@@ -310,10 +311,9 @@ export function useNavDnD({
         }, 0)
       }
 
-      const handlePointerUp = async () => {
-        if (navDragContextRef.current) {
-          navPointerPositionRef.current = { y: navDragContextRef.current.startY }
-        }
+      const handlePointerUp = async (upEvent: globalThis.PointerEvent) => {
+        navPointerPositionRef.current = { y: upEvent.clientY }
+        updateDraggedNavItemVisualPosition(moduleId)
         await finalizeNavPointerDrag()
       }
 

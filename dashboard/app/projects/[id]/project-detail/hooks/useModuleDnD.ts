@@ -24,8 +24,6 @@ export function useModuleDnD({
 }) {
   const [draggedModuleId, setDraggedModuleId] = useState<string | null>(null)
   const [activeDragSurface, setActiveDragSurface] = useState<DragSurface>(null)
-  const [projectedDropSurface, setProjectedDropSurface] =
-    useState<DragSurface>(null)
   const [moduleDropSlotIndex, setModuleDropSlotIndex] = useState<number | null>(
     null
   )
@@ -51,7 +49,6 @@ export function useModuleDnD({
   const dragAutoScrollVelocityRef = useRef(0)
   const dragVisualFrameRef = useRef<number | null>(null)
   const dragUsesTouchScrollRef = useRef(false)
-  const projectedDropSurfaceRef = useRef<DragSurface>(null)
   const moduleDropSlotIndexRef = useRef<number | null>(null)
   const pointerDragContextRef = useRef<{
     moduleId: string
@@ -156,17 +153,6 @@ export function useModuleDnD({
     [startDragAutoScroll, stopDragAutoScroll]
   )
 
-  const updateProjectedDropSurface = useCallback((nextSurface: DragSurface) => {
-    if (projectedDropSurfaceRef.current === nextSurface) {
-      return
-    }
-
-    projectedDropSurfaceRef.current = nextSurface
-    setProjectedDropSurface((currentSurface) =>
-      currentSurface === nextSurface ? currentSurface : nextSurface
-    )
-  }, [])
-
   const disableDocumentTextSelection = useCallback(() => {
     if (typeof document === "undefined" || previousDocumentUserSelectRef.current) {
       return
@@ -196,16 +182,15 @@ export function useModuleDnD({
     stopDragAutoScroll()
     restoreDocumentTextSelection()
     dragUsesTouchScrollRef.current = false
+    draggedOverlayElementRef.current = null
     draggedModuleFrameRef.current = null
     pointerPositionRef.current = null
-    projectedDropSurfaceRef.current = null
     moduleDropSlotIndexRef.current = null
     if (dragVisualFrameRef.current) {
       cancelAnimationFrame(dragVisualFrameRef.current)
       dragVisualFrameRef.current = null
     }
     setActiveDragSurface(null)
-    setProjectedDropSurface(null)
     setModuleDropSlotIndex(null)
     setDraggedModuleId(null)
     setDraggedModuleFrame(null)
@@ -219,9 +204,8 @@ export function useModuleDnD({
       setDraggedModuleFrame(null)
       moduleDropSlotIndexRef.current = null
       setModuleDropSlotIndex(null)
-      updateProjectedDropSurface(null)
     },
-    [updateProjectedDropSurface]
+    []
   )
 
   const startModuleDrag = useCallback(
@@ -243,8 +227,6 @@ export function useModuleDnD({
       setDraggedModuleFrame(dragFrame)
       moduleDropSlotIndexRef.current = initialSlotIndex
       setModuleDropSlotIndex(initialSlotIndex)
-      projectedDropSurfaceRef.current = "module"
-      setProjectedDropSurface("module")
     },
     [disableDocumentTextSelection]
   )
@@ -505,8 +487,6 @@ export function useModuleDnD({
             currentSlotIndex === nextSlotIndex ? currentSlotIndex : nextSlotIndex
           )
         }
-
-        updateProjectedDropSurface(nextSlotIndex === null ? null : "module")
       }
 
       const finalizePointerDrag = async (
@@ -567,7 +547,6 @@ export function useModuleDnD({
       stopDragAutoScroll,
       updateDragAutoScroll,
       updateDraggedModuleVisualPosition,
-      updateProjectedDropSurface,
     ]
   )
 
@@ -604,6 +583,7 @@ export function useModuleDnD({
       restoreDocumentTextSelection()
       stopDragAutoScroll()
       detachPointerDragListeners()
+      draggedOverlayElementRef.current = null
     }
   }, [detachPointerDragListeners, restoreDocumentTextSelection, stopDragAutoScroll])
 
@@ -616,9 +596,7 @@ export function useModuleDnD({
     handleDraggedModuleOverlayRefChange,
     handleModuleSectionRefChange,
     moduleDropSlotIndex,
-    projectedDropSurface,
     settlingModuleDrop,
     startSharedDrag,
-    updateProjectedDropSurface,
   }
 }

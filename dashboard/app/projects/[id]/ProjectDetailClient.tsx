@@ -182,7 +182,6 @@ export default function ProjectDetailClient({
     handleDraggedModuleOverlayRefChange,
     handleModuleSectionRefChange,
     moduleDropSlotIndex,
-    projectedDropSurface,
     settlingModuleDrop,
     startSharedDrag,
   } = useModuleDnD({
@@ -692,7 +691,6 @@ export default function ProjectDetailClient({
                   isResettingModules={isResettingModules}
                   moduleDropSlotIndex={moduleDropSlotIndex}
                   navDropSlotIndex={navDropSlotIndex}
-                  projectedDropSurface={projectedDropSurface}
                   settlingModuleDrop={settlingModuleDrop}
                   moduleError={moduleError}
                   modules={visibleWorkspaceModules}

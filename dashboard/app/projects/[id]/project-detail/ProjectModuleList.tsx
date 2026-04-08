@@ -25,7 +25,6 @@ export function ProjectModuleList({
   isResettingModules,
   moduleDropSlotIndex,
   navDropSlotIndex,
-  projectedDropSurface,
   settlingModuleDrop,
   moduleError,
   modules,
@@ -55,7 +54,6 @@ export function ProjectModuleList({
   isResettingModules: boolean
   moduleDropSlotIndex: number | null
   navDropSlotIndex: number | null
-  projectedDropSurface: DragSurface
   settlingModuleDrop: {
     moduleId: string
     slotIndex: number
@@ -82,8 +80,6 @@ export function ProjectModuleList({
   const moduleItemRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const previousModuleTopsRef = useRef<Record<string, number>>({})
   const previousModuleOrderSignatureRef = useRef<string | null>(null)
-  const visibleDropSlotIndex =
-    projectedDropSurface === "module" ? moduleDropSlotIndex : null
   const isModuleDragging =
     activeDragSurface === "module" && Boolean(draggedModuleId)
   const isNavDragging = activeDragSurface === "nav" && Boolean(draggedModuleId)
@@ -93,7 +89,7 @@ export function ProjectModuleList({
         ? reorderWorkspaceModulesBySlot(
             modules,
             draggedModuleId!,
-            visibleDropSlotIndex ?? moduleDropSlotIndex
+            moduleDropSlotIndex
           )
         : settlingModuleDrop
           ? reorderWorkspaceModulesBySlot(
@@ -115,7 +111,6 @@ export function ProjectModuleList({
       moduleDropSlotIndex,
       modules,
       navDropSlotIndex,
-      visibleDropSlotIndex,
       settlingModuleDrop,
     ]
   )
@@ -124,6 +119,7 @@ export function ProjectModuleList({
     isModuleDragging && draggedModuleId
       ? modules.find((module) => module.id === draggedModuleId) ?? null
       : null
+  const ignoreSectionRefChange = () => {}
 
   useLayoutEffect(() => {
     const nextModuleTops: Record<string, number> = {}
@@ -188,14 +184,13 @@ export function ProjectModuleList({
             isDeleting={deletingModuleId === module.id || isResettingModules}
             isMoving={movingModuleId === module.id || isResettingModules}
             dragFrame={null}
-          onDelete={onDeleteModule}
-          onEdit={onEditModule}
-          onHeaderPointerDown={onHeaderPointerDown}
-          onSelect={onSelectModule}
-          onOverlayRefChange={undefined}
-          onSectionRefChange={
-            isModuleDragging && draggedModuleId === module.id
-              ? () => {}
+            onDelete={onDeleteModule}
+            onEdit={onEditModule}
+            onHeaderPointerDown={onHeaderPointerDown}
+            onSelect={onSelectModule}
+            onSectionRefChange={
+              isModuleDragging && draggedModuleId === module.id
+                ? ignoreSectionRefChange
                 : onSectionRefChange
             }
           >
@@ -223,7 +218,7 @@ export function ProjectModuleList({
           onHeaderPointerDown={onHeaderPointerDown}
           onSelect={onSelectModule}
           onOverlayRefChange={onDraggedModuleOverlayRefChange}
-          onSectionRefChange={onSectionRefChange}
+          onSectionRefChange={ignoreSectionRefChange}
         >
           {renderModuleContent(draggedModule)}
         </ProjectModuleSection>
