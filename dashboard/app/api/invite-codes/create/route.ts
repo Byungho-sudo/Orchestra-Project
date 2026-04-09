@@ -18,6 +18,13 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as CreateInviteCodeBody | null
   const trimmedLabel = body?.label?.trim() || null
+
+  if (!trimmedLabel) {
+    return NextResponse.json(
+      { message: "Display name is required." },
+      { status: 400 }
+    )
+  }
   const rawMaxUses = body?.maxUses
   const normalizedMaxUses =
     typeof rawMaxUses === "number" && Number.isFinite(rawMaxUses)
@@ -64,7 +71,10 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    inviteCode: data as InviteCodeRecord,
+    inviteCode: {
+      ...(data as Omit<InviteCodeRecord, "guest_display_name">),
+      guest_display_name: null,
+    },
     rawCode,
   })
 }

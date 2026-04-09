@@ -22,9 +22,47 @@ export async function GET() {
     )
   }
 
+  const inviteCodes = ((data as Omit<InviteCodeRecord, "guest_display_name">[] | null) ?? [])
+
+  const inviteIds = inviteCodes.map((inviteCode) => inviteCode.id)
+  let latestGuestDisplayNameByInviteId = new Map<string, string>()
+
+  if (inviteIds.length > 0) {
+    const { data: guestUsers, error: guestUsersError } = await admin
+      .from("guest_users")
+      .select("invite_code_id,display_name,updated_at")
+      .in("invite_code_id", inviteIds)
+      .order("updated_at", { ascending: false })
+
+    if (guestUsersError) {
+      console.error("[invite codes] guest lookup failed", guestUsersError)
+      return NextResponse.json(
+        { message: "Failed to load invite codes." },
+        { status: 500 }
+      )
+    }
+
+    latestGuestDisplayNameByInviteId = new Map(
+      ((guestUsers as {
+        invite_code_id: string
+        display_name: string
+        updated_at: string
+      }[] | null) ?? [])
+        .filter(
+          (guestUser, index, collection) =>
+            collection.findIndex(
+              (candidate) => candidate.invite_code_id === guestUser.invite_code_id
+            ) === index
+        )
+        .map((guestUser) => [guestUser.invite_code_id, guestUser.display_name])
+    )
+  }
+
   return NextResponse.json({
-    inviteCodes: ((data as InviteCodeRecord[] | null) ?? []).map((inviteCode) => ({
+    inviteCodes: inviteCodes.map((inviteCode) => ({
       ...inviteCode,
+      guest_display_name:
+        latestGuestDisplayNameByInviteId.get(inviteCode.id) ?? null,
     })),
   })
 }

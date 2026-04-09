@@ -10,6 +10,13 @@ export type InviteCodeListItem = {
   max_uses: number | null
   created_at: string
   expires_at: string | null
+  guest_display_name: string | null
+}
+
+type RecentInviteCodeResult = {
+  contextLabel: string
+  heading: string
+  rawCode: string
 }
 
 type CreateInviteCodeDraft = {
@@ -26,12 +33,15 @@ const emptyDraft: CreateInviteCodeDraft = {
 
 export function useInviteAccess() {
   const [draft, setDraft] = useState<CreateInviteCodeDraft>(emptyDraft)
+  const [displayNameError, setDisplayNameError] = useState("")
   const [inviteCodes, setInviteCodes] = useState<InviteCodeListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
+  const [isRegeneratingId, setIsRegeneratingId] = useState<string | null>(null)
   const [updatingInviteId, setUpdatingInviteId] = useState<string | null>(null)
   const [error, setError] = useState("")
-  const [recentRawCode, setRecentRawCode] = useState<string | null>(null)
+  const [recentInviteCodeResult, setRecentInviteCodeResult] =
+    useState<RecentInviteCodeResult | null>(null)
 
   const loadInviteCodes = useCallback(async () => {
     setIsLoading(true)
@@ -63,9 +73,18 @@ export function useInviteAccess() {
       return
     }
 
+    const trimmedDisplayName = draft.label.trim()
+
     setIsCreating(true)
+    setDisplayNameError("")
     setError("")
-    setRecentRawCode(null)
+    setRecentInviteCodeResult(null)
+
+    if (!trimmedDisplayName) {
+      setIsCreating(false)
+      setDisplayNameError("Display name is required.")
+      return
+    }
 
     const parsedMaxUses = draft.maxUses.trim()
       ? Number(draft.maxUses.trim())
@@ -80,7 +99,7 @@ export function useInviteAccess() {
     const response = await fetch("/api/invite-codes/create", {
       body: JSON.stringify({
         expiresAt: draft.expiresAt || null,
-        label: draft.label || null,
+        label: trimmedDisplayName,
         maxUses: parsedMaxUses,
       }),
       headers: {
@@ -108,9 +127,58 @@ export function useInviteAccess() {
       payload.inviteCode as InviteCodeListItem,
       ...currentInviteCodes,
     ])
-    setRecentRawCode(payload.rawCode)
+    setRecentInviteCodeResult({
+      contextLabel: payload.inviteCode.label?.trim() || trimmedDisplayName,
+      heading: "Invite code created",
+      rawCode: payload.rawCode,
+    })
     setDraft(emptyDraft)
   }, [draft, isCreating])
+
+  const regenerateGuestAccessCode = useCallback(async (
+    inviteCodeId: string
+  ) => {
+    if (isRegeneratingId) {
+      return
+    }
+
+    setIsRegeneratingId(inviteCodeId)
+    setError("")
+    setRecentInviteCodeResult(null)
+
+    const response = await fetch(
+      `/api/invite-codes/${inviteCodeId}/regenerate-access-code`,
+      {
+        method: "POST",
+      }
+    )
+
+    const payload = (await response.json().catch(() => null)) as
+      | {
+          inviteCode?: InviteCodeListItem
+          message?: string
+          rawCode?: string
+        }
+      | null
+
+    setIsRegeneratingId(null)
+
+    if (!response.ok || !payload?.inviteCode || !payload.rawCode) {
+      setError(payload?.message ?? "Failed to generate a new guest access code.")
+      return
+    }
+
+    setRecentInviteCodeResult({
+      contextLabel:
+        payload.inviteCode.guest_display_name?.trim() ||
+        payload.inviteCode.label?.trim() ||
+        "Guest invite",
+      heading: "New guest access code generated",
+      rawCode: payload.rawCode,
+    })
+
+    await loadInviteCodes()
+  }, [isRegeneratingId, loadInviteCodes])
 
   const updateInviteCodeActivity = useCallback(async (
     inviteCodeId: string,
@@ -146,14 +214,17 @@ export function useInviteAccess() {
 
   return {
     createInviteCode,
+    displayNameError,
     draft,
     error,
+    isRegeneratingId,
     inviteCodes,
     isCreating,
     isLoading,
-    recentRawCode,
+    recentInviteCodeResult,
+    regenerateGuestAccessCode,
     setDraft,
-    setRecentRawCode,
+    setRecentInviteCodeResult,
     updateInviteCodeActivity,
     updatingInviteId,
   }

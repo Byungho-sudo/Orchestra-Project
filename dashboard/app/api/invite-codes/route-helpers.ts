@@ -11,6 +11,7 @@ export type InviteCodeRecord = {
   max_uses: number | null
   created_at: string
   expires_at: string | null
+  guest_display_name: string | null
 }
 
 export async function requireInviteAccess() {
