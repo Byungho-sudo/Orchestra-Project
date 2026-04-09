@@ -24,7 +24,7 @@ export function useAppActor(currentUser: User | null) {
       const { data: guestUser, error } = await supabase
         .from("guest_users")
         .select(
-          "id,auth_user_id,invite_code_id,display_name,status,created_at,updated_at,last_seen_at"
+          "id,auth_user_id,invite_code_id,display_name,status,created_at,updated_at,last_seen_at,invite_code:invite_codes!inner(is_active)"
         )
         .eq("auth_user_id", currentUser.id)
         .maybeSingle<GuestUserRecord>()
@@ -33,7 +33,7 @@ export function useAppActor(currentUser: User | null) {
         return
       }
 
-      if (guestUser && guestUser.status === "active") {
+      if (guestUser && guestUser.invite_code?.is_active) {
         setActor({
           kind: "guest",
           authUser: currentUser,

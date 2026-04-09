@@ -65,6 +65,10 @@ function LoginForm() {
         <p className="mt-2 text-sm text-slate-600">
           Sign in to your Orchestra Project account.
         </p>
+        <p className="mt-2 text-sm text-slate-500">
+          Using an invite instead? Join with a guest session and enter the app
+          without creating a full account.
+        </p>
 
         {resetSuccess && (
           <p className="mt-4 text-sm font-medium text-green-700">
@@ -113,6 +117,12 @@ function LoginForm() {
                 className="block text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
               >
                 Forgot password?
+              </Link>
+              <Link
+                href="/guest"
+                className="block text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
+              >
+                Use invite code
               </Link>
             </div>
             <button

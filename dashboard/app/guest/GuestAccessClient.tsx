@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
@@ -228,10 +227,7 @@ export function GuestAccessClient() {
         )}
 
         <div className="mt-6 border-t border-slate-200 pt-4 text-sm text-slate-600">
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium text-indigo-600 hover:underline">
-            Log in
-          </Link>
+          Returning guest? Re-enter your invite code and display name.
         </div>
       </div>
     </main>

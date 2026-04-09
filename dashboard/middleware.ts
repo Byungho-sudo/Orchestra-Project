@@ -48,11 +48,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: guestUser } = await supabase
     .from("guest_users")
-    .select("status")
+    .select("id,invite_code:invite_codes!inner(is_active)")
     .eq("auth_user_id", user.id)
-    .maybeSingle<{ status: "active" | "revoked" }>()
+    .maybeSingle<{ id: string; invite_code: { is_active: boolean } }>()
 
-  if (guestUser?.status === "revoked") {
+  if (guestUser && !guestUser.invite_code.is_active) {
     return NextResponse.redirect(new URL("/guest?revoked=1", request.url))
   }
 
@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/guest", request.url))
   }
 
-  if (guestUser?.status === "active" && !isGuestAllowedPath(pathname)) {
+  if (guestUser?.invite_code.is_active && !isGuestAllowedPath(pathname)) {
     return NextResponse.redirect(new URL("/projects", request.url))
   }
 

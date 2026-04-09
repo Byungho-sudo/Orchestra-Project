@@ -18,13 +18,13 @@ export async function getAppActor(): Promise<AppActor | null> {
   const { data: guestUser } = await supabase
     .from("guest_users")
     .select(
-      "id,auth_user_id,invite_code_id,display_name,status,created_at,updated_at,last_seen_at"
+      "id,auth_user_id,invite_code_id,display_name,status,created_at,updated_at,last_seen_at,invite_code:invite_codes!inner(is_active)"
     )
     .eq("auth_user_id", user.id)
     .maybeSingle<GuestUserRecord>()
 
   if (guestUser) {
-    if (guestUser.status === "revoked") {
+    if (!guestUser.invite_code?.is_active) {
       throw new ActorAccessError("REVOKED_GUEST")
     }
 

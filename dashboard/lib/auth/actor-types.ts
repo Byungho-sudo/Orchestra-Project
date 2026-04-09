@@ -9,6 +9,9 @@ export type GuestUserRecord = {
   created_at: string
   updated_at: string
   last_seen_at: string | null
+  invite_code?: {
+    is_active: boolean
+  } | null
 }
 
 export type FullUserActor = {

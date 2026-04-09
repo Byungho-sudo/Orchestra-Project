@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
 import { useAppActor } from "@/lib/auth/use-app-actor"
+import { GuestSettingsMenu } from "./GuestSettingsMenu"
 
 export function TopNavBar({
   breadcrumb,
@@ -28,9 +29,19 @@ export function TopNavBar({
   const mobileAccountMenuRef = useRef<HTMLDivElement | null>(null)
   const { actor, isLoading: isActorLoading } = useAppActor(currentUser)
   const isGuestActor = actor?.kind === "guest"
+  const [guestDisplayName, setGuestDisplayName] = useState("")
   const identityLabel = isGuestActor
-    ? actor.guest.display_name
+    ? guestDisplayName || actor.guest.display_name
     : currentUser?.email ?? ""
+
+  useEffect(() => {
+    if (actor?.kind === "guest") {
+      setGuestDisplayName(actor.guest.display_name)
+      return
+    }
+
+    setGuestDisplayName("")
+  }, [actor])
 
   useEffect(() => {
     if (!isMobileAccountMenuOpen) return
@@ -103,9 +114,16 @@ export function TopNavBar({
             </>
           ) : currentUser ? (
             <>
-              <span className="hidden text-sm text-slate-600 sm:inline">
-                {identityLabel}
-              </span>
+              {isGuestActor ? (
+                <GuestSettingsMenu
+                  currentDisplayName={identityLabel}
+                  onSaved={setGuestDisplayName}
+                />
+              ) : (
+                <span className="hidden text-sm text-slate-600 sm:inline">
+                  {identityLabel}
+                </span>
+              )}
               {!isGuestActor && !isActorLoading ? (
                 <Link
                   href="/settings/account"

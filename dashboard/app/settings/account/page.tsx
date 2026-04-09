@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AppLayout } from "@/app/components/layout/AppLayout"
 import { useCurrentUser } from "@/lib/use-current-user"
+import { InviteAccessSection } from "./components/InviteAccessSection"
 import { useAccountSettings } from "./use-account-settings"
 
 export default function AccountSettingsPage() {
@@ -299,6 +300,8 @@ function AccountSettingsPageContent() {
             </button>
           </div>
         </section>
+
+        <InviteAccessSection />
 
         <section className="rounded-xl border border-red-200 bg-white p-8 shadow-sm">
           <h2 className="text-xl font-semibold text-red-700">Danger Zone</h2>

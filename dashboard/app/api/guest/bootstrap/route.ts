@@ -92,9 +92,9 @@ export async function POST(request: Request) {
     const admin = createSupabaseAdminClient()
     const { data: existingGuestUser, error: existingGuestUserError } = await admin
       .from("guest_users")
-      .select("id,status")
+      .select("id,invite_code:invite_codes(is_active)")
       .eq("auth_user_id", user.id)
-      .maybeSingle<{ id: string; status: "active" | "revoked" }>()
+      .maybeSingle<{ id: string; invite_code: { is_active: boolean } | null }>()
 
     if (existingGuestUserError) {
       console.error(
@@ -110,19 +110,12 @@ export async function POST(request: Request) {
       )
     }
 
-    if (existingGuestUser?.status === "active") {
+    if (existingGuestUser?.invite_code?.is_active) {
       console.info("[guest bootstrap] existing active guest", {
         guestUserId: existingGuestUser.id,
         userId: user.id,
       })
       return NextResponse.json({ redirectTo: "/projects" })
-    }
-
-    if (existingGuestUser?.status === "revoked") {
-      return NextResponse.json(
-        { message: "This guest access session has been revoked." },
-        { status: 403 }
-      )
     }
 
     if (!user.is_anonymous) {
@@ -161,9 +154,12 @@ export async function POST(request: Request) {
         const { data: resolvedGuestUser, error: resolvedGuestUserError } =
           await admin
             .from("guest_users")
-            .select("id,status")
+            .select("id,invite_code:invite_codes(is_active)")
             .eq("auth_user_id", user.id)
-            .maybeSingle<{ id: string; status: "active" | "revoked" }>()
+            .maybeSingle<{
+              id: string
+              invite_code: { is_active: boolean } | null
+            }>()
 
         if (resolvedGuestUserError) {
           console.error(
@@ -179,7 +175,7 @@ export async function POST(request: Request) {
           )
         }
 
-        if (resolvedGuestUser?.status === "active") {
+        if (resolvedGuestUser?.invite_code?.is_active) {
           console.info("[guest bootstrap] restored existing guest session", {
             guestUserId: resolvedGuestUser.id,
             userId: user.id,
@@ -187,14 +183,10 @@ export async function POST(request: Request) {
           return NextResponse.json({ redirectTo: "/projects" })
         }
 
-        if (resolvedGuestUser?.status === "revoked") {
-          return NextResponse.json(
-            { message: "This guest access session has been revoked." },
-            { status: 403 }
-          )
-        }
-
-        return NextResponse.json({ redirectTo: "/projects" })
+        return NextResponse.json(
+          { message: "This invite code is no longer available." },
+          { status: 400 }
+        )
       }
 
       const mappedError = mapRedeemInviteError(redeemError.message)
