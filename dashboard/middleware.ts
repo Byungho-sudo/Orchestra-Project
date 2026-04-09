@@ -1,8 +1,10 @@
 import { createServerClient } from "@supabase/ssr"
 import { type NextRequest, NextResponse } from "next/server"
+import { isGuestAllowedPath } from "@/lib/auth/guest-route-access"
 import { supabaseKey, supabaseUrl } from "@/lib/supabase-config"
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
@@ -44,9 +46,33 @@ export async function middleware(request: NextRequest) {
     return redirectResponse
   }
 
+  const { data: guestUser } = await supabase
+    .from("guest_users")
+    .select("status")
+    .eq("auth_user_id", user.id)
+    .maybeSingle<{ status: "active" | "revoked" }>()
+
+  if (guestUser?.status === "revoked") {
+    return NextResponse.redirect(new URL("/guest?revoked=1", request.url))
+  }
+
+  if (user.is_anonymous && !guestUser) {
+    return NextResponse.redirect(new URL("/guest", request.url))
+  }
+
+  if (guestUser?.status === "active" && !isGuestAllowedPath(pathname)) {
+    return NextResponse.redirect(new URL("/projects", request.url))
+  }
+
   return response
 }
 
 export const config = {
-  matcher: ["/projects/:path*", "/settings/:path*"],
+  matcher: [
+    "/dashboard",
+    "/projects/:path*",
+    "/settings/:path*",
+    "/team",
+    "/tickets",
+  ],
 }

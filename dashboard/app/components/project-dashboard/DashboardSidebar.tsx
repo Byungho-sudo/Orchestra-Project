@@ -2,6 +2,8 @@
 
 import { usePathname } from "next/navigation"
 import { Sidebar, SidebarItem } from "@/app/components/layout/Sidebar"
+import { useAppActor } from "@/lib/auth/use-app-actor"
+import { useCurrentUser } from "@/lib/use-current-user"
 
 const navigationLinks = [
   { href: "/dashboard", label: "Overview" },
@@ -12,11 +14,17 @@ const navigationLinks = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const { currentUser } = useCurrentUser()
+  const { actor, isLoading } = useAppActor(currentUser)
+  const visibleNavigationLinks =
+    actor?.kind === "guest" || (currentUser && isLoading)
+      ? navigationLinks.filter((link) => link.href === "/projects")
+      : navigationLinks
 
   return (
     <Sidebar title="Navigation">
       <nav className="space-y-2 text-sm">
-        {navigationLinks.map((link) => {
+        {visibleNavigationLinks.map((link) => {
           const isActive =
             pathname === link.href || pathname.startsWith(`${link.href}/`)
 

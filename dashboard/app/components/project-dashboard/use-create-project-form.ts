@@ -39,6 +39,27 @@ type UseCreateProjectFormResult = {
 
 const initialVisibility: ProjectVisibility = "public"
 
+function getProjectCreationErrorMessage(error: {
+  message?: string | null
+  details?: string | null
+  hint?: string | null
+  code?: string | null
+} | null) {
+  if (!error) {
+    return "Failed to create project. Please try again."
+  }
+
+  if (error.message === "new row violates row-level security policy for table \"projects\"") {
+    return "Project creation is blocked by the current database policy."
+  }
+
+  if (error.message === "new row violates row-level security policy for table \"project_modules\"") {
+    return "Project modules could not be created because of the current database policy."
+  }
+
+  return error.message || "Failed to create project. Please try again."
+}
+
 export function useCreateProjectForm({
   currentUser,
   onProjectCreated,
@@ -85,6 +106,12 @@ export function useCreateProjectForm({
 
     setIsSaving(true)
 
+    console.info("[project create] starting", {
+      currentUserId: currentUser?.id ?? null,
+      isAnonymous: currentUser?.is_anonymous ?? null,
+      visibility: validation.values.visibility,
+    })
+
     const { data, error } = await supabase
       .rpc("create_project_with_default_modules", {
         p_name: validation.values.name,
@@ -97,10 +124,23 @@ export function useCreateProjectForm({
     setIsSaving(false)
 
     if (error) {
-      console.error("Error creating project:", error)
-      onProjectCreateFailed("Failed to create project. Please try again.")
+      console.error("[project create] rpc failed", {
+        code: error.code ?? null,
+        currentUserId: currentUser?.id ?? null,
+        details: error.details ?? null,
+        hint: error.hint ?? null,
+        isAnonymous: currentUser?.is_anonymous ?? null,
+        message: error.message ?? null,
+        visibility: validation.values.visibility,
+      })
+      onProjectCreateFailed(getProjectCreationErrorMessage(error))
       return
     }
+
+    console.info("[project create] rpc succeeded", {
+      currentUserId: currentUser?.id ?? null,
+      data,
+    })
 
     if (data) {
       onProjectCreated(mergeProjectWithProgress(data as ProjectRow, null))

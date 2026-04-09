@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
+import { useAppActor } from "@/lib/auth/use-app-actor"
 
 export function TopNavBar({
   breadcrumb,
@@ -25,6 +26,11 @@ export function TopNavBar({
 }) {
   const [isMobileAccountMenuOpen, setIsMobileAccountMenuOpen] = useState(false)
   const mobileAccountMenuRef = useRef<HTMLDivElement | null>(null)
+  const { actor, isLoading: isActorLoading } = useAppActor(currentUser)
+  const isGuestActor = actor?.kind === "guest"
+  const identityLabel = isGuestActor
+    ? actor.guest.display_name
+    : currentUser?.email ?? ""
 
   useEffect(() => {
     if (!isMobileAccountMenuOpen) return
@@ -98,15 +104,17 @@ export function TopNavBar({
           ) : currentUser ? (
             <>
               <span className="hidden text-sm text-slate-600 sm:inline">
-                {currentUser.email}
+                {identityLabel}
               </span>
-              <Link
-                href="/settings/account"
-                className="hidden text-sm font-medium text-slate-700 hover:underline sm:inline"
-              >
-                Account
-              </Link>
-              {onLogout && (
+              {!isGuestActor && !isActorLoading ? (
+                <Link
+                  href="/settings/account"
+                  className="hidden text-sm font-medium text-slate-700 hover:underline sm:inline"
+                >
+                  Account
+                </Link>
+              ) : null}
+              {onLogout ? (
                 <button
                   type="button"
                   onClick={onLogout}
@@ -114,8 +122,8 @@ export function TopNavBar({
                 >
                   Log out
                 </button>
-              )}
-              {onLogout && (
+              ) : null}
+              {onLogout && !isGuestActor && !isActorLoading ? (
                 <div
                   ref={mobileAccountMenuRef}
                   className="relative sm:hidden"
@@ -138,7 +146,7 @@ export function TopNavBar({
                         Account
                       </p>
                       <div className="px-3 pb-2 text-sm text-slate-600">
-                        {currentUser.email}
+                        {identityLabel}
                       </div>
                       <Link
                         href="/settings/account"
@@ -160,7 +168,7 @@ export function TopNavBar({
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
             </>
           ) : (
             <>
