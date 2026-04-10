@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createSupabaseAdminClient } from "@/lib/supabase-admin"
 import { createSupabaseServerClient } from "@/lib/supabase-server"
 import { hashInviteCode } from "@/lib/guest/invite-code-hash"
+import { supabaseUrl } from "@/lib/supabase-config"
 
 function mapRedeemInviteError(errorMessage: string | null) {
   switch (errorMessage) {
@@ -126,10 +127,15 @@ export async function POST(request: Request) {
     }
 
     const codeHash = hashInviteCode(rawCode)
+    const normalizedCode = rawCode.trim().toLowerCase()
 
     console.info("[guest bootstrap] redeeming invite", {
-      codeHash,
+      codeHashPrefix: codeHash.slice(0, 12),
       displayName,
+      normalizedCode,
+      rawCode,
+      rawCodeLength: rawCode.length,
+      supabaseHost: new URL(supabaseUrl).host,
       userId: user.id,
     })
 

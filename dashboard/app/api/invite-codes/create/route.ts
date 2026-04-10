@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { generateRawInviteCode } from "@/lib/guest/generate-raw-invite-code"
 import { hashInviteCode } from "@/lib/guest/invite-code-hash"
+import { supabaseUrl } from "@/lib/supabase-config"
 import { requireInviteAccess, type InviteCodeRecord } from "../route-helpers"
 
 type CreateInviteCodeBody = {
@@ -47,6 +48,13 @@ export async function POST(request: Request) {
   const codeHash = hashInviteCode(rawCode)
   const { admin } = access
 
+  console.info("[invite codes] create invite candidate", {
+    codeHashPrefix: codeHash.slice(0, 12),
+    normalizedRawCode: rawCode.trim().toLowerCase(),
+    rawCode,
+    supabaseHost: new URL(supabaseUrl).host,
+  })
+
   const { data, error } = await admin
     .from("invite_codes")
     .insert({
@@ -69,6 +77,15 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
+
+  console.info("[invite codes] create succeeded", {
+    codeHashPrefix: codeHash.slice(0, 12),
+    inviteCodeId: data.id,
+    isActive: data.is_active,
+    label: data.label,
+    supabaseHost: new URL(supabaseUrl).host,
+    useCount: data.use_count,
+  })
 
   return NextResponse.json({
     inviteCode: {
