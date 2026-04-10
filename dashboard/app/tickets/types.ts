@@ -23,6 +23,7 @@ export type TicketDraft = {
   description: string
   type: TicketType
   priority: TicketPriority
+  status: TicketStatus
 }
 
 export const emptyTicketDraft: TicketDraft = {
@@ -30,6 +31,7 @@ export const emptyTicketDraft: TicketDraft = {
   description: "",
   type: "improvement",
   priority: "medium",
+  status: "inbox",
 }
 
 export const ticketTypeOptions: Array<{ value: TicketType; label: string }> = [
@@ -76,6 +78,18 @@ export function getTicketStatusLabel(status: TicketStatus) {
   return (
     ticketStatusOptions.find((option) => option.value === status)?.label ?? status
   )
+}
+
+export function isTicketType(value: string): value is TicketType {
+  return ticketTypeOptions.some((option) => option.value === value)
+}
+
+export function isTicketPriority(value: string): value is TicketPriority {
+  return ticketPriorityOptions.some((option) => option.value === value)
+}
+
+export function isTicketStatus(value: string): value is TicketStatus {
+  return ticketStatusOptions.some((option) => option.value === value)
 }
 
 export function getTicketTypeBadgeClassName(type: TicketType) {

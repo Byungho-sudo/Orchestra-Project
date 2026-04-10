@@ -1,7 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { AppShell } from "@/app/components/project-dashboard/AppShell"
+import { Modal } from "@/app/components/ui/Modal"
 import { useCurrentUser } from "@/lib/use-current-user"
+import { TicketForm } from "./TicketForm"
 import { useTickets } from "./useTickets"
 import {
   getTicketPriorityBadgeClassName,
@@ -9,10 +12,9 @@ import {
   getTicketStatusLabel,
   getTicketTypeBadgeClassName,
   getTicketTypeLabel,
-  ticketPriorityOptions,
   ticketStatusFilterOptions,
   ticketStatusOptions,
-  ticketTypeOptions,
+  type TicketDraft,
   type TicketRecord,
   type TicketStatus,
 } from "./types"
@@ -27,10 +29,12 @@ function formatTicketTimestamp(value: string) {
 function TicketCard({
   ticket,
   isUpdating,
+  onEdit,
   onStatusChange,
 }: {
   ticket: TicketRecord
   isUpdating: boolean
+  onEdit: () => void
   onStatusChange: (status: TicketStatus) => void
 }) {
   return (
@@ -68,24 +72,47 @@ function TicketCard({
           )}
         </div>
 
-        <div className="w-full shrink-0 sm:w-44">
+        <div className="w-full shrink-0 sm:w-52">
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
             Status
           </label>
-          <select
-            value={ticket.status}
-            onChange={(event) =>
-              onStatusChange(event.target.value as TicketStatus)
-            }
-            disabled={isUpdating}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {ticketStatusOptions.map((statusOption) => (
-              <option key={statusOption.value} value={statusOption.value}>
-                {statusOption.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={ticket.status}
+              onChange={(event) =>
+                onStatusChange(event.target.value as TicketStatus)
+              }
+              disabled={isUpdating}
+              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {ticketStatusOptions.map((statusOption) => (
+                <option key={statusOption.value} value={statusOption.value}>
+                  {statusOption.label}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label="Edit ticket"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.38 1.08V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.08-.38H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .38-1.08V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.17.38.4.72.6 1 .28.3.67.48 1.08.5H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.5Z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -101,8 +128,20 @@ function TicketCard({
   )
 }
 
+function getTicketDraft(ticket: TicketRecord): TicketDraft {
+  return {
+    description: ticket.description ?? "",
+    priority: ticket.priority,
+    status: ticket.status,
+    title: ticket.title,
+    type: ticket.type,
+  }
+}
+
 export default function TicketsPage() {
   const { currentUser, isLoading: isAuthLoading, logout } = useCurrentUser()
+  const [editingTicket, setEditingTicket] = useState<TicketRecord | null>(null)
+  const [editDraft, setEditDraft] = useState<TicketDraft | null>(null)
   const {
     countsByStatus,
     createTicket,
@@ -113,12 +152,38 @@ export default function TicketsPage() {
     isCreating,
     isLoading,
     setDraft,
+    setError,
     setStatusFilter,
     statusFilter,
     tickets,
+    updateTicket,
     updateTicketStatus,
     updatingTicketId,
   } = useTickets()
+
+  function openEditTicket(ticket: TicketRecord) {
+    setError("")
+    setEditingTicket(ticket)
+    setEditDraft(getTicketDraft(ticket))
+  }
+
+  function closeEditTicket() {
+    if (editingTicket && updatingTicketId === editingTicket.id) return
+
+    setEditingTicket(null)
+    setEditDraft(null)
+  }
+
+  async function saveEditedTicket() {
+    if (!editingTicket || !editDraft) return
+
+    const wasUpdated = await updateTicket(editingTicket.id, editDraft)
+
+    if (!wasUpdated) return
+
+    setEditingTicket(null)
+    setEditDraft(null)
+  }
 
   return (
     <AppShell title="Tickets" currentUser={currentUser} onLogout={logout}>
@@ -152,102 +217,14 @@ export default function TicketsPage() {
               </div>
             </div>
 
-            <div className="mt-5 space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  value={draft.title}
-                  onChange={(event) =>
-                    setDraft((currentDraft) => ({
-                      ...currentDraft,
-                      title: event.target.value,
-                    }))
-                  }
-                  placeholder="Short summary of the issue or idea"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Description
-                </label>
-                <textarea
-                  rows={4}
-                  value={draft.description}
-                  onChange={(event) =>
-                    setDraft((currentDraft) => ({
-                      ...currentDraft,
-                      description: event.target.value,
-                    }))
-                  }
-                  placeholder="Add the context while it's fresh."
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Type
-                  </label>
-                  <select
-                    value={draft.type}
-                    onChange={(event) =>
-                      setDraft((currentDraft) => ({
-                        ...currentDraft,
-                        type: event.target.value as typeof currentDraft.type,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                  >
-                    {ticketTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Priority
-                  </label>
-                  <select
-                    value={draft.priority}
-                    onChange={(event) =>
-                      setDraft((currentDraft) => ({
-                        ...currentDraft,
-                        priority: event.target.value as typeof currentDraft.priority,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                  >
-                    {ticketPriorityOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {error ? (
-                <p className="text-sm font-medium text-red-600">{error}</p>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => void createTicket()}
-                disabled={isCreating}
-                className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isCreating ? "Saving..." : "Add Ticket"}
-              </button>
-            </div>
+            <TicketForm
+              draft={draft}
+              error={error}
+              isSubmitting={isCreating}
+              mode="create"
+              onChange={setDraft}
+              onSubmit={() => void createTicket()}
+            />
           </div>
 
           <div className="space-y-4">
@@ -319,6 +296,7 @@ export default function TicketsPage() {
                             key={ticket.id}
                             ticket={ticket}
                             isUpdating={updatingTicketId === ticket.id}
+                            onEdit={() => openEditTicket(ticket)}
                             onStatusChange={(status) =>
                               void updateTicketStatus(ticket.id, status)
                             }
@@ -340,6 +318,7 @@ export default function TicketsPage() {
                     key={ticket.id}
                     ticket={ticket}
                     isUpdating={updatingTicketId === ticket.id}
+                    onEdit={() => openEditTicket(ticket)}
                     onStatusChange={(status) =>
                       void updateTicketStatus(ticket.id, status)
                     }
@@ -349,6 +328,38 @@ export default function TicketsPage() {
             )}
           </div>
         </section>
+
+        {editingTicket && editDraft ? (
+          <Modal
+            hasUnsavedChanges={
+              JSON.stringify(editDraft) !==
+              JSON.stringify(getTicketDraft(editingTicket))
+            }
+            isDismissDisabled={updatingTicketId === editingTicket.id}
+            onClose={closeEditTicket}
+          >
+            {({ requestClose }) => (
+              <>
+                <h2 className="text-xl font-semibold text-slate-900">
+                  Edit Ticket
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Update the ticket details and save your changes.
+                </p>
+
+                <TicketForm
+                  draft={editDraft}
+                  error={error}
+                  isSubmitting={updatingTicketId === editingTicket.id}
+                  mode="edit"
+                  onCancel={requestClose}
+                  onChange={setEditDraft}
+                  onSubmit={() => void saveEditedTicket()}
+                />
+              </>
+            )}
+          </Modal>
+        ) : null}
       </main>
     </AppShell>
   )

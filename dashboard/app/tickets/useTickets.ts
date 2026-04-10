@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import {
   emptyTicketDraft,
+  isTicketPriority,
+  isTicketStatus,
+  isTicketType,
   ticketStatusOptions,
   type TicketDraft,
   type TicketRecord,
@@ -125,6 +128,72 @@ export function useTickets() {
     []
   )
 
+  const updateTicket = useCallback(
+    async (ticketId: string, updatedTicket: TicketDraft) => {
+      const title = updatedTicket.title.trim()
+
+      if (!title) {
+        setError("Title is required.")
+        return false
+      }
+
+      if (!isTicketType(updatedTicket.type)) {
+        setError("Ticket type is invalid.")
+        return false
+      }
+
+      if (!isTicketPriority(updatedTicket.priority)) {
+        setError("Ticket priority is invalid.")
+        return false
+      }
+
+      if (!isTicketStatus(updatedTicket.status)) {
+        setError("Ticket status is invalid.")
+        return false
+      }
+
+      setUpdatingTicketId(ticketId)
+      setError("")
+
+      const response = await fetch("/api/tickets", {
+        body: JSON.stringify({
+          description: updatedTicket.description,
+          id: ticketId,
+          priority: updatedTicket.priority,
+          status: updatedTicket.status,
+          title,
+          type: updatedTicket.type,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      })
+
+      const payload = (await response.json().catch(() => null)) as
+        | { message?: string; ticket?: TicketRecord }
+        | null
+
+      setUpdatingTicketId(null)
+
+      if (!response.ok || !payload?.ticket) {
+        setError(payload?.message ?? "Failed to update ticket. Please try again.")
+        return false
+      }
+
+      setTickets((currentTickets) =>
+        normalizeTickets(
+          currentTickets.map((ticket) =>
+            ticket.id === ticketId ? (payload.ticket as TicketRecord) : ticket
+          )
+        )
+      )
+
+      return true
+    },
+    []
+  )
+
   const filteredTickets = useMemo(() => {
     if (statusFilter === "all") return tickets
 
@@ -172,6 +241,7 @@ export function useTickets() {
     setStatusFilter,
     statusFilter,
     tickets,
+    updateTicket,
     updateTicketStatus,
     updatingTicketId,
   }

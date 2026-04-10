@@ -3,6 +3,11 @@ import { getActorDisplayName } from "@/lib/auth/display-identity"
 import { ActorAccessError } from "@/lib/auth/actor-types"
 import { requireAuthenticatedActor } from "@/lib/auth/require-authenticated-actor"
 import { createSupabaseAdminClient } from "@/lib/supabase-admin"
+import {
+  isTicketPriority,
+  isTicketStatus,
+  isTicketType,
+} from "@/app/tickets/types"
 
 type CreateTicketBody = {
   description?: string | null
@@ -11,8 +16,10 @@ type CreateTicketBody = {
   type?: string
 }
 
-const allowedTypes = new Set(["bug", "feature", "improvement", "refactor"])
-const allowedPriorities = new Set(["low", "medium", "high"])
+type UpdateTicketBody = CreateTicketBody & {
+  id?: string
+  status?: string
+}
 
 export async function POST(request: Request) {
   let actor
@@ -43,14 +50,14 @@ export async function POST(request: Request) {
     )
   }
 
-  if (!allowedTypes.has(type)) {
+  if (!isTicketType(type)) {
     return NextResponse.json(
       { message: "Ticket type is invalid." },
       { status: 400 }
     )
   }
 
-  if (!allowedPriorities.has(priority)) {
+  if (!isTicketPriority(priority)) {
     return NextResponse.json(
       { message: "Ticket priority is invalid." },
       { status: 400 }
@@ -84,6 +91,96 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { message: "Failed to create ticket. Please try again." },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json({ ticket: data })
+}
+
+export async function PATCH(request: Request) {
+  try {
+    await requireAuthenticatedActor()
+  } catch (error) {
+    if (error instanceof ActorAccessError) {
+      return NextResponse.json(
+        { message: "Authentication is required." },
+        { status: error.code === "UNAUTHENTICATED" ? 401 : 403 }
+      )
+    }
+
+    throw error
+  }
+
+  const body = (await request.json().catch(() => null)) as UpdateTicketBody | null
+  const id = body?.id?.trim() ?? ""
+  const title = body?.title?.trim() ?? ""
+  const description = body?.description?.trim() || null
+  const type = body?.type ?? ""
+  const priority = body?.priority ?? ""
+  const status = body?.status ?? ""
+
+  if (!id) {
+    return NextResponse.json(
+      { message: "Ticket ID is required." },
+      { status: 400 }
+    )
+  }
+
+  if (!title) {
+    return NextResponse.json(
+      { message: "Title is required." },
+      { status: 400 }
+    )
+  }
+
+  if (!isTicketType(type)) {
+    return NextResponse.json(
+      { message: "Ticket type is invalid." },
+      { status: 400 }
+    )
+  }
+
+  if (!isTicketPriority(priority)) {
+    return NextResponse.json(
+      { message: "Ticket priority is invalid." },
+      { status: 400 }
+    )
+  }
+
+  if (!isTicketStatus(status)) {
+    return NextResponse.json(
+      { message: "Ticket status is invalid." },
+      { status: 400 }
+    )
+  }
+
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
+    .from("tickets")
+    .update({
+      description,
+      priority,
+      status,
+      title,
+      type,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select("*")
+    .single()
+
+  if (error || !data) {
+    console.error("[tickets] update failed", {
+      code: error?.code ?? null,
+      details: error?.details ?? null,
+      hint: error?.hint ?? null,
+      message: error?.message ?? null,
+      ticketId: id,
+    })
+
+    return NextResponse.json(
+      { message: "Failed to update ticket. Please try again." },
       { status: 500 }
     )
   }
