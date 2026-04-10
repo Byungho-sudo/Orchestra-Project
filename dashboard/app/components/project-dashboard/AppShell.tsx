@@ -19,7 +19,9 @@ export function AppShell({
   return (
     <AppLayout title={title} currentUser={currentUser} onLogout={onLogout}>
       <div className="grid grid-cols-1 gap-[var(--layout-gap)] md:grid-cols-[240px_1fr]">
-        <DashboardSidebar />
+        <div className="hidden md:block md:sticky md:top-[var(--sticky-panel-top)] md:self-start md:h-fit">
+          <DashboardSidebar />
+        </div>
         {children}
       </div>
     </AppLayout>
