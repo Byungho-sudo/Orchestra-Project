@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import {
   validateProjectForm,
@@ -15,6 +15,7 @@ import {
 import { supabase } from "@/lib/supabase"
 
 type UseCreateProjectFormParams = {
+  canCreatePrivateProject: boolean
   currentUser: User | null
   onProjectCreated: (project: Project) => void
   onProjectCreateFailed: (message: string) => void
@@ -61,6 +62,7 @@ function getProjectCreationErrorMessage(error: {
 }
 
 export function useCreateProjectForm({
+  canCreatePrivateProject,
   currentUser,
   onProjectCreated,
   onProjectCreateFailed,
@@ -73,6 +75,12 @@ export function useCreateProjectForm({
     useState<ProjectVisibility>(initialVisibility)
   const [errors, setErrors] = useState<ProjectFormErrors>({})
   const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (!canCreatePrivateProject && visibility === "private") {
+      setVisibility("public")
+    }
+  }, [canCreatePrivateProject, visibility])
 
   function resetForm() {
     setName("")
@@ -97,7 +105,7 @@ export function useCreateProjectForm({
         progress: 0,
         visibility,
       },
-      Boolean(currentUser)
+      canCreatePrivateProject
     )
 
     setErrors(validation.errors)

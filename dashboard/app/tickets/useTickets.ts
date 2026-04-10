@@ -17,7 +17,7 @@ function normalizeTickets(tickets: TicketRecord[]) {
   )
 }
 
-export function useTickets({ userId }: { userId: string | null }) {
+export function useTickets() {
   const [tickets, setTickets] = useState<TicketRecord[]>([])
   const [draft, setDraft] = useState<TicketDraft>(emptyTicketDraft)
   const [statusFilter, setStatusFilter] = useState<TicketStatusFilter>("all")
@@ -58,28 +58,32 @@ export function useTickets({ userId }: { userId: string | null }) {
     setIsCreating(true)
     setError("")
 
-    const { data, error } = await supabase
-      .from("tickets")
-      .insert({
-        user_id: userId,
-        title: draft.title.trim(),
-        description: draft.description.trim() || null,
-        type: draft.type,
+    const response = await fetch("/api/tickets", {
+      body: JSON.stringify({
+        description: draft.description,
         priority: draft.priority,
-        status: "inbox",
-      })
-      .select("*")
-      .single()
+        title: draft.title,
+        type: draft.type,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    })
+
+    const payload = (await response.json().catch(() => null)) as
+      | { message?: string; ticket?: TicketRecord }
+      | null
 
     setIsCreating(false)
 
-    if (error || !data) {
-      setError("Failed to create ticket. Please try again.")
+    if (!response.ok || !payload?.ticket) {
+      setError(payload?.message ?? "Failed to create ticket. Please try again.")
       return false
     }
 
     setTickets((currentTickets) =>
-      normalizeTickets([data as TicketRecord, ...currentTickets])
+      normalizeTickets([payload.ticket as TicketRecord, ...currentTickets])
     )
     setDraft((currentDraft) => ({
       ...currentDraft,
@@ -89,7 +93,7 @@ export function useTickets({ userId }: { userId: string | null }) {
     setStatusFilter("all")
 
     return true
-  }, [draft, userId])
+  }, [draft])
 
   const updateTicketStatus = useCallback(
     async (ticketId: string, status: TicketStatus) => {

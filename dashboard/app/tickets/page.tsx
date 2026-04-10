@@ -66,10 +66,6 @@ function TicketCard({
               No additional notes yet.
             </p>
           )}
-
-          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Added {formatTicketTimestamp(ticket.created_at)}
-          </p>
         </div>
 
         <div className="w-full shrink-0 sm:w-44">
@@ -92,6 +88,15 @@ function TicketCard({
           </select>
         </div>
       </div>
+
+      <div className="mt-3 flex w-full items-center justify-between gap-3 text-xs font-medium text-slate-500">
+        <p className="uppercase tracking-wide">
+          Added {formatTicketTimestamp(ticket.created_at)}
+        </p>
+        <p className="truncate text-right">
+          Created by {ticket.creator_display_name}
+        </p>
+      </div>
     </article>
   )
 }
@@ -113,7 +118,7 @@ export default function TicketsPage() {
     tickets,
     updateTicketStatus,
     updatingTicketId,
-  } = useTickets({ userId: currentUser?.id ?? null })
+  } = useTickets()
 
   return (
     <AppShell title="Tickets" currentUser={currentUser} onLogout={logout}>

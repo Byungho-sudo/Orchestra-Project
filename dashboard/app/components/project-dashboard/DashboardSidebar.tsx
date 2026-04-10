@@ -12,13 +12,15 @@ const navigationLinks = [
   { href: "/tickets", label: "Tickets" },
 ]
 
+const guestNavigationHrefs = new Set(["/projects", "/tickets"])
+
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { currentUser } = useCurrentUser()
   const { actor, isLoading } = useAppActor(currentUser)
   const visibleNavigationLinks =
     actor?.kind === "guest" || (currentUser && isLoading)
-      ? navigationLinks.filter((link) => link.href === "/projects")
+      ? navigationLinks.filter((link) => guestNavigationHrefs.has(link.href))
       : navigationLinks
 
   return (

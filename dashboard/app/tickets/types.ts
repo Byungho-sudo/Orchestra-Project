@@ -2,10 +2,13 @@ export type TicketType = "bug" | "feature" | "improvement" | "refactor"
 export type TicketPriority = "low" | "medium" | "high"
 export type TicketStatus = "inbox" | "planned" | "in_progress" | "done"
 export type TicketStatusFilter = TicketStatus | "all"
+export type TicketCreatorKind = "user" | "guest"
 
 export type TicketRecord = {
   id: string
   user_id: string | null
+  creator_kind: TicketCreatorKind
+  creator_display_name: string
   title: string
   description: string | null
   type: TicketType

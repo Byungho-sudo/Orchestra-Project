@@ -1,5 +1,9 @@
 export function isGuestAllowedPath(pathname: string) {
-  return pathname === "/projects" || pathname.startsWith("/projects/")
+  return (
+    pathname === "/projects" ||
+    pathname.startsWith("/projects/") ||
+    pathname === "/tickets"
+  )
 }
 
 export function isProtectedPath(pathname: string) {

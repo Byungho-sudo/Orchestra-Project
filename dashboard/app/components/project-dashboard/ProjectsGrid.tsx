@@ -11,6 +11,7 @@ import {
 import { ProjectToolbar } from "@/app/components/project-dashboard/ProjectToolbar"
 import { useCreateProjectForm } from "@/app/components/project-dashboard/use-create-project-form"
 import { useProjectsQuery } from "@/app/components/project-dashboard/use-projects-query"
+import { useAppActor } from "@/lib/auth/use-app-actor"
 import { useCurrentUser } from "@/lib/use-current-user"
 
 export function ProjectsGrid({
@@ -24,6 +25,8 @@ export function ProjectsGrid({
 }) {
   const router = useRouter()
   const { currentUser } = useCurrentUser()
+  const { actor } = useAppActor(currentUser)
+  const canCreatePrivateProject = actor?.kind === "user"
   const {
     errorMessage,
     loading,
@@ -39,6 +42,7 @@ export function ProjectsGrid({
     setDeadlineFilter,
   } = useProjectsQuery()
   const createProjectForm = useCreateProjectForm({
+    canCreatePrivateProject,
     currentUser,
     onProjectCreated: (project) => {
       setProjects((current) => [...current, project])
@@ -95,7 +99,7 @@ export function ProjectsGrid({
           description={createProjectForm.description}
           dueDate={createProjectForm.dueDate}
           visibility={createProjectForm.visibility}
-          canCreatePrivate={Boolean(currentUser)}
+          canCreatePrivate={canCreatePrivateProject}
           errors={createProjectForm.errors}
           isSaving={createProjectForm.isSaving}
           onNameChange={(value) => {
