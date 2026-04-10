@@ -3,6 +3,10 @@
 import type { ProjectFormErrors } from "@/lib/project-validation"
 import type { ProjectVisibility } from "@/lib/projects"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { Button } from "@/app/components/ui/Button"
+import { Input } from "@/app/components/ui/Input"
+import { Select } from "@/app/components/ui/Select"
+import { Textarea } from "@/app/components/ui/Textarea"
 
 export function NewProjectModal({
   name,
@@ -44,18 +48,19 @@ export function NewProjectModal({
     >
       {({ requestClose }) => (
         <>
-        <h3 className="text-lg font-semibold">New Project</h3>
-        <p className="mt-1 text-sm text-slate-600">
+        <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+          New Project
+        </h3>
+        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
           Add a new project card to the dashboard.
         </p>
 
         <div className="mt-4 space-y-3">
           <div>
-            <input
+            <Input
               value={name}
               onChange={(event) => onNameChange(event.target.value)}
               placeholder="Project name"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-indigo-500 focus:ring-2"
             />
             {errors.name && (
               <p className="mt-1 text-xs font-medium text-red-600">
@@ -65,12 +70,11 @@ export function NewProjectModal({
           </div>
 
           <div>
-            <textarea
+            <Textarea
               value={description}
               onChange={(event) => onDescriptionChange(event.target.value)}
               placeholder="Project description"
               rows={3}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-indigo-500 focus:ring-2"
             />
             {errors.description && (
               <p className="mt-1 text-xs font-medium text-red-600">
@@ -80,11 +84,10 @@ export function NewProjectModal({
           </div>
 
           <div>
-            <input
+            <Input
               type="date"
               value={dueDate}
               onChange={(event) => onDueDateChange(event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-indigo-500 focus:ring-2"
             />
             {errors.due_date && (
               <p className="mt-1 text-xs font-medium text-red-600">
@@ -94,16 +97,15 @@ export function NewProjectModal({
           </div>
 
           <div>
-            <select
+            <Select
               value={visibility}
               onChange={(event) =>
                 onVisibilityChange(event.target.value as ProjectVisibility)
               }
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none ring-indigo-500 focus:ring-2"
             >
               <option value="public">Public</option>
               {canCreatePrivate ? <option value="private">Private</option> : null}
-            </select>
+            </Select>
             {errors.visibility && (
               <p className="mt-1 text-xs font-medium text-red-600">
                 {errors.visibility}
@@ -113,22 +115,19 @@ export function NewProjectModal({
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={requestClose}
             disabled={isSaving}
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancel
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={onCreateProject}
             disabled={isSaving || !name.trim()}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? "Creating..." : "Create Project"}
-          </button>
+          </Button>
         </div>
         </>
       )}

@@ -18,7 +18,7 @@ export function ProjectsGridSkeleton() {
         {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}
-            className="rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm"
+            className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-sm)]"
           >
             <div className="h-5 w-2/3 animate-pulse rounded bg-slate-200" />
             <div className="mt-2 h-4 w-full animate-pulse rounded bg-slate-100" />

@@ -11,6 +11,7 @@ import {
 import { ProjectToolbar } from "@/app/components/project-dashboard/ProjectToolbar"
 import { useCreateProjectForm } from "@/app/components/project-dashboard/use-create-project-form"
 import { useProjectsQuery } from "@/app/components/project-dashboard/use-projects-query"
+import { Card } from "@/app/components/ui/Card"
 import { useAppActor } from "@/lib/auth/use-app-actor"
 import { useCurrentUser } from "@/lib/use-current-user"
 
@@ -68,9 +69,9 @@ export function ProjectsGrid({
       />
 
       {errorMessage && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+        <Card className="border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
           {errorMessage}
-        </div>
+        </Card>
       )}
 
       {!errorMessage && projects.length === 0 && (

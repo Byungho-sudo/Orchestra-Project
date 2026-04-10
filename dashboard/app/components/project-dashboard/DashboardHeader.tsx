@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
+import { getUserAccountLabel } from "@/lib/auth/display-identity"
 
 export function DashboardHeader({
   title = "Project Dashboard",
@@ -14,6 +15,8 @@ export function DashboardHeader({
   onLogout: () => void
   onCreateProject?: () => void
 }) {
+  const accountLabel = getUserAccountLabel(currentUser)
+
   return (
     <header className="h-16 border-b border-slate-300 bg-slate-50 px-6 shadow-sm">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between">
@@ -22,7 +25,7 @@ export function DashboardHeader({
           {currentUser ? (
             <>
               <span className="hidden text-sm text-slate-600 sm:inline">
-                {currentUser.email}
+                {accountLabel}
               </span>
               <button
                 onClick={onLogout}

@@ -17,9 +17,9 @@ const guestNavigationHrefs = new Set(["/projects", "/tickets"])
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { currentUser } = useCurrentUser()
-  const { actor, isLoading } = useAppActor(currentUser)
+  const { actor } = useAppActor(currentUser)
   const visibleNavigationLinks =
-    actor?.kind === "guest" || (currentUser && isLoading)
+    actor?.kind === "guest"
       ? navigationLinks.filter((link) => guestNavigationHrefs.has(link.href))
       : navigationLinks
 

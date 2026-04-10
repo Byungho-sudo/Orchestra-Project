@@ -1,15 +1,28 @@
+import type { User } from "@supabase/supabase-js"
 import type { AppActor } from "./actor-types"
+
+export function getNormalizedDisplayName(displayName: unknown) {
+  if (typeof displayName !== "string") {
+    return null
+  }
+
+  const trimmedDisplayName = displayName.trim()
+
+  return trimmedDisplayName || null
+}
+
+export function getUserAccountLabel(user: User | null | undefined) {
+  const metadataDisplayName = getNormalizedDisplayName(
+    user?.user_metadata?.display_name
+  )
+
+  return metadataDisplayName ?? user?.email ?? "Account"
+}
 
 export function getActorDisplayName(actor: AppActor) {
   if (actor.kind === "guest") {
-    return actor.guest.display_name
+    return getNormalizedDisplayName(actor.guest.display_name) ?? "Account"
   }
 
-  const metadataDisplayName = actor.authUser.user_metadata?.display_name
-
-  if (typeof metadataDisplayName === "string" && metadataDisplayName.trim()) {
-    return metadataDisplayName.trim()
-  }
-
-  return actor.authUser.email ?? "Unknown"
+  return getUserAccountLabel(actor.authUser)
 }

@@ -2,6 +2,9 @@
 
 import type { DeadlineFilter } from "@/lib/project-deadline"
 import type { SortOption } from "@/lib/projects"
+import { Button } from "@/app/components/ui/Button"
+import { Input } from "@/app/components/ui/Input"
+import { Select } from "@/app/components/ui/Select"
 
 export function ProjectToolbar({
   searchQuery,
@@ -22,51 +25,49 @@ export function ProjectToolbar({
 }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h2 className="text-xl font-semibold">Project Cards</h2>
+      <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+        Project Cards
+      </h2>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center text-sm">
-        <input
+        <Input
           type="text"
           value={searchQuery}
           onChange={(event) => onSearchQueryChange(event.target.value)}
           placeholder="Search projects..."
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 sm:w-56"
+          className="sm:w-56"
         />
 
         <div className="flex items-center gap-2">
-          <select
+          <Select
             value={deadlineFilter}
             onChange={(event) =>
               onDeadlineFilterChange(event.target.value as DeadlineFilter)
             }
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-auto"
           >
             <option value="All">All</option>
             <option value="Overdue">Overdue</option>
             <option value="Due today">Due today</option>
             <option value="Due soon">Due soon</option>
             <option value="No deadline">No deadline</option>
-          </select>
+          </Select>
 
-          <span className="text-slate-600">Sort by:</span>
-          <select
+          <span className="text-[var(--color-text-secondary)]">Sort by:</span>
+          <Select
             value={sortBy}
             onChange={(event) => onSortByChange(event.target.value as SortOption)}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-auto"
           >
             <option value="due_date">Due date</option>
             <option value="created_at">Created date</option>
             <option value="name">Name</option>
             <option value="progress">Progress</option>
-          </select>
+          </Select>
 
-          <button
-            type="button"
-            onClick={onCreateProject}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
-          >
+          <Button onClick={onCreateProject}>
             New Project
-          </button>
+          </Button>
         </div>
       </div>
     </div>

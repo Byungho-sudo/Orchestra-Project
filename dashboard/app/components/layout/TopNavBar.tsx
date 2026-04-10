@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
+import {
+  getNormalizedDisplayName,
+  getUserAccountLabel,
+} from "@/lib/auth/display-identity"
 import { useAppActor } from "@/lib/auth/use-app-actor"
 import { GuestSettingsMenu } from "./GuestSettingsMenu"
 
@@ -31,8 +35,10 @@ export function TopNavBar({
   const isGuestActor = actor?.kind === "guest"
   const [guestDisplayName, setGuestDisplayName] = useState("")
   const identityLabel = isGuestActor
-    ? guestDisplayName || actor.guest.display_name
-    : currentUser?.email ?? ""
+    ? getNormalizedDisplayName(guestDisplayName) ??
+      getNormalizedDisplayName(actor.guest.display_name) ??
+      getUserAccountLabel(currentUser)
+    : getUserAccountLabel(currentUser)
 
   useEffect(() => {
     if (actor?.kind === "guest") {
