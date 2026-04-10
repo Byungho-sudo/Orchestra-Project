@@ -23,7 +23,10 @@ export async function POST(request: Request) {
 
     console.info("[guest validate-invite] received code", {
       codeHashPrefix: codeHash.slice(0, 12),
+      environment: process.env.NODE_ENV,
+      invite_code_hash: codeHash,
       normalizedCode,
+      NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
       rawCode,
       rawCodeLength: rawCode.length,
       supabaseHost: new URL(supabaseUrl).host,
@@ -62,6 +65,10 @@ export async function POST(request: Request) {
     if (!inviteCode) {
       console.info("[guest validate-invite] invite not found", {
         codeHashPrefix: codeHash.slice(0, 12),
+        environment: process.env.NODE_ENV,
+        invite_code_hash: codeHash,
+        inviteRecordFound: false,
+        NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
         normalizedCode,
         rawCode,
         supabaseHost: new URL(supabaseUrl).host,
@@ -79,13 +86,17 @@ export async function POST(request: Request) {
 
     console.info("[guest validate-invite] invite resolved", {
       codeHashPrefix: codeHash.slice(0, 12),
+      environment: process.env.NODE_ENV,
       expiresAt: inviteCode.expires_at,
+      invite_code_hash: codeHash,
       inviteCodeId: inviteCode.id,
+      inviteRecordFound: true,
       isActive: inviteCode.is_active,
       isExhausted,
       isExpired,
       isValid,
       maxUses: inviteCode.max_uses,
+      NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
       normalizedCode,
       rawCode,
       supabaseHost: new URL(supabaseUrl).host,
