@@ -142,6 +142,9 @@ export default function TicketsPage() {
   const { currentUser, isLoading: isAuthLoading, logout } = useCurrentUser()
   const [editingTicket, setEditingTicket] = useState<TicketRecord | null>(null)
   const [editDraft, setEditDraft] = useState<TicketDraft | null>(null)
+  const [expandedStatusGroups, setExpandedStatusGroups] = useState<
+    Set<TicketStatus>
+  >(() => new Set(["inbox"]))
   const {
     countsByStatus,
     createTicket,
@@ -183,6 +186,20 @@ export default function TicketsPage() {
 
     setEditingTicket(null)
     setEditDraft(null)
+  }
+
+  function toggleStatusGroup(status: TicketStatus) {
+    setExpandedStatusGroups((currentGroups) => {
+      const nextGroups = new Set(currentGroups)
+
+      if (nextGroups.has(status)) {
+        nextGroups.delete(status)
+      } else {
+        nextGroups.add(status)
+      }
+
+      return nextGroups
+    })
   }
 
   return (
@@ -276,34 +293,53 @@ export default function TicketsPage() {
                     key={group.status}
                     className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-lg font-semibold text-slate-900">
+                    <button
+                      type="button"
+                      aria-expanded={expandedStatusGroups.has(group.status)}
+                      onClick={() => toggleStatusGroup(group.status)}
+                      className="flex w-full items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                    >
+                      <span className="min-w-0 text-lg font-semibold text-slate-900">
                         {group.label}
-                      </h3>
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {group.tickets.length}
                       </span>
-                    </div>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {group.tickets.length}
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className={`text-base text-slate-500 transition-transform ${
+                            expandedStatusGroups.has(group.status)
+                              ? "rotate-90"
+                              : "rotate-0"
+                          }`}
+                        >
+                          &gt;
+                        </span>
+                      </span>
+                    </button>
 
-                    {group.tickets.length === 0 ? (
-                      <p className="mt-4 text-sm text-slate-500">
-                        No tickets in {group.label.toLowerCase()}.
-                      </p>
-                    ) : (
-                      <div className="mt-4 space-y-3">
-                        {group.tickets.map((ticket) => (
-                          <TicketCard
-                            key={ticket.id}
-                            ticket={ticket}
-                            isUpdating={updatingTicketId === ticket.id}
-                            onEdit={() => openEditTicket(ticket)}
-                            onStatusChange={(status) =>
-                              void updateTicketStatus(ticket.id, status)
-                            }
-                          />
-                        ))}
-                      </div>
-                    )}
+                    {expandedStatusGroups.has(group.status) ? (
+                      group.tickets.length === 0 ? (
+                        <p className="mt-4 text-sm text-slate-500">
+                          No tickets in {group.label.toLowerCase()}.
+                        </p>
+                      ) : (
+                        <div className="mt-4 space-y-3">
+                          {group.tickets.map((ticket) => (
+                            <TicketCard
+                              key={ticket.id}
+                              ticket={ticket}
+                              isUpdating={updatingTicketId === ticket.id}
+                              onEdit={() => openEditTicket(ticket)}
+                              onStatusChange={(status) =>
+                                void updateTicketStatus(ticket.id, status)
+                              }
+                            />
+                          ))}
+                        </div>
+                      )
+                    ) : null}
                   </section>
                 ))}
               </div>
