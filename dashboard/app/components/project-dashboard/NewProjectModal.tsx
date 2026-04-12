@@ -3,10 +3,10 @@
 import type { ProjectFormErrors } from "@/lib/project-validation"
 import type { ProjectVisibility } from "@/lib/projects"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
-import { Button } from "@/app/components/ui/Button"
-import { Input } from "@/app/components/ui/Input"
-import { Select } from "@/app/components/ui/Select"
-import { Textarea } from "@/app/components/ui/Textarea"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { Textarea } from "@/components/ui/Textarea"
 
 export function NewProjectModal({
   name,

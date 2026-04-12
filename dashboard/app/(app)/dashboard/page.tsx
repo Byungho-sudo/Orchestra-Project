@@ -6,9 +6,9 @@ import { useDashboardOverview } from "@/app/(app)/dashboard/use-dashboard-overvi
 import { AppShell } from "@/app/components/project-dashboard/AppShell"
 import { DashboardStatCard } from "@/app/components/project-dashboard/DashboardStatCard"
 import { ProjectCard } from "@/app/components/project-dashboard/ProjectCard"
-import { Card } from "@/app/components/ui/Card"
-import { PageShell } from "@/app/components/ui/PageShell"
-import { SectionHeader } from "@/app/components/ui/SectionHeader"
+import { Card } from "@/components/ui/Card"
+import { PageShell } from "@/components/ui/PageShell"
+import { SectionHeader } from "@/components/ui/SectionHeader"
 import { getUserAccountLabel } from "@/lib/auth/display-identity"
 import { useCurrentUser } from "@/lib/use-current-user"
 

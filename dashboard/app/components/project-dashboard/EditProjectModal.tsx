@@ -2,9 +2,9 @@
 
 import type { ProjectFormErrors } from "@/lib/project-validation"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
-import { Button } from "@/app/components/ui/Button"
-import { Input } from "@/app/components/ui/Input"
-import { Textarea } from "@/app/components/ui/Textarea"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Textarea } from "@/components/ui/Textarea"
 
 export function EditProjectModal({
   editName,

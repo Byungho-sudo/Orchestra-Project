@@ -11,7 +11,7 @@ import {
 import { ProjectToolbar } from "@/app/components/project-dashboard/ProjectToolbar"
 import { useCreateProjectForm } from "@/app/components/project-dashboard/use-create-project-form"
 import { useProjectsQuery } from "@/app/components/project-dashboard/use-projects-query"
-import { Card } from "@/app/components/ui/Card"
+import { Card } from "@/components/ui/Card"
 import { useAppActor } from "@/lib/auth/use-app-actor"
 import { useCurrentUser } from "@/lib/use-current-user"
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { AppShell } from "@/app/components/project-dashboard/AppShell"
-import { Modal } from "@/app/components/ui/Modal"
+import { Modal } from "@/components/ui/Modal"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { TicketForm } from "./TicketForm"
 import { useTickets } from "./useTickets"

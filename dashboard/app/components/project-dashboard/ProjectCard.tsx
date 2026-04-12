@@ -7,8 +7,8 @@ import {
   getDeadlineStatus,
 } from "@/lib/project-deadline"
 import type { Project } from "@/lib/projects"
-import { Badge } from "@/app/components/ui/Badge"
-import { Card } from "@/app/components/ui/Card"
+import { Badge } from "@/components/ui/Badge"
+import { Card } from "@/components/ui/Card"
 
 export function ProjectCard({
   project,

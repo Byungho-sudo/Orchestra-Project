@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { AppLayout } from "@/app/components/layout/AppLayout"
+import { AppLayout } from "@/components/layout/AppLayout"
 import { createSupabaseServerClient } from "@/lib/supabase-server"
 import {
   mergeProjectWithProgress,

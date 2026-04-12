@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
-import { AppLayout } from "@/app/components/layout/AppLayout"
+import { AppLayout } from "@/components/layout/AppLayout"
 import { DashboardSidebar } from "@/app/components/project-dashboard/DashboardSidebar"
 
 export function AppShell({

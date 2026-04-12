@@ -2,9 +2,9 @@
 
 import type { DeadlineFilter } from "@/lib/project-deadline"
 import type { SortOption } from "@/lib/projects"
-import { Button } from "@/app/components/ui/Button"
-import { Input } from "@/app/components/ui/Input"
-import { Select } from "@/app/components/ui/Select"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
 
 export function ProjectToolbar({
   searchQuery,

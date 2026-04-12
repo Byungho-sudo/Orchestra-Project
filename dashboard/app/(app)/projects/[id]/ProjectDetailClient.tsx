@@ -9,7 +9,7 @@ import {
   type MouseEvent,
 } from "react"
 import { useRouter } from "next/navigation"
-import { AppLayout } from "@/app/components/layout/AppLayout"
+import { AppLayout } from "@/components/layout/AppLayout"
 import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
 import type { Project, ProjectVisibility } from "@/lib/projects"
 import { useCurrentUser } from "@/lib/use-current-user"

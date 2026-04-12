@@ -7,7 +7,7 @@ import {
   Sidebar,
   SidebarItem,
   getSidebarItemClassName,
-} from "@/app/components/layout/Sidebar"
+} from "@/components/layout/Sidebar"
 import { useAppActor } from "@/lib/auth/use-app-actor"
 import { useCurrentUser } from "@/lib/use-current-user"
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from "react"
-import { Button } from "@/app/components/ui/Button"
+import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/ui"
 
 export function Modal({

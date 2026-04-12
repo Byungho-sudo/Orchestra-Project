@@ -1,7 +1,7 @@
 "use client"
 
-import { Button } from "@/app/components/ui/Button"
-import { Card } from "@/app/components/ui/Card"
+import { Button } from "@/components/ui/Button"
+import { Card } from "@/components/ui/Card"
 
 export function ProjectsEmptyState({
   onCreateProject,

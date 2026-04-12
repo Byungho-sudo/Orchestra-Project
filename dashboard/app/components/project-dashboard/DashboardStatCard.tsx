@@ -1,4 +1,4 @@
-import { Card } from "@/app/components/ui/Card"
+import { Card } from "@/components/ui/Card"
 
 export function DashboardStatCard({
   label,

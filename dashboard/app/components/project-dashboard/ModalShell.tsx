@@ -1,1 +1,1 @@
-export { Modal as ModalShell } from "@/app/components/ui/Modal"
+export { Modal as ModalShell } from "@/components/ui/Modal"

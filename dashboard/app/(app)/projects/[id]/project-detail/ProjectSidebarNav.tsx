@@ -11,7 +11,7 @@ import {
   Sidebar,
   SidebarItem,
   getSidebarItemClassName,
-} from "@/app/components/layout/Sidebar"
+} from "@/components/layout/Sidebar"
 import type { DragSurface } from "./hooks/useModuleDnD"
 
 type NavigationItem = {

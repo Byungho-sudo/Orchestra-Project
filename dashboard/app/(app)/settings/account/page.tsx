@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { AppLayout } from "@/app/components/layout/AppLayout"
+import { AppLayout } from "@/components/layout/AppLayout"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { InviteAccessSection } from "./components/InviteAccessSection"
 import { useAccountSettings } from "./use-account-settings"
