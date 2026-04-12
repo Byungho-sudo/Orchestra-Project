@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react"
 import type { User } from "@supabase/supabase-js"
-import { DashboardNavigationLinks } from "@/app/components/project-dashboard/DashboardSidebar"
+import { DashboardNavigationLinks } from "@/components/layout/DashboardSidebar"
 import { Modal } from "@/components/ui/Modal"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { TopNavBar } from "./TopNavBar"

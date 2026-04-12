@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AppShell } from "@/app/components/project-dashboard/AppShell"
+import { AppShell } from "@/components/layout/AppShell"
 import { Modal } from "@/components/ui/Modal"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { TicketForm } from "./TicketForm"

@@ -1,6 +1,6 @@
 "use client"
 
-import { AppShell } from "@/app/components/project-dashboard/AppShell"
+import { AppShell } from "@/components/layout/AppShell"
 import { useCurrentUser } from "@/lib/use-current-user"
 
 export default function TeamPage() {
