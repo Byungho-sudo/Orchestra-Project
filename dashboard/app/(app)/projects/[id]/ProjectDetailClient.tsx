@@ -10,7 +10,7 @@ import {
 } from "react"
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/layout/AppLayout"
-import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { ModalShell } from "@/features/projects/ModalShell"
 import type { Project, ProjectVisibility } from "@/lib/projects"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"

@@ -1,16 +1,16 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { NewProjectModal } from "@/app/components/project-dashboard/NewProjectModal"
-import { ProjectCard } from "@/app/components/project-dashboard/ProjectCard"
-import { ProjectsGridSkeleton } from "@/app/components/project-dashboard/ProjectsGridSkeleton"
+import { NewProjectModal } from "@/features/projects/NewProjectModal"
+import { ProjectCard } from "@/features/projects/ProjectCard"
+import { ProjectsGridSkeleton } from "@/features/projects/ProjectsGridSkeleton"
 import {
   ProjectsEmptyState,
   ProjectsNoMatchesState,
-} from "@/app/components/project-dashboard/ProjectsGridStates"
-import { ProjectToolbar } from "@/app/components/project-dashboard/ProjectToolbar"
-import { useCreateProjectForm } from "@/app/components/project-dashboard/use-create-project-form"
-import { useProjectsQuery } from "@/app/components/project-dashboard/use-projects-query"
+} from "@/features/projects/ProjectsGridStates"
+import { ProjectToolbar } from "@/features/projects/ProjectToolbar"
+import { useCreateProjectForm } from "@/features/projects/use-create-project-form"
+import { useProjectsQuery } from "@/features/projects/use-projects-query"
 import { Card } from "@/components/ui/Card"
 import { useAppActor } from "@/lib/auth/use-app-actor"
 import { useCurrentUser } from "@/lib/use-current-user"

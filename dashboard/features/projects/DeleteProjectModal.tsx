@@ -1,6 +1,6 @@
 "use client"
 
-import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { ModalShell } from "@/features/projects/ModalShell"
 import { Button } from "@/components/ui/Button"
 
 export function DeleteProjectModal({

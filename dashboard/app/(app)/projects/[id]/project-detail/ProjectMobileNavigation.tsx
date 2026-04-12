@@ -1,4 +1,4 @@
-import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { ModalShell } from "@/features/projects/ModalShell"
 
 type NavigationItem = {
   id: string

@@ -2,7 +2,7 @@
 
 import type { ProjectFormErrors } from "@/lib/project-validation"
 import type { ProjectVisibility } from "@/lib/projects"
-import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { ModalShell } from "@/features/projects/ModalShell"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"

@@ -1,7 +1,7 @@
 "use client"
 
 import type { ProjectFormErrors } from "@/lib/project-validation"
-import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { ModalShell } from "@/features/projects/ModalShell"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"

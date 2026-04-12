@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { ModalShell } from "@/features/projects/ModalShell"
 import { calculateProjectProgressFromTimeline } from "@/lib/project-progress"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {

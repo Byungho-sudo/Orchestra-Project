@@ -2,8 +2,8 @@
 
 import { Suspense, useState } from "react"
 import { AppShell } from "@/app/components/project-dashboard/AppShell"
-import { ProjectsGrid } from "@/app/components/project-dashboard/ProjectsGrid"
-import { ProjectsGridSkeleton } from "@/app/components/project-dashboard/ProjectsGridSkeleton"
+import { ProjectsGrid } from "@/features/projects/ProjectsGrid"
+import { ProjectsGridSkeleton } from "@/features/projects/ProjectsGridSkeleton"
 
 export default function ProjectsPageClient() {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)

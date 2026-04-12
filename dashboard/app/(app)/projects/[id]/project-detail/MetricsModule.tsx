@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRef } from "react"
-import { ModalShell } from "@/app/components/project-dashboard/ModalShell"
+import { ModalShell } from "@/features/projects/ModalShell"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
   emptyProjectMetricDraft,
