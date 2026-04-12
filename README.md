@@ -1,278 +1,103 @@
 # Orchestra Project
 
-## Overview
+Orchestra is a Next.js App Router application for project workspaces, tickets, team views, guest access, and account/auth flows.
 
-**Orchestra Project** is a full-stack web application for managing projects, tracking progress, and organizing work in a centralized dashboard.
+The real application lives in [`dashboard/`](dashboard/). The repository root is a workspace wrapper plus shared documentation and database history.
 
-The system is designed to be:
+## Current State
 
-* Practical
-* Maintainable
-* Production-oriented
-* Incrementally expandable
+Implemented today:
 
-It is currently deployed and used as a real shared tool across multiple devices.
+- Next.js App Router app under `dashboard/`
+- Supabase-backed auth and data access
+- signed-in product routes for dashboard, projects, tickets, team, reports, and account settings
+- project detail workspace with module-based sections
+- guest entry flow and invite-code support
 
----
+This README describes the current implemented structure. It does not assume future refactors or planned features.
 
-## Live Application
+## Where Things Live
 
-**Production URL**
+- App source: `dashboard/`
+- Routes: `dashboard/app/`
+- Shared components: `dashboard/components/`
+- Feature-owned UI/code: `dashboard/features/`
+- Shared infrastructure and helpers: `dashboard/lib/`
+- Active migrations: `dashboard/supabase/migrations/`
+- Additional repo docs: `docs/`
 
-```
-https://orchestra-gray-nine.vercel.app/
-```
+See [`docs/architecture.md`](docs/architecture.md) for the short architecture map and migration policy.
 
-The application is hosted on **Vercel** and connected to a live **Supabase** database.
+## Route Layout
 
----
+The app uses Next.js route groups to keep URLs stable while improving folder organization.
 
-## Current Capabilities
+- Auth routes: `dashboard/app/(auth)/`
+  - public URLs stay `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`
+- Signed-in product routes: `dashboard/app/(app)/`
+  - public URLs stay `/dashboard`, `/projects`, `/tickets`, `/team`, `/reports`, `/settings/account`
+- Other root app areas remain outside those groups where appropriate, including `guest` and `api`
 
-### Core Features
+## Shared vs Feature Code
 
-* Create projects
-* View projects
-* Edit projects
-* Delete projects
-* Persistent database storage
-* Real-time shared data across devices
-* Production deployment
-* Automatic redeployment on push
+- `dashboard/components/ui/`
+  - reusable UI primitives
+- `dashboard/components/layout/`
+  - shared layout and navigation shells
+- `dashboard/features/projects/`
+  - projects list and projects CRUD surface
+- `dashboard/features/project-detail/components/`
+  - extracted project-detail rendering blocks such as modals
 
-### UI Behavior States
+Some route-local code still lives under `dashboard/app/...` where it is tightly coupled to a single route. That is current state, not a contradiction.
 
-The system correctly handles:
+## Database Migration Source of Truth
 
-* Loading state
-* Empty state
-* Error state
-* Delete confirmation
-* Immediate UI updates after database actions
+Use `dashboard/supabase/migrations/` for all new migrations going forward.
 
----
+There is also a root-level legacy folder at `supabase/migrations/`. Do not add new migrations there. It remains in the repo as historical residue until it can be consolidated safely in a later phase.
 
-## Technology Stack
+## Local Development
 
-### Frontend
+From the repo root:
 
-* Next.js (App Router)
-* React
-* TypeScript / JavaScript
-* Tailwind CSS
-
-### Backend
-
-* Supabase
-
-### Database
-
-* PostgreSQL (via Supabase)
-
-### Hosting
-
-* Vercel
-
-### Version Control
-
-* Git
-* GitHub
-
----
-
-## Project Structure
-
-```
-Orchestra-Project/
-
-dashboard/
-
-app/
-  page.tsx
-
-lib/
-  supabase.ts
-
-public/
-
-.env.local
-
-package.json
-next.config.ts
-tailwind.config.ts
-.gitignore
-README.md
-```
-
-Important:
-
-The application lives inside:
-
-```
-dashboard/
-```
-
----
-
-## Development Workflow
-
-1. Design UI
-2. Implement feature
-3. Run locally
-
-```
+```bash
+cd dashboard
+npm install
 npm run dev
 ```
 
-4. Test behavior
-5. Commit changes
-6. Push to GitHub
-7. Automatic deployment via Vercel
+Local app URL:
 
----
-
-## Local Setup
-
-### 1. Clone the repository
-
-```
-git clone https://github.com/Byungho-sudo/Orchestra-Project.git
-cd Orchestra-Project/dashboard
+```text
+http://localhost:3000
 ```
 
-### 2. Install dependencies
+Required environment variables in `dashboard/.env.local`:
 
-```
-npm install
-```
-
-### 3. Create environment variables
-
-Create a file:
-
-```
-.env.local
-```
-
-Add:
-
-```
+```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
 
-### 4. Start the development server
+## Build Verification
 
+From `dashboard/`:
+
+```bash
+npm run build
 ```
-npm run dev
-```
-
-The app will run at:
-
-```
-http://localhost:3000
-```
-
----
-
-## Environment Variables
-
-Required:
-
-```
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-```
-
-These values are provided by your Supabase project.
-
-Never commit real keys to the repository.
-
----
 
 ## Deployment
 
-The application is deployed using:
+- Frontend/app hosting: Vercel
+- Auth and database: Supabase
 
-**Vercel**
+## Documentation
 
-Deployment behavior:
-
-* Push to `main`
-* Vercel builds automatically
-* Site updates automatically
-
-No manual deployment required.
-
----
-
-## Current System Status
-
-The application currently provides:
-
-* Live production deployment
-* Shared database access
-* Multi-device synchronization
-* Stable CRUD operations
-* Reliable UI state handling
-
-This represents:
-
-**Dashboard v1 — Stable Foundation**
-
----
-
-## Known Limitations
-
-The system does not yet include:
-
-* User authentication
-* Project detail pages
-* File attachments
-* Role permissions
-* Advanced filtering
-* Analytics
-* Notifications
-
-These are planned future features.
-
----
-
-## Next Development Steps
-
-Priority roadmap:
-
-1. Project detail page
-
-```
-app/projects/[id]/page.tsx
-```
-
-2. Authentication system
-3. Project navigation
-4. Data visualization (charts)
-5. Deployment refinement
-6. Permissions and roles
-
----
-
-## Purpose
-
-This project exists to:
-
-* Build a real production system
-* Support collaborative project management
-* Learn modern full-stack architecture
-* Establish a scalable development foundation
-
----
+- Architecture and folder ownership: [`docs/architecture.md`](docs/architecture.md)
+- Existing database notes: [`docs/database-notes.md`](docs/database-notes.md)
 
 ## License
 
 Private internal project.
-
----
-
-## Author
-
-Byung Ho

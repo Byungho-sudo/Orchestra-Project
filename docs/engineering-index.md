@@ -283,7 +283,7 @@ Runtime behavior on the detail page:
 - `ProjectDetailClient.tsx` loads `project_modules` for the current project
 - If rows exist, it sorts and normalizes them by `order`
 - If no rows exist, it still contains fallback logic to insert the default module set
-- Users can add custom modules (`notes`, `text_grid`, `checklist`, `metrics`, `links`)
+- Users can add custom modules (`notes`, `checklist`, `metrics`, `links`)
 - Users can delete, reorder, and reset modules
 
 Important current detail:
