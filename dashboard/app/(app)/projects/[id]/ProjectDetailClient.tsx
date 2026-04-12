@@ -10,8 +10,12 @@ import {
 } from "react"
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/layout/AppLayout"
-import { ModalShell } from "@/features/projects/ModalShell"
-import type { Project, ProjectVisibility } from "@/lib/projects"
+import type { Project } from "@/lib/projects"
+import { AddModuleModal } from "@/features/project-detail/components/AddModuleModal"
+import { DeleteProjectModal } from "@/features/project-detail/components/DeleteProjectModal"
+import { EditMetadataModal } from "@/features/project-detail/components/EditMetadataModal"
+import { EditModuleModal } from "@/features/project-detail/components/EditModuleModal"
+import { EditProjectModal } from "@/features/project-detail/components/EditProjectModal"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
@@ -22,7 +26,6 @@ import {
   customProjectModuleOptions,
   getProjectModuleDisplayTitle,
   getProjectModuleAnchor,
-  isEnterCommitEvent,
   isRetiredProjectModuleType,
   normalizeMetadataDrafts,
   projectSectionAnchorOffsetPx,
@@ -35,10 +38,7 @@ import { useProjectModals } from "./project-detail/hooks/useProjectModals"
 import { useProjectModules } from "./project-detail/hooks/useProjectModules"
 import { useProjectMutations } from "./project-detail/hooks/useProjectMutations"
 import { useNavDnD } from "./project-detail/hooks/useNavDnD"
-import type {
-  ProjectModuleType,
-  ProjectWorkspaceModule,
-} from "./project-detail/types"
+import type { ProjectWorkspaceModule } from "./project-detail/types"
 
 export default function ProjectDetailClient({
   project,
@@ -749,542 +749,80 @@ export default function ProjectDetailClient({
         </div>
       </AppLayout>
 
-      {isEditOpen && (
-        <ModalShell
-          hasUnsavedChanges={hasEditProjectChanges}
-          isDismissDisabled={isSaving}
-          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          onClose={handleCloseEditProjectModal}
-        >
-          {({ requestClose }) => (
-            <>
-            <h2 className="text-xl font-bold text-slate-900">Edit Project</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Update the project details below.
-            </p>
+      <EditProjectModal
+        editForm={editForm}
+        editProjectFormId={editProjectFormId}
+        hasUnsavedChanges={hasEditProjectChanges}
+        isOpen={isEditOpen}
+        isSaving={isSaving}
+        onClose={handleCloseEditProjectModal}
+        onSave={() => {
+          void handleUpdateProject()
+        }}
+        saveError={saveError}
+        saveFieldErrors={saveFieldErrors}
+        setEditForm={setEditForm}
+        setSaveFieldErrors={setSaveFieldErrors}
+      />
 
-            <form
-              id={editProjectFormId}
-              className="mt-6 space-y-4"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void handleUpdateProject()
-              }}
-            >
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) => {
-                    setEditForm({ ...editForm, name: e.target.value })
-                    setSaveFieldErrors((current) => ({
-                      ...current,
-                      name: undefined,
-                    }))
-                  }}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                />
-                {saveFieldErrors.name && (
-                  <p className="mt-1 text-xs font-medium text-red-600">
-                    {saveFieldErrors.name}
-                  </p>
-                )}
-              </div>
+      <EditMetadataModal
+        addMetadataField={addMetadataField}
+        deleteMetadataField={deleteMetadataField}
+        hasUnsavedChanges={hasMetadataChanges}
+        isOpen={isMetadataEditOpen}
+        isSavingMetadata={isSavingMetadata}
+        metadataError={metadataError}
+        metadataForm={metadataForm}
+        metadataSaveState={metadataSaveState}
+        onClose={handleCloseMetadataEditModal}
+        onDone={() => {
+          void handleDoneEditingProjectMetadata()
+        }}
+        updateMetadataField={updateMetadataField}
+      />
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Description
-                </label>
-                <textarea
-                  rows={4}
-                  value={editForm.description}
-                  onChange={(e) => {
-                    setEditForm({ ...editForm, description: e.target.value })
-                    setSaveFieldErrors((current) => ({
-                      ...current,
-                      description: undefined,
-                    }))
-                  }}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                />
-                {saveFieldErrors.description && (
-                  <p className="mt-1 text-xs font-medium text-red-600">
-                    {saveFieldErrors.description}
-                  </p>
-                )}
-              </div>
+      <EditModuleModal
+        clearModuleError={clearModuleError}
+        customProjectModuleOptions={customProjectModuleOptions}
+        editModuleForm={editModuleForm}
+        editModuleFormId={editModuleFormId}
+        hasUnsavedChanges={hasEditModuleChanges}
+        isOpen={isEditModuleOpen}
+        isUpdatingModule={isUpdatingModule}
+        moduleError={moduleError}
+        onClose={handleCloseEditModuleModal}
+        onSave={() => {
+          void handleUpdateWorkspaceModule()
+        }}
+        setEditModuleForm={setEditModuleForm}
+      />
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  value={editForm.due_date}
-                  onChange={(e) => {
-                    setEditForm({ ...editForm, due_date: e.target.value })
-                    setSaveFieldErrors((current) => ({
-                      ...current,
-                      due_date: undefined,
-                    }))
-                  }}
-                  onKeyDown={(event) => {
-                    if (!isEnterCommitEvent(event)) return
+      <AddModuleModal
+        addModuleFormId={addModuleFormId}
+        clearModuleError={clearModuleError}
+        createModuleForm={createModuleForm}
+        customProjectModuleOptions={customProjectModuleOptions}
+        hasUnsavedChanges={hasCreateModuleChanges}
+        isCreatingModule={isCreatingModule}
+        isOpen={isAddModuleOpen}
+        moduleError={moduleError}
+        onClose={handleCloseAddModuleModal}
+        onCreate={() => {
+          void handleCreateWorkspaceModule()
+        }}
+        setCreateModuleForm={setCreateModuleForm}
+      />
 
-                    event.preventDefault()
-                    void handleUpdateProject()
-                  }}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                />
-                {saveFieldErrors.due_date && (
-                  <p className="mt-1 text-xs font-medium text-red-600">
-                    {saveFieldErrors.due_date}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Visibility
-                </label>
-                <select
-                  value={editForm.visibility}
-                  onChange={(e) => {
-                    setEditForm({
-                      ...editForm,
-                      visibility: e.target.value as ProjectVisibility,
-                    })
-                    setSaveFieldErrors((current) => ({
-                      ...current,
-                      visibility: undefined,
-                    }))
-                  }}
-                  onKeyDown={(event) => {
-                    if (!isEnterCommitEvent(event)) return
-
-                    event.preventDefault()
-                    void handleUpdateProject()
-                  }}
-                  className="w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                >
-                  <option value="private">Private</option>
-                  <option value="public">Public</option>
-                </select>
-                {saveFieldErrors.visibility && (
-                  <p className="mt-1 text-xs font-medium text-red-600">
-                    {saveFieldErrors.visibility}
-                  </p>
-                )}
-              </div>
-
-              {saveError && (
-                <p className="text-sm font-medium text-red-600">{saveError}</p>
-              )}
-            </form>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={requestClose}
-                disabled={isSaving}
-                className="inline-flex cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                form={editProjectFormId}
-                disabled={isSaving || !editForm.name.trim()}
-                className="inline-flex cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-            </>
-          )}
-        </ModalShell>
-      )}
-
-      {isMetadataEditOpen && (
-        <ModalShell
-          hasUnsavedChanges={hasMetadataChanges}
-          isDismissDisabled={isSavingMetadata}
-          overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          panelClassName="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-          onClose={handleCloseMetadataEditModal}
-        >
-          {({ requestClose }) => (
-            <>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Edit Metadata
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Add only the custom fields that are relevant to this project.
-                </p>
-              </div>
-
-              <p
-                className={`text-xs font-semibold uppercase tracking-[0.2em] ${
-                  metadataSaveState === "error"
-                    ? "text-red-600"
-                    : metadataSaveState === "saved"
-                      ? "text-emerald-600"
-                      : "text-slate-500"
-                }`}
-              >
-                {metadataSaveState === "saving"
-                  ? "Saving..."
-                  : metadataSaveState === "saved"
-                    ? "Saved"
-                    : metadataSaveState === "error"
-                      ? "Error"
-                      : "Autosave on"}
-              </p>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {metadataForm.length === 0 && (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-                  No custom metadata yet. Add a field to describe what matters for this project.
-                </div>
-              )}
-
-              {metadataForm.map((metadata) => (
-                <div
-                  key={metadata.id}
-                  className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,220px)_1fr_auto]"
-                >
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Field Label
-                    </label>
-                    <input
-                      type="text"
-                      value={metadata.key}
-                      onChange={(event) =>
-                        updateMetadataField(
-                          metadata.id,
-                          "key",
-                          event.target.value
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Value
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={metadata.value}
-                      onChange={(event) =>
-                        updateMetadataField(
-                          metadata.id,
-                          "value",
-                          event.target.value
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => deleteMetadataField(metadata.id)}
-                      className="inline-flex rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              <button
-                type="button"
-                onClick={addMetadataField}
-                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Add Custom Field
-              </button>
-            </div>
-
-            {metadataError && (
-              <p className="mt-4 text-sm font-medium text-red-600">
-                {metadataError}
-              </p>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={requestClose}
-                disabled={isSavingMetadata}
-                className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDoneEditingProjectMetadata}
-                disabled={isSavingMetadata}
-                className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSavingMetadata ? "Saving..." : "Done"}
-              </button>
-            </div>
-            </>
-          )}
-        </ModalShell>
-        )}
-
-      {isEditModuleOpen && (
-        <ModalShell
-          hasUnsavedChanges={hasEditModuleChanges}
-          isDismissDisabled={isUpdatingModule}
-          panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          onClose={handleCloseEditModuleModal}
-        >
-          {({ requestClose }) => (
-            <>
-              <h2 className="text-xl font-bold text-slate-900">Edit Module</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Update the selected module title and behavior type.
-              </p>
-
-              <form
-                id={editModuleFormId}
-                className="mt-6 space-y-4"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void handleUpdateWorkspaceModule()
-                }}
-              >
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Module Title
-                  </label>
-                  <input
-                    type="text"
-                    value={editModuleForm.title}
-                    onChange={(event) => {
-                      setEditModuleForm((current) => ({
-                        ...current,
-                        title: event.target.value,
-                      }))
-                      if (moduleError) {
-                        clearModuleError()
-                      }
-                    }}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Module Type
-                  </label>
-                  <select
-                    value={editModuleForm.type}
-                    onChange={(event) =>
-                      setEditModuleForm((current) => ({
-                        ...current,
-                        type: event.target.value as ProjectModuleType,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                  >
-                    {customProjectModuleOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {moduleError && (
-                  <p className="text-sm font-medium text-red-600">
-                    {moduleError}
-                  </p>
-                )}
-              </form>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => requestClose()}
-                  disabled={isUpdatingModule}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  form={editModuleFormId}
-                  disabled={isUpdatingModule || !hasEditModuleChanges}
-                  className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isUpdatingModule ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </>
-          )}
-        </ModalShell>
-      )}
-
-      {isAddModuleOpen && (
-        <ModalShell
-          hasUnsavedChanges={hasCreateModuleChanges}
-          isDismissDisabled={isCreatingModule}
-          panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          onClose={handleCloseAddModuleModal}
-        >
-          {({ requestClose }) => (
-            <>
-              <h2 className="text-xl font-bold text-slate-900">Add Module</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Create a new workspace module in the center column.
-              </p>
-
-              <form
-                id={addModuleFormId}
-                className="mt-6 space-y-4"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void handleCreateWorkspaceModule()
-                }}
-              >
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Module Title
-                  </label>
-                  <input
-                    type="text"
-                    value={createModuleForm.title}
-                    onChange={(event) => {
-                      setCreateModuleForm((current) => ({
-                        ...current,
-                        title: event.target.value,
-                      }))
-                      if (moduleError && event.target.value.trim()) {
-                        clearModuleError()
-                      }
-                    }}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Module Type
-                  </label>
-                  <select
-                    value={createModuleForm.type}
-                    onChange={(event) =>
-                      setCreateModuleForm((current) => ({
-                        ...current,
-                        type: event.target.value as ProjectModuleType,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
-                  >
-                    {customProjectModuleOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </form>
-
-              {moduleError && (
-                <p className="mt-4 text-sm font-medium text-red-600">
-                  {moduleError}
-                </p>
-              )}
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={requestClose}
-                  disabled={isCreatingModule}
-                  className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  form={addModuleFormId}
-                  disabled={isCreatingModule || !createModuleForm.title.trim()}
-                  className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                >
-                  {isCreatingModule ? "Creating..." : "Create Module"}
-                </button>
-              </div>
-            </>
-          )}
-        </ModalShell>
-      )}
-
-      {isDeleteOpen && (
-        <ModalShell
-          isDismissDisabled={isDeleting}
-          panelClassName="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
-          onClose={handleCloseDeleteProjectModal}
-        >
-          {({ requestClose }) => (
-            <>
-            <h3 className="text-lg font-semibold text-slate-900">
-              Delete Project
-            </h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-slate-900">
-                {currentProject.name}
-              </span>
-              ? This action cannot be undone.
-            </p>
-
-            {deleteError && (
-              <p className="mt-4 text-sm font-medium text-red-600">
-                {deleteError}
-              </p>
-            )}
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={requestClose}
-                disabled={isDeleting}
-                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteProject}
-                disabled={isDeleting}
-                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isDeleting ? "Deleting..." : "Delete Project"}
-              </button>
-            </div>
-            </>
-          )}
-        </ModalShell>
-      )}
+      <DeleteProjectModal
+        deleteError={deleteError}
+        isDeleting={isDeleting}
+        isOpen={isDeleteOpen}
+        onClose={handleCloseDeleteProjectModal}
+        onConfirmDelete={() => {
+          void confirmDeleteProject()
+        }}
+        projectName={currentProject.name}
+      />
     </>
   )
 }
