@@ -40,27 +40,27 @@ export function getDeadlineFill(dueDate: string | null) {
 }
 
 export function getDeadlineBarClass(status: string) {
-  if (status === "Overdue") return "bg-[var(--color-danger)]"
-  if (status === "Due today") return "bg-[var(--color-warning)]"
-  if (status === "Due soon") return "bg-[var(--color-warning)]"
-  if (status === "No deadline") return "bg-[var(--color-text-muted)]"
+  if (status === "Overdue") return "bg-[var(--color-status-danger)]"
+  if (status === "Due today") return "bg-[var(--color-status-warning)]"
+  if (status === "Due soon") return "bg-[var(--color-status-warning)]"
+  if (status === "No deadline") return "bg-[var(--color-status-neutral)]"
 
-  return "bg-[var(--color-upcoming)]"
+  return "bg-[var(--color-status-upcoming)]"
 }
 
 export function getDeadlineBadgeClass(status: string) {
   if (status === "Overdue") {
-    return "border-[var(--color-danger)]/12 bg-[var(--color-danger-soft)] text-[var(--color-danger)]"
+    return "border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-soft)] text-[var(--color-status-danger)]"
   }
   if (status === "Due today") {
-    return "border-[var(--color-warning)]/12 bg-[var(--color-warning-soft)] text-[var(--color-warning)]"
+    return "border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-soft)] text-[var(--color-status-warning)]"
   }
   if (status === "Due soon") {
-    return "border-[var(--color-warning)]/12 bg-[var(--color-warning-soft)] text-[var(--color-warning)]"
+    return "border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-soft)] text-[var(--color-status-warning)]"
   }
   if (status === "No deadline") {
-    return "border-[var(--color-card-separator)] bg-[var(--color-card-track)] text-[var(--color-card-muted-foreground)]"
+    return "border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] text-[var(--color-status-neutral)]"
   }
 
-  return "border-[var(--color-upcoming)]/12 bg-[var(--color-upcoming-soft)] text-[var(--color-upcoming)]"
+  return "border-[var(--color-status-upcoming-border)] bg-[var(--color-status-upcoming-soft)] text-[var(--color-status-upcoming)]"
 }

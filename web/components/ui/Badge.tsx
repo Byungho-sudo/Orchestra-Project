@@ -4,12 +4,17 @@ import { cn } from "@/lib/ui"
 type BadgeVariant = "neutral" | "brand" | "success" | "warning" | "danger" | "info"
 
 const variantClassNames: Record<BadgeVariant, string> = {
-  neutral: "border-slate-200 bg-slate-100 text-slate-600",
-  brand: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  success: "border-green-200 bg-green-50 text-green-700",
-  warning: "border-yellow-200 bg-yellow-50 text-yellow-700",
-  danger: "border-rose-200 bg-rose-50 text-rose-700",
-  info: "border-sky-200 bg-sky-50 text-sky-700",
+  neutral:
+    "border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] text-[var(--color-status-neutral)]",
+  brand:
+    "border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]",
+  success:
+    "border-[var(--color-status-success-border)] bg-[var(--color-status-success-soft)] text-[var(--color-status-success)]",
+  warning:
+    "border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-soft)] text-[var(--color-status-warning)]",
+  danger:
+    "border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-soft)] text-[var(--color-status-danger)]",
+  info: "border-[var(--color-status-info-border)] bg-[var(--color-status-info-soft)] text-[var(--color-status-info)]",
 }
 
 export function Badge({
