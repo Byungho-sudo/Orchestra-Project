@@ -45,11 +45,11 @@ export function DashboardNavigationLinks({
           return (
             <div key={link.href} className={getSidebarItemClassName(isActive)}>
               <p className="font-medium">{link.label}</p>
-              <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+              <div className="mt-3 space-y-2 border-t border-[var(--color-nav-group-border)] pt-3">
                 <Link
                   href="/projects"
                   onClick={onNavigate}
-                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-white hover:text-slate-900"
+                  className="block rounded-lg px-3 py-2 text-sm text-[var(--color-nav-item-text)] transition-colors hover:bg-[var(--color-nav-item-hover-surface)] hover:text-[var(--color-nav-item-hover-text)]"
                 >
                   All Projects
                 </Link>

@@ -13,6 +13,7 @@ import { useCreateProjectForm } from "@/features/projects/use-create-project-for
 import { useProjectsQuery } from "@/features/projects/use-projects-query"
 import { Card } from "@/components/ui/Card"
 import { useAppActor } from "@/lib/auth/use-app-actor"
+import { getThemeConfigFromUser } from "@/lib/theme"
 import { useCurrentUser } from "@/lib/use-current-user"
 
 export function ProjectsGrid({
@@ -26,6 +27,7 @@ export function ProjectsGrid({
 }) {
   const router = useRouter()
   const { currentUser } = useCurrentUser()
+  const themeFamily = getThemeConfigFromUser(currentUser).family
   const { actor } = useAppActor(currentUser)
   const canCreatePrivateProject = actor?.kind === "user"
   const {
@@ -88,6 +90,7 @@ export function ProjectsGrid({
             <ProjectCard
               key={project.id}
               project={project}
+              themeFamily={themeFamily}
               onOpenProject={() => router.push(`/projects/${project.id}`)}
             />
           ))}

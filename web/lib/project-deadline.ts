@@ -40,19 +40,27 @@ export function getDeadlineFill(dueDate: string | null) {
 }
 
 export function getDeadlineBarClass(status: string) {
-  if (status === "Overdue") return "bg-red-700"
-  if (status === "Due today") return "bg-orange-600"
-  if (status === "Due soon") return "bg-amber-500"
-  if (status === "No deadline") return "bg-gray-400"
+  if (status === "Overdue") return "bg-[var(--color-danger)]"
+  if (status === "Due today") return "bg-[var(--color-warning)]"
+  if (status === "Due soon") return "bg-[var(--color-warning)]"
+  if (status === "No deadline") return "bg-[var(--color-text-muted)]"
 
-  return "bg-blue-700"
+  return "bg-[var(--color-upcoming)]"
 }
 
 export function getDeadlineBadgeClass(status: string) {
-  if (status === "Overdue") return "bg-red-100 text-red-700"
-  if (status === "Due today") return "bg-orange-100 text-orange-700"
-  if (status === "Due soon") return "bg-yellow-100 text-yellow-800"
-  if (status === "No deadline") return "bg-slate-100 text-slate-600"
+  if (status === "Overdue") {
+    return "border-[var(--color-danger)]/12 bg-[var(--color-danger-soft)] text-[var(--color-danger)]"
+  }
+  if (status === "Due today") {
+    return "border-[var(--color-warning)]/12 bg-[var(--color-warning-soft)] text-[var(--color-warning)]"
+  }
+  if (status === "Due soon") {
+    return "border-[var(--color-warning)]/12 bg-[var(--color-warning-soft)] text-[var(--color-warning)]"
+  }
+  if (status === "No deadline") {
+    return "border-[var(--color-card-separator)] bg-[var(--color-card-track)] text-[var(--color-card-muted-foreground)]"
+  }
 
-  return "bg-blue-100 text-blue-700"
+  return "border-[var(--color-upcoming)]/12 bg-[var(--color-upcoming-soft)] text-[var(--color-upcoming)]"
 }

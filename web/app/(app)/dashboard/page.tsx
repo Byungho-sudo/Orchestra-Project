@@ -10,11 +10,13 @@ import { Card } from "@/components/ui/Card"
 import { PageShell } from "@/components/ui/PageShell"
 import { SectionHeader } from "@/components/ui/SectionHeader"
 import { getUserAccountLabel } from "@/lib/auth/display-identity"
+import { getThemeConfigFromUser } from "@/lib/theme"
 import { useCurrentUser } from "@/lib/use-current-user"
 
 export default function DashboardOverviewPage() {
   const router = useRouter()
   const { currentUser, logout } = useCurrentUser()
+  const themeFamily = getThemeConfigFromUser(currentUser).family
   const {
     activeProjects,
     completedProjects,
@@ -99,6 +101,7 @@ export default function DashboardOverviewPage() {
                 <ProjectCard
                   key={project.id}
                   project={project}
+                  themeFamily={themeFamily}
                   onOpenProject={() => router.push(`/projects/${project.id}`)}
                 />
               ))}

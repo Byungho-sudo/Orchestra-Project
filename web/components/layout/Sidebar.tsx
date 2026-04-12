@@ -4,10 +4,10 @@ import Link from "next/link"
 import type { MouseEventHandler, ReactNode } from "react"
 
 export function getSidebarItemClassName(isActive: boolean) {
-  return `block rounded-xl border px-3 py-3 text-sm transition-[border-color,background-color,box-shadow] duration-180 ${
+  return `block rounded-xl border px-3 py-3 text-sm font-medium transition-[border-color,background-color,color,box-shadow] duration-180 ${
     isActive
-      ? "border-slate-200 bg-indigo-50/90 text-indigo-900 shadow-sm ring-1 ring-indigo-100"
-      : "border-slate-200 bg-white/70 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-sm"
+      ? "border-[var(--theme-nav-active)] bg-[var(--theme-nav-active)] text-[var(--theme-nav-active-foreground)] shadow-[0_10px_20px_-16px_var(--theme-nav-active)]"
+      : "border-[var(--theme-nav-border)] bg-[var(--theme-nav-item-surface)] text-[var(--theme-nav-muted)] hover:border-[var(--theme-nav-hover-border)] hover:bg-[var(--theme-nav-hover)] hover:text-[var(--theme-nav-hover-foreground)] hover:shadow-[0_8px_16px_-16px_rgb(0_0_0_/_0.45)]"
   }`
 }
 
@@ -22,10 +22,10 @@ export function Sidebar({
 }) {
   return (
     <aside
-      className={`h-fit self-start rounded-xl border border-slate-300 bg-slate-50 p-5 shadow-sm ${className}`.trim()}
+      className={`h-fit self-start rounded-xl border border-[var(--theme-nav-border)] bg-[var(--theme-nav)] p-5 shadow-[0_16px_28px_-24px_rgb(0_0_0_/_0.45)] ${className}`.trim()}
     >
       {title ? (
-        <h2 className="mb-4 px-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="mb-4 px-1 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--theme-nav-muted)]">
           {title}
         </h2>
       ) : null}

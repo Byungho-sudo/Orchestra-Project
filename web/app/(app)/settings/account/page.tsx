@@ -57,6 +57,7 @@ function AccountSettingsPageContent() {
     isChangingPassword,
     isDeletingAccount,
     isSavingProfile,
+    isSavingTheme,
     isUpdatingEmail,
     newEmail,
     newPassword,
@@ -65,12 +66,17 @@ function AccountSettingsPageContent() {
     profileError,
     profileMessage,
     saveProfile,
+    saveTheme,
     setConfirmPassword,
     setCurrentPassword,
     setDeleteConfirmation,
     setDisplayName,
     setNewEmail,
     setNewPassword,
+    setThemeFamily,
+    themeError,
+    themeFamily,
+    themeMessage,
     updateEmail,
   } = useAccountSettings(currentUser)
   const emailChangeConfirmed =
@@ -258,6 +264,55 @@ function AccountSettingsPageContent() {
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isChangingPassword ? "Updating..." : "Change Password"}
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h2 className="text-xl font-semibold text-slate-900">Theme</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Choose which theme family the app uses for your account.
+          </p>
+
+          <div className="mt-6 grid gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Theme Family
+              </label>
+              <select
+                value={themeFamily}
+                onChange={(event) =>
+                  setThemeFamily(event.target.value as "default" | "terra")
+                }
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+              >
+                <option value="default">default</option>
+                <option value="terra">terra</option>
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Terra currently uses the available dark Terra mode. Terra light is
+                not exposed yet.
+              </p>
+            </div>
+          </div>
+
+          {themeError && (
+            <p className="mt-4 text-sm font-medium text-red-600">{themeError}</p>
+          )}
+          {themeMessage && (
+            <p className="mt-4 text-sm font-medium text-green-700">
+              {themeMessage}
+            </p>
+          )}
+
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={saveTheme}
+              disabled={isLoading || isSavingTheme}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSavingTheme ? "Saving..." : "Save Theme"}
             </button>
           </div>
         </section>

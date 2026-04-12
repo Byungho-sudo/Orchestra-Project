@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
+import { resolveThemeFamily, type ThemeFamily } from "@/lib/theme"
 
 export function useAccountSettings(user: User | null) {
   const router = useRouter()
@@ -11,13 +12,21 @@ export function useAccountSettings(user: User | null) {
     () => String(user?.user_metadata?.display_name ?? ""),
     [user]
   )
+  const initialThemeFamily = useMemo(
+    () => resolveThemeFamily(user?.user_metadata?.theme_family),
+    [user]
+  )
   const initialEmail = useMemo(() => String(user?.email ?? ""), [user])
 
   const [displayName, setDisplayName] = useState(initialDisplayName)
+  const [themeFamily, setThemeFamily] = useState<ThemeFamily>(initialThemeFamily)
   const [newEmail, setNewEmail] = useState(initialEmail)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [profileMessage, setProfileMessage] = useState("")
   const [profileError, setProfileError] = useState("")
+  const [isSavingTheme, setIsSavingTheme] = useState(false)
+  const [themeMessage, setThemeMessage] = useState("")
+  const [themeError, setThemeError] = useState("")
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false)
   const [emailMessage, setEmailMessage] = useState("")
   const [emailError, setEmailError] = useState("")
@@ -36,6 +45,10 @@ export function useAccountSettings(user: User | null) {
   useEffect(() => {
     setDisplayName(initialDisplayName)
   }, [initialDisplayName])
+
+  useEffect(() => {
+    setThemeFamily(initialThemeFamily)
+  }, [initialThemeFamily])
 
   useEffect(() => {
     setNewEmail(initialEmail)
@@ -74,6 +87,7 @@ export function useAccountSettings(user: User | null) {
 
     const { error } = await supabase.auth.updateUser({
       data: {
+        ...user.user_metadata,
         display_name: trimmedDisplayName,
       },
     })
@@ -87,6 +101,31 @@ export function useAccountSettings(user: User | null) {
 
     setDisplayName(trimmedDisplayName)
     setProfileMessage("Profile updated successfully.")
+    router.refresh()
+  }
+
+  async function saveTheme() {
+    if (!user || isSavingTheme) return
+
+    setThemeError("")
+    setThemeMessage("")
+    setIsSavingTheme(true)
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        ...user.user_metadata,
+        theme_family: themeFamily,
+      },
+    })
+
+    setIsSavingTheme(false)
+
+    if (error) {
+      setThemeError("Failed to update your theme. Please try again.")
+      return
+    }
+
+    setThemeMessage("Theme updated successfully.")
     router.refresh()
   }
 
@@ -240,6 +279,7 @@ export function useAccountSettings(user: User | null) {
     isChangingPassword,
     isDeletingAccount,
     isSavingProfile,
+    isSavingTheme,
     isUpdatingEmail,
     newEmail,
     passwordError,
@@ -247,12 +287,17 @@ export function useAccountSettings(user: User | null) {
     profileError,
     profileMessage,
     saveProfile,
+    saveTheme,
     setConfirmPassword,
     setCurrentPassword,
     setDeleteConfirmation,
     setDisplayName,
     setNewEmail,
     setNewPassword,
+    setThemeFamily,
+    themeError,
+    themeMessage,
+    themeFamily,
     updateEmail,
     newPassword,
   }

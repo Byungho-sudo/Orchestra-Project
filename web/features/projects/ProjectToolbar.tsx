@@ -24,8 +24,8 @@ export function ProjectToolbar({
   onSortByChange: (value: SortOption) => void
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+    <div className="flex flex-col gap-3 rounded-xl border border-[var(--theme-shell-border)] bg-[var(--theme-shell)] p-4 shadow-[var(--color-toolbar-shadow)] sm:flex-row sm:items-center sm:justify-between">
+      <h2 className="text-xl font-semibold tracking-[-0.01em] text-[var(--theme-shell-foreground)]">
         Project Cards
       </h2>
 
@@ -35,7 +35,7 @@ export function ProjectToolbar({
           value={searchQuery}
           onChange={(event) => onSearchQueryChange(event.target.value)}
           placeholder="Search projects..."
-          className="sm:w-56"
+          className="border-[var(--theme-shell-border)] bg-[var(--theme-input)] text-[var(--theme-shell-foreground)] shadow-none placeholder:text-[var(--theme-nav-muted)] sm:w-56"
         />
 
         <div className="flex items-center gap-2">
@@ -44,7 +44,7 @@ export function ProjectToolbar({
             onChange={(event) =>
               onDeadlineFilterChange(event.target.value as DeadlineFilter)
             }
-            className="w-auto"
+            className="w-auto border-[var(--theme-shell-border)] bg-[var(--theme-input)] text-[var(--theme-shell-foreground)] shadow-none"
           >
             <option value="All">All</option>
             <option value="Overdue">Overdue</option>
@@ -53,11 +53,11 @@ export function ProjectToolbar({
             <option value="No deadline">No deadline</option>
           </Select>
 
-          <span className="text-[var(--color-text-secondary)]">Sort by:</span>
+          <span className="text-[var(--theme-nav-muted)]">Sort by:</span>
           <Select
             value={sortBy}
             onChange={(event) => onSortByChange(event.target.value as SortOption)}
-            className="w-auto"
+            className="w-auto border-[var(--theme-shell-border)] bg-[var(--theme-input)] text-[var(--theme-shell-foreground)] shadow-none"
           >
             <option value="due_date">Due date</option>
             <option value="created_at">Created date</option>
@@ -65,7 +65,10 @@ export function ProjectToolbar({
             <option value="progress">Progress</option>
           </Select>
 
-          <Button onClick={onCreateProject}>
+          <Button
+            onClick={onCreateProject}
+            className="border-transparent bg-[var(--theme-primary)] text-[var(--theme-primary-foreground)] shadow-[0_10px_22px_-16px_var(--theme-primary)] hover:bg-[var(--theme-primary-hover)] focus-visible:ring-[var(--theme-focus-ring)]"
+          >
             New Project
           </Button>
         </div>

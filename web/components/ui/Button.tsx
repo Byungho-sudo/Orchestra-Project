@@ -6,13 +6,13 @@ type ButtonSize = "sm" | "md" | "icon"
 
 const variantClassNames: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--color-brand)] text-white hover:bg-indigo-500 border-transparent",
+    "border-transparent bg-[var(--color-brand)] text-[var(--color-app-primary-foreground)] hover:bg-[var(--color-brand-hover)] focus-visible:ring-[var(--color-focus-ring)]",
   secondary:
-    "border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-slate-50",
+    "border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-shell-hover)]",
   danger:
-    "bg-[var(--color-danger)] text-white hover:bg-rose-500 border-transparent",
+    "border-transparent bg-[var(--color-danger)] text-[var(--color-app-primary-foreground)] hover:brightness-105 active:brightness-95",
   ghost:
-    "border-transparent text-[var(--color-text-secondary)] hover:bg-slate-100",
+    "border-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-shell-hover)]",
 }
 
 const sizeClassNames: Record<ButtonSize, string> = {
