@@ -1,65 +1,102 @@
 # Orchestra Project
 
-Orchestra is a Next.js App Router application for project workspaces, tickets, team views, guest access, and account/auth flows.
+## What This Project Is
 
-The real application lives in [`dashboard/`](dashboard/). The repository root is a workspace wrapper plus shared documentation and database history.
+Orchestra is a Next.js app.
 
-## Current State
+It is used for:
 
-Implemented today:
+- projects
+- project detail workspaces
+- tickets
+- team pages
+- guest access
+- login and account settings
 
-- Next.js App Router app under `dashboard/`
-- Supabase-backed auth and data access
-- signed-in product routes for dashboard, projects, tickets, team, reports, and account settings
-- project detail workspace with module-based sections
-- guest entry flow and invite-code support
+## Where The Real App Is
 
-This README describes the current implemented structure. It does not assume future refactors or planned features.
+The real app is in `dashboard/`.
 
-## Where Things Live
+If you are changing the product, start there.
 
-- App source: `dashboard/`
-- Routes: `dashboard/app/`
-- Shared components: `dashboard/components/`
-- Feature-owned UI/code: `dashboard/features/`
-- Shared infrastructure and helpers: `dashboard/lib/`
-- Active migrations: `dashboard/supabase/migrations/`
-- Additional repo docs: `docs/`
+## Main Folder Map
 
-See [`docs/architecture.md`](docs/architecture.md) for the short architecture map and migration policy.
+- `dashboard/app/`
+  - routes and page files
+- `dashboard/components/`
+  - shared UI
+- `dashboard/features/`
+  - feature-specific code
+- `dashboard/lib/`
+  - shared non-UI logic
+- `dashboard/supabase/migrations/`
+  - database migrations
+- `docs/`
+  - repo docs
 
-## Route Layout
-
-The app uses Next.js route groups to keep URLs stable while improving folder organization.
-
-- Auth routes: `dashboard/app/(auth)/`
-  - public URLs stay `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`
-- Signed-in product routes: `dashboard/app/(app)/`
-  - public URLs stay `/dashboard`, `/projects`, `/tickets`, `/team`, `/reports`, `/settings/account`
-- Other root app areas remain outside those groups where appropriate, including `guest` and `api`
-
-## Shared vs Feature Code
+## Where UI Lives
 
 - `dashboard/components/ui/`
-  - reusable UI primitives
+  - shared UI pieces like buttons, cards, inputs, and modals
 - `dashboard/components/layout/`
-  - shared layout and navigation shells
+  - shared layout pieces like app layout, top nav, and sidebar wrappers
 - `dashboard/features/projects/`
-  - projects list and projects CRUD surface
+  - UI for the projects page
 - `dashboard/features/project-detail/components/`
-  - extracted project-detail rendering blocks such as modals
+  - UI blocks for the single-project page
+- `dashboard/app/`
+  - some route-local UI still lives here
 
-Some route-local code still lives under `dashboard/app/...` where it is tightly coupled to a single route. That is current state, not a contradiction.
+## Where Logic Lives
 
-## Database Migration Source of Truth
+- `dashboard/features/projects/`
+  - projects feature logic
+- `dashboard/app/(app)/projects/[id]/project-detail/`
+  - route-local logic for the single-project page
+- `dashboard/lib/`
+  - shared logic like Supabase setup, auth helpers, validation, and utilities
 
-Use `dashboard/supabase/migrations/` for all new migrations going forward.
+## Where Routes Live
 
-There is also a root-level legacy folder at `supabase/migrations/`. Do not add new migrations there. It remains in the repo as historical residue until it can be consolidated safely in a later phase.
+Routes live in `dashboard/app/`.
+
+Main route areas:
+
+- `dashboard/app/(auth)/`
+  - login, signup, forgot password, reset password, auth callback
+- `dashboard/app/(app)/`
+  - dashboard, projects, tickets, team, reports, account settings
+- `dashboard/app/guest/`
+  - guest pages
+- `dashboard/app/api/`
+  - API routes
+
+## Where Migrations Live
+
+Use `dashboard/supabase/migrations/` for new migrations.
+
+There is also a root `supabase/migrations/` folder.
+
+That root folder is legacy. Do not add new migrations there.
+
+## If You Want To Change X, Go Here
+
+- change a page:
+  - `dashboard/app/`
+- change a shared button, card, input, or modal:
+  - `dashboard/components/ui/`
+- change shared layout or navigation:
+  - `dashboard/components/layout/`
+- change the projects page:
+  - `dashboard/features/projects/`
+- change the single-project page:
+  - `dashboard/app/(app)/projects/[id]/`
+- change shared auth, Supabase, validation, or helpers:
+  - `dashboard/lib/`
+- add a migration:
+  - `dashboard/supabase/migrations/`
 
 ## Local Development
-
-From the repo root:
 
 ```bash
 cd dashboard
@@ -67,37 +104,9 @@ npm install
 npm run dev
 ```
 
-Local app URL:
-
-```text
-http://localhost:3000
-```
-
-Required environment variables in `dashboard/.env.local`:
-
-```text
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-```
-
-## Build Verification
-
-From `dashboard/`:
+## Build Check
 
 ```bash
+cd dashboard
 npm run build
 ```
-
-## Deployment
-
-- Frontend/app hosting: Vercel
-- Auth and database: Supabase
-
-## Documentation
-
-- Architecture and folder ownership: [`docs/architecture.md`](docs/architecture.md)
-- Existing database notes: [`docs/database-notes.md`](docs/database-notes.md)
-
-## License
-
-Private internal project.

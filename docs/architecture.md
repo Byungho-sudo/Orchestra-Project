@@ -1,96 +1,140 @@
 # Architecture
 
-This document is the short source-of-truth map for the current repository layout.
+This file explains where code lives in this repo today.
 
 ## Real App Location
 
-The real Next.js application lives in `dashboard/`.
+The real Next.js app is in `dashboard/`.
 
-That folder contains the App Router code, shared components, feature folders, shared libraries, and the active Supabase migration history used by the app.
+## Main Folders
 
-## Routes
+- `dashboard/app/`
+  - routes and page entry points
+- `dashboard/components/`
+  - shared UI
+- `dashboard/features/`
+  - code for one feature area
+- `dashboard/lib/`
+  - shared non-UI logic
+- `dashboard/supabase/migrations/`
+  - active database migrations
+
+## Where UI Lives
+
+Shared UI lives in:
+
+- `dashboard/components/ui/`
+- `dashboard/components/layout/`
+
+Feature UI lives in:
+
+- `dashboard/features/projects/`
+- `dashboard/features/project-detail/components/`
+
+Some route-local UI still lives in `dashboard/app/` where it is tightly tied to one route.
+
+## Where Logic Lives
+
+Shared logic lives in:
+
+- `dashboard/lib/`
+
+Feature logic lives in:
+
+- `dashboard/features/projects/`
+
+Route-local logic still lives in:
+
+- `dashboard/app/(app)/projects/[id]/project-detail/`
+
+## Route Structure
 
 Routes live in `dashboard/app/`.
 
-Current high-level structure:
+Main route groups:
 
 - `dashboard/app/(auth)/`
-  - auth-related routes grouped without changing public URLs
+  - auth pages
 - `dashboard/app/(app)/`
-  - main signed-in product routes grouped without changing public URLs
+  - main signed-in app pages
+
+Other route areas:
+
 - `dashboard/app/guest/`
-  - guest flow routes
 - `dashboard/app/api/`
-  - server route handlers
 
-Route groups are organizational only. They do not change the public URL paths.
+The route groups are only for folder organization.
 
-## Shared Components
+They do not change the public URL.
 
-Shared components live in:
+## Shared Code
 
-- `dashboard/components/ui/`
-  - reusable UI primitives and shared surface components
-- `dashboard/components/layout/`
-  - app layout, top navigation, sidebar shell, and other shared layout pieces
+Shared code means code used in more than one place.
 
-## Feature Code
+That usually goes in:
 
-Feature-owned code lives under `dashboard/features/`.
-
-Current examples:
-
-- `dashboard/features/projects/`
-  - projects list surface, project CRUD modals, and related hooks
-- `dashboard/features/project-detail/components/`
-  - extracted project-detail rendering components such as modal blocks
-
-Some feature code still remains route-local under `dashboard/app/(app)/projects/[id]/project-detail/`. That is current implemented state where ownership is still closely tied to the route.
-
-## Shared Infrastructure and Lib Code
-
-Shared non-UI infrastructure lives in `dashboard/lib/`.
+- `dashboard/components/` for shared UI
+- `dashboard/lib/` for shared non-UI code
 
 Examples:
 
-- Supabase clients and config
-- auth helpers
-- validation helpers
-- project and UI helper modules
+- shared button -> `dashboard/components/ui/`
+- shared app layout -> `dashboard/components/layout/`
+- shared Supabase helper -> `dashboard/lib/`
 
-This folder is the right home for code that is shared across routes or features and is not itself route rendering.
+## Feature-Specific Code
 
-## Migration Source of Truth
+Feature-specific code belongs to one product area.
 
-Authoritative migration location going forward:
+That goes in `dashboard/features/`.
+
+Current example:
+
+- `dashboard/features/projects/`
+  - projects list UI
+  - project CRUD modals
+  - projects hooks and related logic
+
+## Route-Local Code
+
+Some code is still best kept close to a route.
+
+Current example:
+
+- `dashboard/app/(app)/projects/[id]/project-detail/`
+
+This folder still holds route-local project detail code that is closely tied to that page.
+
+## Migration Source Of Truth
+
+New migrations go in:
 
 - `dashboard/supabase/migrations/`
 
-Current status:
+Do not add new migrations to:
 
-- `dashboard/supabase/migrations/` contains the active application migration history
-- `supabase/migrations/` exists at the repo root but is legacy and should not receive new migrations
+- `supabase/migrations/`
 
-Policy:
+That root folder is legacy.
 
-1. Add all new migrations to `dashboard/supabase/migrations/`
-2. Do not add new migrations to `supabase/migrations/`
-3. Do not move or rewrite historical migration files during documentation-only cleanup phases unless the move is separately planned and verified
+## Simple Rules
 
-## Current Direction vs Future Direction
+- `app/` = routes and page files
+- `components/` = shared UI
+- `features/` = one feature area
+- `lib/` = shared non-UI logic
 
-Current implemented state:
+## If You Want To Change X
 
-- route groups are in place for auth and main app routes
-- shared UI and layout components have started moving out of `app/`
-- some feature code has been moved into `dashboard/features/`
-- some route-local code still remains inside `dashboard/app/`
-
-Future direction:
-
-- keep `dashboard/app/` focused on routing, route-local orchestration, and page entry points
-- keep shared components in `dashboard/components/`
-- keep feature-owned code in `dashboard/features/`
-- keep shared infrastructure in `dashboard/lib/`
-
-That direction is guidance, not a claim that every folder has already been fully normalized.
+- change a route:
+  - `dashboard/app/`
+- change shared UI:
+  - `dashboard/components/`
+- change shared logic:
+  - `dashboard/lib/`
+- change the projects area:
+  - `dashboard/features/projects/`
+- change single-project route-local code:
+  - `dashboard/app/(app)/projects/[id]/project-detail/`
+- add a migration:
+  - `dashboard/supabase/migrations/`
