@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useDashboardOverview } from "@/app/dashboard/use-dashboard-overview"
+import { useDashboardOverview } from "@/app/(app)/dashboard/use-dashboard-overview"
 import { AppShell } from "@/app/components/project-dashboard/AppShell"
 import { DashboardStatCard } from "@/app/components/project-dashboard/DashboardStatCard"
 import { ProjectCard } from "@/app/components/project-dashboard/ProjectCard"

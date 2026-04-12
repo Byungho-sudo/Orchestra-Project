@@ -7,7 +7,7 @@ import {
   isTicketPriority,
   isTicketStatus,
   isTicketType,
-} from "@/app/tickets/types"
+} from "@/app/(app)/tickets/types"
 
 type CreateTicketBody = {
   description?: string | null
