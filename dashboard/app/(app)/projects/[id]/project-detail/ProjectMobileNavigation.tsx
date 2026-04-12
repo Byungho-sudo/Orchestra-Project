@@ -1,4 +1,4 @@
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 
 type NavigationItem = {
   id: string
@@ -28,7 +28,7 @@ export function ProjectMobileNavigation({
   if (!isOpen) return null
 
   return (
-    <ModalShell
+    <ProjectModalShell
       overlayClassName="fixed inset-0 z-50 bg-slate-900/40 overscroll-none lg:hidden"
       panelClassName="absolute left-0 top-0 h-full w-full max-w-sm overflow-y-auto overscroll-contain rounded-r-2xl bg-slate-50 p-5 shadow-xl"
       onClose={onClose}
@@ -106,6 +106,6 @@ export function ProjectMobileNavigation({
           </nav>
         </>
       )}
-    </ModalShell>
+    </ProjectModalShell>
   )
 }

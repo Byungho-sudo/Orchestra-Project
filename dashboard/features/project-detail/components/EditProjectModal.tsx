@@ -3,7 +3,7 @@
 import type { Dispatch, SetStateAction } from "react"
 import type { ProjectVisibility } from "@/lib/projects"
 import type { ProjectFormErrors } from "@/lib/project-validation"
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 import { isEnterCommitEvent } from "@/app/(app)/projects/[id]/project-detail/helpers"
 import type { ProjectEditForm } from "@/app/(app)/projects/[id]/project-detail/hooks/useProjectMutations"
 
@@ -37,7 +37,7 @@ export function EditProjectModal({
   if (!isOpen) return null
 
   return (
-    <ModalShell
+    <ProjectModalShell
       hasUnsavedChanges={hasUnsavedChanges}
       isDismissDisabled={isSaving}
       overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -197,6 +197,6 @@ export function EditProjectModal({
           </div>
         </>
       )}
-    </ModalShell>
+    </ProjectModalShell>
   )
 }

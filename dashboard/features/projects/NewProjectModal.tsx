@@ -2,7 +2,7 @@
 
 import type { ProjectFormErrors } from "@/lib/project-validation"
 import type { ProjectVisibility } from "@/lib/projects"
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
@@ -38,7 +38,7 @@ export function NewProjectModal({
   onCreateProject: () => void
 }) {
   return (
-    <ModalShell
+    <ProjectModalShell
       hasUnsavedChanges={Boolean(
         name.trim() || description.trim() || dueDate || visibility !== "public"
       )}
@@ -131,6 +131,6 @@ export function NewProjectModal({
         </div>
         </>
       )}
-    </ModalShell>
+    </ProjectModalShell>
   )
 }

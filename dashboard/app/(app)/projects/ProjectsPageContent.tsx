@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/AppShell"
 import { ProjectsGrid } from "@/features/projects/ProjectsGrid"
 import { ProjectsGridSkeleton } from "@/features/projects/ProjectsGridSkeleton"
 
-export default function ProjectsPageClient() {
+export default function ProjectsPageContent() {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false)
 
   return (

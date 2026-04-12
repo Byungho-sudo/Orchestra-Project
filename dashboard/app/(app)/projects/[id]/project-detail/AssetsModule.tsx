@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
   emptyProjectAssetDraft,
@@ -282,7 +282,7 @@ export function AssetsModule({
       </div>
 
       {isModalOpen && (
-        <ModalShell
+        <ProjectModalShell
           hasUnsavedChanges={hasDraftChanges}
           isDismissDisabled={isCreating || Boolean(savingAssetId)}
           panelClassName="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
@@ -397,7 +397,7 @@ export function AssetsModule({
               </div>
             </>
           )}
-        </ModalShell>
+        </ProjectModalShell>
       )}
     </>
   )

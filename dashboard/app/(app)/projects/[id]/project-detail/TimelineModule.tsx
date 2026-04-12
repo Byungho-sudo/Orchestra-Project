@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 import { calculateProjectProgressFromTimeline } from "@/lib/project-progress"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
@@ -335,7 +335,7 @@ export function TimelineModule({
       </div>
 
       {isModalOpen && (
-        <ModalShell
+        <ProjectModalShell
           hasUnsavedChanges={hasDraftChanges}
           isDismissDisabled={isCreating || Boolean(savingEventId)}
           panelClassName="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
@@ -466,7 +466,7 @@ export function TimelineModule({
               </div>
             </>
           )}
-        </ModalShell>
+        </ProjectModalShell>
       )}
     </>
   )

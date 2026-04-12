@@ -1,7 +1,7 @@
 "use client"
 
 import type { Dispatch, SetStateAction } from "react"
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 import type {
   CreateProjectModuleForm,
   ProjectModuleType,
@@ -42,7 +42,7 @@ export function EditModuleModal({
   if (!isOpen) return null
 
   return (
-    <ModalShell
+    <ProjectModalShell
       hasUnsavedChanges={hasUnsavedChanges}
       isDismissDisabled={isUpdatingModule}
       panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
@@ -131,6 +131,6 @@ export function EditModuleModal({
           </div>
         </>
       )}
-    </ModalShell>
+    </ProjectModalShell>
   )
 }

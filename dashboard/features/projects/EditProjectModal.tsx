@@ -1,7 +1,7 @@
 "use client"
 
 import type { ProjectFormErrors } from "@/lib/project-validation"
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
@@ -32,7 +32,7 @@ export function EditProjectModal({
   hasUnsavedChanges?: boolean
 }) {
   return (
-    <ModalShell
+    <ProjectModalShell
       hasUnsavedChanges={hasUnsavedChanges}
       isDismissDisabled={isSaving}
       panelClassName="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
@@ -106,6 +106,6 @@ export function EditProjectModal({
         </div>
         </>
       )}
-    </ModalShell>
+    </ProjectModalShell>
   )
 }

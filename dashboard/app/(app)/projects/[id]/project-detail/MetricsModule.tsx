@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRef } from "react"
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 import { fieldCardClassName, isProjectModuleInstanceId } from "./helpers"
 import {
   emptyProjectMetricDraft,
@@ -461,7 +461,7 @@ export function MetricsModule({
       </div>
 
       {isModalOpen && (
-        <ModalShell
+        <ProjectModalShell
           hasUnsavedChanges={hasDraftChanges}
           isDismissDisabled={isCreating || Boolean(savingMetricId)}
           panelClassName="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
@@ -593,7 +593,7 @@ export function MetricsModule({
               </div>
             </>
           )}
-        </ModalShell>
+        </ProjectModalShell>
       )}
     </>
   )

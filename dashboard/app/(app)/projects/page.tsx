@@ -1,5 +1,5 @@
-import ProjectsPageClient from "./ProjectsPageClient"
+import ProjectsPageContent from "./ProjectsPageContent"
 
 export default function ProjectsPage() {
-  return <ProjectsPageClient />
+  return <ProjectsPageContent />
 }

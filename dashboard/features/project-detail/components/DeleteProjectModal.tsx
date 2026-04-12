@@ -1,6 +1,6 @@
 "use client"
 
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 
 type DeleteProjectModalProps = {
   deleteError: string
@@ -22,7 +22,7 @@ export function DeleteProjectModal({
   if (!isOpen) return null
 
   return (
-    <ModalShell
+    <ProjectModalShell
       isDismissDisabled={isDeleting}
       panelClassName="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
       onClose={onClose}
@@ -64,6 +64,6 @@ export function DeleteProjectModal({
           </div>
         </>
       )}
-    </ModalShell>
+    </ProjectModalShell>
   )
 }

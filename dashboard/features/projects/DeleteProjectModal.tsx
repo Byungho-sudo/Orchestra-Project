@@ -1,6 +1,6 @@
 "use client"
 
-import { ModalShell } from "@/features/projects/ModalShell"
+import { ProjectModalShell } from "@/features/projects/ProjectModalShell"
 import { Button } from "@/components/ui/Button"
 
 export function DeleteProjectModal({
@@ -15,7 +15,7 @@ export function DeleteProjectModal({
   onConfirmDelete: () => void
 }) {
   return (
-    <ModalShell
+    <ProjectModalShell
       isDismissDisabled={isDeleting}
       panelClassName="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
       onClose={onCancel}
@@ -50,6 +50,6 @@ export function DeleteProjectModal({
         </div>
         </>
       )}
-    </ModalShell>
+    </ProjectModalShell>
   )
 }
