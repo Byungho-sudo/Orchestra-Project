@@ -20,7 +20,7 @@ The codebase is practical rather than heavily abstracted. Most of the app logic 
 
 At a high level, the system is:
 
-1. A Next.js app inside `dashboard/`
+1. A Next.js app inside `web/`
 2. A Supabase-backed data model centered on `public.projects`
 3. A project detail screen that reads and writes three related database concepts:
    - the base project row in `public.projects`
@@ -36,7 +36,7 @@ The app uses:
 Important reality of the current code:
 
 - Some screens still support anonymous/public data access in their queries
-- But `dashboard/middleware.ts` currently redirects all `/projects/*` routes to `/login`
+- But `web/middleware.ts` currently redirects all `/projects/*` routes to `/login`
 - That means the code and route protection are slightly out of sync conceptually
 
 ## Repository Layout
@@ -49,10 +49,10 @@ Important reality of the current code:
   Repository-level documentation.
 - `supabase/`
   A root-level migration folder currently containing only the unique module order index migration.
-- `dashboard/`
+- `web/`
   The actual Next.js application and the main Supabase migration history used by the app.
 
-### `dashboard/`
+### `web/`
 
 - `app/`
   Next.js App Router pages and UI components.
@@ -69,7 +69,7 @@ Important reality of the current code:
 
 ## Folder-by-Folder Breakdown
 
-### `dashboard/app`
+### `web/app`
 
 This is the main application UI.
 
@@ -77,7 +77,7 @@ This is the main application UI.
   Root HTML shell and fonts.
 - `page.tsx`
   Redirects `/` to `/dashboard`.
-- `dashboard/page.tsx`
+- `web/page.tsx`
   Overview screen with metrics and recent projects.
 - `projects/page.tsx`
   Projects index route.
@@ -91,10 +91,10 @@ This is the main application UI.
   Supabase Auth flow.
 - `team/page.tsx`, `reports/page.tsx`
   Placeholder top-level sections.
-- `components/project-dashboard/*`
+- `components/project-web/*`
   Shared dashboard shell and project page UI pieces.
 
-### `dashboard/lib`
+### `web/lib`
 
 This folder contains the shared logic layer.
 
@@ -117,7 +117,7 @@ This folder contains the shared logic layer.
 - `auth-redirect.ts`
   Sanitizes `next=` redirect parameters for auth pages.
 
-### `dashboard/supabase`
+### `web/supabase`
 
 This is the main schema history for the app.
 
@@ -131,79 +131,79 @@ This is the main schema history for the app.
 - `migrations/20260405_add_unique_order_index_to_project_modules.sql`
   A root-level migration that adds a unique `(project_id, "order")` index.
 
-This split between `dashboard/supabase` and root `supabase` is worth noting. A contributor should check which migration path is actually applied in the deployment workflow before adding more DB changes.
+This split between `web/supabase` and root `supabase` is worth noting. A contributor should check which migration path is actually applied in the deployment workflow before adding more DB changes.
 
 ## Most Important Files
 
 ### App entry and layout
 
-- `dashboard/app/layout.tsx`
+- `web/app/layout.tsx`
   Defines the root HTML structure and imports `globals.css`.
-- `dashboard/app/page.tsx`
+- `web/app/page.tsx`
   Immediately redirects to `/dashboard`.
-- `dashboard/app/globals.css`
+- `web/app/globals.css`
   Global CSS, cursor defaults, and theme variables.
 
 ### Shell and navigation
 
-- `dashboard/app/components/project-dashboard/AppShell.tsx`
+- `web/app/components/project-web/AppShell.tsx`
   Shared page frame with top header and left sidebar.
-- `dashboard/app/components/project-dashboard/DashboardHeader.tsx`
+- `web/app/components/project-web/DashboardHeader.tsx`
   Top navigation area, auth buttons, and optional “New Project” action.
-- `dashboard/app/components/project-dashboard/DashboardSidebar.tsx`
+- `web/app/components/project-web/DashboardSidebar.tsx`
   Left-side route navigation for Overview, Projects, Team, and Reports.
 
 ### Project list flow
 
-- `dashboard/app/projects/ProjectsPageClient.tsx`
+- `web/app/projects/ProjectsPageClient.tsx`
   Connects the shell and the project grid.
-- `dashboard/app/components/project-dashboard/ProjectsGrid.tsx`
+- `web/app/components/project-web/ProjectsGrid.tsx`
   Fetches projects, filters/sorts them, opens the create modal, and creates projects.
-- `dashboard/app/components/project-dashboard/NewProjectModal.tsx`
+- `web/app/components/project-web/NewProjectModal.tsx`
   Pure create-project form UI.
-- `dashboard/app/components/project-dashboard/ProjectCard.tsx`
+- `web/app/components/project-web/ProjectCard.tsx`
   Individual project summary card used in lists.
-- `dashboard/app/components/project-dashboard/ProjectToolbar.tsx`
+- `web/app/components/project-web/ProjectToolbar.tsx`
   Search, deadline filter, and sorting controls.
 
 ### Project detail flow
 
-- `dashboard/app/projects/[id]/page.tsx`
+- `web/app/projects/[id]/page.tsx`
   Server fetch for a single project and error/not-found states.
-- `dashboard/app/projects/[id]/ProjectDetailClient.tsx`
+- `web/app/projects/[id]/ProjectDetailClient.tsx`
   Main project workspace UI and almost all detail-page behavior.
 
 ### Supabase connection
 
-- `dashboard/lib/supabase.ts`
+- `web/lib/supabase.ts`
   Browser client for client components.
-- `dashboard/lib/supabase-server.ts`
+- `web/lib/supabase-server.ts`
   Server client for server components.
-- `dashboard/middleware.ts`
+- `web/middleware.ts`
   Uses a server Supabase client to protect `/projects/*`.
 
 ### Data and defaults
 
-- `dashboard/lib/projects.ts`
+- `web/lib/projects.ts`
   Type definitions for project rows and task rows as the UI expects them.
-- `dashboard/lib/project-modules.ts`
+- `web/lib/project-modules.ts`
   Default starter module list:
   `Workspace Plan`, `Planning / Operations`, `Tasks / Next Steps`, `Timeline`, `Assets`
 
 ### Database migrations
 
-- `dashboard/supabase/migrations/202604040003_create_project_tasks.sql`
+- `web/supabase/migrations/202604040003_create_project_tasks.sql`
   Creates `public.project_tasks` and its RLS policies.
-- `dashboard/supabase/migrations/202604040007_create_project_modules.sql`
+- `web/supabase/migrations/202604040007_create_project_modules.sql`
   Creates `public.project_modules` and its RLS policies.
-- `dashboard/supabase/migrations/202604040008_allow_default_project_module_types.sql`
+- `web/supabase/migrations/202604040008_allow_default_project_module_types.sql`
   Expands allowed module types to include the default workspace modules.
-- `dashboard/supabase/migrations/202604050001_create_project_with_default_modules.sql`
+- `web/supabase/migrations/202604050001_create_project_with_default_modules.sql`
   Creates the RPC used by project creation.
 
 ## Routing
 
-The app uses the Next.js App Router under `dashboard/app`.
+The app uses the Next.js App Router under `web/app`.
 
 Current top-level routes:
 
@@ -228,12 +228,12 @@ Current top-level routes:
 
 Route protection:
 
-- `dashboard/middleware.ts` matches `/projects/:path*`
+- `web/middleware.ts` matches `/projects/:path*`
 - If there is no Supabase user session, it redirects to `/login?next=...`
 
 Practical effect:
 
-- The code in `ProjectsGrid.tsx` and `dashboard/page.tsx` can query public projects for anonymous users
+- The code in `ProjectsGrid.tsx` and `web/page.tsx` can query public projects for anonymous users
 - But middleware prevents anonymous users from visiting `/projects` and `/projects/[id]`
 - `/dashboard` remains accessible
 
@@ -241,13 +241,13 @@ Practical effect:
 
 Project creation currently starts in:
 
-- `dashboard/app/components/project-dashboard/ProjectsGrid.tsx`
+- `web/app/components/project-web/ProjectsGrid.tsx`
 
 Flow:
 
 1. User opens the modal from the header or empty state
 2. `NewProjectModal.tsx` collects name, description, due date, and visibility
-3. `validateProjectForm()` in `dashboard/lib/project-validation.ts` normalizes and validates the values
+3. `validateProjectForm()` in `web/lib/project-validation.ts` normalizes and validates the values
 4. The client calls Supabase RPC `create_project_with_default_modules`
 5. That RPC inserts into `public.projects`
 6. The same RPC immediately inserts the five default starter rows into `public.project_modules`
@@ -260,7 +260,7 @@ Why this matters:
 
 The SQL for the RPC lives in:
 
-- `dashboard/supabase/migrations/202604050001_create_project_with_default_modules.sql`
+- `web/supabase/migrations/202604050001_create_project_with_default_modules.sql`
 
 ## How Project Modules Work
 
@@ -268,7 +268,7 @@ The SQL for the RPC lives in:
 
 Default modules are defined in:
 
-- `dashboard/lib/project-modules.ts`
+- `web/lib/project-modules.ts`
 
 Default order:
 
@@ -302,7 +302,7 @@ Tasks are stored in `public.project_tasks`, not in the legacy `projects.tasks` J
 
 Current task behavior lives almost entirely in:
 
-- `dashboard/app/projects/[id]/ProjectDetailClient.tsx`
+- `web/app/projects/[id]/ProjectDetailClient.tsx`
 
 Supported task actions:
 
@@ -321,7 +321,7 @@ Important current detail:
 
 ### Browser client
 
-- `dashboard/lib/supabase.ts`
+- `web/lib/supabase.ts`
 
 Used by client components for:
 
@@ -334,7 +334,7 @@ Used by client components for:
 
 ### Server client
 
-- `dashboard/lib/supabase-server.ts`
+- `web/lib/supabase-server.ts`
 
 Used by server components and middleware. It reads and writes cookies through Next APIs.
 
@@ -434,23 +434,23 @@ These are generally the safest places to work when the task is local and well-sc
 
 ### Add or adjust project list UI
 
-- `dashboard/app/components/project-dashboard/ProjectCard.tsx`
-- `dashboard/app/components/project-dashboard/ProjectToolbar.tsx`
-- `dashboard/app/components/project-dashboard/NewProjectModal.tsx`
-- `dashboard/app/components/project-dashboard/ProjectsGridSkeleton.tsx`
+- `web/app/components/project-web/ProjectCard.tsx`
+- `web/app/components/project-web/ProjectToolbar.tsx`
+- `web/app/components/project-web/NewProjectModal.tsx`
+- `web/app/components/project-web/ProjectsGridSkeleton.tsx`
 
 ### Adjust top-level shell or navigation
 
-- `dashboard/app/components/project-dashboard/AppShell.tsx`
-- `dashboard/app/components/project-dashboard/DashboardHeader.tsx`
-- `dashboard/app/components/project-dashboard/DashboardSidebar.tsx`
+- `web/app/components/project-web/AppShell.tsx`
+- `web/app/components/project-web/DashboardHeader.tsx`
+- `web/app/components/project-web/DashboardSidebar.tsx`
 
 ### Update validation or display helpers
 
-- `dashboard/lib/project-validation.ts`
-- `dashboard/lib/project-deadline.ts`
-- `dashboard/lib/projects.ts`
-- `dashboard/lib/project-modules.ts`
+- `web/lib/project-validation.ts`
+- `web/lib/project-deadline.ts`
+- `web/lib/projects.ts`
+- `web/lib/project-modules.ts`
 
 ### Add or change documentation
 
@@ -461,20 +461,20 @@ These are generally the safest places to work when the task is local and well-sc
 
 These files are central and easy to break.
 
-- `dashboard/app/projects/[id]/ProjectDetailClient.tsx`
+- `web/app/projects/[id]/ProjectDetailClient.tsx`
   This file contains a large amount of stateful behavior and mixed concerns.
-- `dashboard/app/components/project-dashboard/ProjectsGrid.tsx`
+- `web/app/components/project-web/ProjectsGrid.tsx`
   This is the main project list and creation flow.
-- `dashboard/middleware.ts`
+- `web/middleware.ts`
   Small file, large impact on route access.
-- `dashboard/lib/supabase-server.ts`
+- `web/lib/supabase-server.ts`
   Cookie behavior here affects auth/session behavior broadly.
-- `dashboard/supabase/migrations/*`
+- `web/supabase/migrations/*`
   Schema changes ripple into UI assumptions quickly.
 
 Also change carefully:
 
-- `dashboard/lib/projects.ts`
+- `web/lib/projects.ts`
   These types are used widely and reflect database/UI expectations.
 
 ## Read This First: Onboarding Path
@@ -483,25 +483,25 @@ For a new contributor, this is the fastest useful reading order:
 
 1. `README.md`
    Quick product context, but treat it as partially outdated.
-2. `dashboard/package.json`
+2. `web/package.json`
    Confirms stack and scripts.
-3. `dashboard/app/page.tsx`
+3. `web/app/page.tsx`
    Shows the app root redirect.
-4. `dashboard/app/components/project-dashboard/AppShell.tsx`
+4. `web/app/components/project-web/AppShell.tsx`
    Explains the shared page frame.
-5. `dashboard/app/components/project-dashboard/ProjectsGrid.tsx`
+5. `web/app/components/project-web/ProjectsGrid.tsx`
    Best first file for understanding the main CRUD flow.
-6. `dashboard/lib/projects.ts`
+6. `web/lib/projects.ts`
    Shared shapes for project/task data.
-7. `dashboard/lib/project-modules.ts`
+7. `web/lib/project-modules.ts`
    Default module source of truth.
-8. `dashboard/app/projects/[id]/page.tsx`
+8. `web/app/projects/[id]/page.tsx`
    Shows how the detail route is loaded.
-9. `dashboard/app/projects/[id]/ProjectDetailClient.tsx`
+9. `web/app/projects/[id]/ProjectDetailClient.tsx`
    Main detail page behavior.
-10. `dashboard/supabase/migrations/202604040003_create_project_tasks.sql`
-11. `dashboard/supabase/migrations/202604040007_create_project_modules.sql`
-12. `dashboard/supabase/migrations/202604050001_create_project_with_default_modules.sql`
+10. `web/supabase/migrations/202604040003_create_project_tasks.sql`
+11. `web/supabase/migrations/202604040007_create_project_modules.sql`
+12. `web/supabase/migrations/202604050001_create_project_with_default_modules.sql`
 
 ## Current Known Limitations and Likely Next Areas
 
@@ -516,7 +516,7 @@ For a new contributor, this is the fastest useful reading order:
 - `team` and `reports` are placeholders, not real features yet.
 - Timeline and assets modules are placeholder content today.
 - The repo has two migration roots:
-  - `dashboard/supabase`
+  - `web/supabase`
   - root `supabase`
   A contributor should verify which one is authoritative in deployment.
 
@@ -534,7 +534,7 @@ For a new contributor, this is the fastest useful reading order:
 These are worth calling out rather than guessing:
 
 - The original migration that creates `public.projects` is not present in the files I scanned, so the base table definition is only partially inferable from the UI types and later migrations.
-- The deployment/migration process is not encoded clearly in the repo. The presence of both `dashboard/supabase` and root `supabase` suggests migration workflow drift.
+- The deployment/migration process is not encoded clearly in the repo. The presence of both `web/supabase` and root `supabase` suggests migration workflow drift.
 - `EditProjectModal.tsx` and `DeleteProjectModal.tsx` exist, but the current detail page appears to render inline modal markup directly through `ModalShell` instead of using those components.
 
 That means contributors should inspect usage before assuming a shared component is active.

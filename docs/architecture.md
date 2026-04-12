@@ -4,64 +4,64 @@ This file explains where code lives in this repo today.
 
 ## Real App Location
 
-The real Next.js app is in `dashboard/`.
+The real Next.js app is in `web/`.
 
 ## Main Folders
 
-- `dashboard/app/`
+- `web/app/`
   - routes and page entry points
-- `dashboard/components/`
+- `web/components/`
   - shared UI
-- `dashboard/features/`
+- `web/features/`
   - code for one feature area
-- `dashboard/lib/`
+- `web/lib/`
   - shared non-UI logic
-- `dashboard/supabase/migrations/`
+- `web/supabase/migrations/`
   - active database migrations
 
 ## Where UI Lives
 
 Shared UI lives in:
 
-- `dashboard/components/ui/`
-- `dashboard/components/layout/`
+- `web/components/ui/`
+- `web/components/layout/`
 
 Feature UI lives in:
 
-- `dashboard/features/projects/`
-- `dashboard/features/project-detail/components/`
+- `web/features/projects/`
+- `web/features/project-detail/components/`
 
-Some route-local UI still lives in `dashboard/app/` where it is tightly tied to one route.
+Some route-local UI still lives in `web/app/` where it is tightly tied to one route.
 
 ## Where Logic Lives
 
 Shared logic lives in:
 
-- `dashboard/lib/`
+- `web/lib/`
 
 Feature logic lives in:
 
-- `dashboard/features/projects/`
+- `web/features/projects/`
 
 Route-local logic still lives in:
 
-- `dashboard/app/(app)/projects/[id]/project-detail/`
+- `web/app/(app)/projects/[id]/project-detail/`
 
 ## Route Structure
 
-Routes live in `dashboard/app/`.
+Routes live in `web/app/`.
 
 Main route groups:
 
-- `dashboard/app/(auth)/`
+- `web/app/(auth)/`
   - auth pages
-- `dashboard/app/(app)/`
+- `web/app/(app)/`
   - main signed-in app pages
 
 Other route areas:
 
-- `dashboard/app/guest/`
-- `dashboard/app/api/`
+- `web/app/guest/`
+- `web/app/api/`
 
 The route groups are only for folder organization.
 
@@ -73,24 +73,24 @@ Shared code means code used in more than one place.
 
 That usually goes in:
 
-- `dashboard/components/` for shared UI
-- `dashboard/lib/` for shared non-UI code
+- `web/components/` for shared UI
+- `web/lib/` for shared non-UI code
 
 Examples:
 
-- shared button -> `dashboard/components/ui/`
-- shared app layout -> `dashboard/components/layout/`
-- shared Supabase helper -> `dashboard/lib/`
+- shared button -> `web/components/ui/`
+- shared app layout -> `web/components/layout/`
+- shared Supabase helper -> `web/lib/`
 
 ## Feature-Specific Code
 
 Feature-specific code belongs to one product area.
 
-That goes in `dashboard/features/`.
+That goes in `web/features/`.
 
 Current example:
 
-- `dashboard/features/projects/`
+- `web/features/projects/`
   - projects list UI
   - project CRUD modals
   - projects hooks and related logic
@@ -101,7 +101,7 @@ Some code is still best kept close to a route.
 
 Current example:
 
-- `dashboard/app/(app)/projects/[id]/project-detail/`
+- `web/app/(app)/projects/[id]/project-detail/`
 
 This folder still holds route-local project detail code that is closely tied to that page.
 
@@ -109,7 +109,7 @@ This folder still holds route-local project detail code that is closely tied to 
 
 New migrations go in:
 
-- `dashboard/supabase/migrations/`
+- `web/supabase/migrations/`
 
 Do not add new migrations to:
 
@@ -127,14 +127,14 @@ That root folder is legacy.
 ## If You Want To Change X
 
 - change a route:
-  - `dashboard/app/`
+  - `web/app/`
 - change shared UI:
-  - `dashboard/components/`
+  - `web/components/`
 - change shared logic:
-  - `dashboard/lib/`
+  - `web/lib/`
 - change the projects area:
-  - `dashboard/features/projects/`
+  - `web/features/projects/`
 - change single-project route-local code:
-  - `dashboard/app/(app)/projects/[id]/project-detail/`
+  - `web/app/(app)/projects/[id]/project-detail/`
 - add a migration:
-  - `dashboard/supabase/migrations/`
+  - `web/supabase/migrations/`

@@ -62,7 +62,7 @@ Then place it accordingly.
 
 ### 1. Route Files
 
-Route files go in `dashboard/app/`.
+Route files go in `web/app/`.
 
 This includes:
 
@@ -71,35 +71,35 @@ This includes:
 - route-local orchestration
 - route-local code that is tightly coupled to one page or route
 
-Do not move shared code into `dashboard/app/` just because a route uses it.
+Do not move shared code into `web/app/` just because a route uses it.
 
 ### 2. Shared UI
 
-Shared UI goes in `dashboard/components/`.
+Shared UI goes in `web/components/`.
 
 Use:
 
-- `dashboard/components/ui/` for reusable UI primitives
-- `dashboard/components/layout/` for shared layout and navigation
+- `web/components/ui/` for reusable UI primitives
+- `web/components/layout/` for shared layout and navigation
 
-Do not place new shared UI inside `dashboard/app/`.
+Do not place new shared UI inside `web/app/`.
 
 ### 3. Feature-Specific Code
 
-Feature-owned code goes in `dashboard/features/`.
+Feature-owned code goes in `web/features/`.
 
 If code clearly belongs to one product area, prefer the matching feature folder.
 
 Examples:
 
-- projects list / project CRUD -> `dashboard/features/projects/`
-- extracted project-detail rendering blocks -> `dashboard/features/project-detail/`
+- projects list / project CRUD -> `web/features/projects/`
+- extracted project-detail rendering blocks -> `web/features/project-detail/`
 
 Do not place new feature-owned code in generic catch-all folders when a feature folder already exists.
 
 ### 4. Shared Non-UI Logic
 
-Shared non-UI logic goes in `dashboard/lib/`.
+Shared non-UI logic goes in `web/lib/`.
 
 This includes:
 
@@ -114,7 +114,7 @@ This includes:
 
 New database migrations go only in:
 
-- `dashboard/supabase/migrations/`
+- `web/supabase/migrations/`
 
 Do not add new migrations to:
 
