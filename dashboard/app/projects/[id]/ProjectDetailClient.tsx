@@ -17,7 +17,6 @@ import { ProjectContextPanel } from "./project-detail/ProjectContextPanel"
 import { ProjectDetailHeader } from "./project-detail/ProjectDetailHeader"
 import { ProjectHealthSummary } from "./project-detail/ProjectHealthSummary"
 import { ProjectMobileContext } from "./project-detail/ProjectMobileContext"
-import { ProjectMobileNavigation } from "./project-detail/ProjectMobileNavigation"
 import { ProjectModuleContent } from "./project-detail/ProjectModuleContent"
 import {
   customProjectModuleOptions,
@@ -55,7 +54,6 @@ export default function ProjectDetailClient({
   const [manualActiveSection, setManualActiveSection] = useState<string | null>(
     null
   )
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const pendingNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
@@ -595,22 +593,40 @@ export default function ProjectDetailClient({
         }}
         title={currentProject.name}
         currentUser={currentUser}
-        mobileNavTrigger={
-          <button
-            type="button"
-            aria-label="Open module navigation"
-            aria-expanded={isMobileNavOpen}
-            onClick={() => setIsMobileNavOpen(true)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
-          >
-            <span className="sr-only">Open module navigation</span>
-            <span className="flex flex-col gap-1">
-              <span className="block h-0.5 w-4 rounded-full bg-current" />
-              <span className="block h-0.5 w-4 rounded-full bg-current" />
-              <span className="block h-0.5 w-4 rounded-full bg-current" />
-            </span>
-          </button>
-        }
+        mobileProjectNavigation={({ requestClose }) => (
+          <div className="mt-2">
+            <p className="px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Current Project
+            </p>
+            <div className="mt-2 space-y-1.5">
+              {[fixedProjectDetailsNavigationItem, ...sortableProjectWorkspaceNavigation].map(
+                (item) => {
+                  const isActive = activeSection === item.id
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        requestClose()
+                        requestAnimationFrame(() => {
+                          handleSelectSection(item.id, { scroll: true })
+                        })
+                      }}
+                      className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                        isActive
+                          ? "bg-indigo-50 text-indigo-700"
+                          : "text-slate-700 hover:bg-white hover:text-slate-900"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  )
+                }
+              )}
+            </div>
+          </div>
+        )}
         onLogout={logout}
       >
         <div className="grid gap-[var(--layout-gap)] lg:grid-cols-[180px_minmax(0,1fr)_300px] lg:items-start">
@@ -732,22 +748,6 @@ export default function ProjectDetailClient({
           </div>
         </div>
       </AppLayout>
-
-      <ProjectMobileNavigation
-        activeSection={activeSection}
-        fixedItem={fixedProjectDetailsNavigationItem}
-        isAddDisabled={
-          isResettingModules ||
-          isCreatingModule ||
-          Boolean(deletingModuleId) ||
-          Boolean(movingModuleId)
-        }
-        isOpen={isMobileNavOpen}
-        onAddModule={handleOpenAddModuleModal}
-        onClose={() => setIsMobileNavOpen(false)}
-        onSelectSection={handleSelectSection}
-        sortableItems={sortableProjectWorkspaceNavigation}
-      />
 
       {isEditOpen && (
         <ModalShell
