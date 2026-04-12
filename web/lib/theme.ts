@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js"
 
 export type ThemeFamily = "default" | "terra"
 export type ThemeMode = "light" | "dark"
+export const THEME_FAMILY_COOKIE = "orchestra_theme_family"
 
 export type ThemeConfig = {
   family?: ThemeFamily
@@ -15,6 +16,12 @@ export const DEFAULT_THEME: Required<ThemeConfig> = {
 
 export function resolveThemeFamily(family?: string | null): ThemeFamily {
   return family === "terra" ? "terra" : "default"
+}
+
+export function getThemeConfigFromStoredFamily(
+  family?: string | null
+): Required<ThemeConfig> {
+  return getThemeConfigForFamily(resolveThemeFamily(family))
 }
 
 export function getThemeConfigForFamily(
@@ -33,6 +40,5 @@ export function getThemeConfigForFamily(
 export function getThemeConfigFromUser(
   user: User | null | undefined
 ): Required<ThemeConfig> {
-  const family = resolveThemeFamily(user?.user_metadata?.theme_family)
-  return getThemeConfigForFamily(family)
+  return getThemeConfigFromStoredFamily(user?.user_metadata?.theme_family)
 }

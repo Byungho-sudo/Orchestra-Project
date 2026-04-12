@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
-import { resolveThemeFamily, type ThemeFamily } from "@/lib/theme"
+import {
+  resolveThemeFamily,
+  THEME_FAMILY_COOKIE,
+  type ThemeFamily,
+} from "@/lib/theme"
 
 export function useAccountSettings(user: User | null) {
   const router = useRouter()
@@ -125,6 +129,7 @@ export function useAccountSettings(user: User | null) {
       return
     }
 
+    document.cookie = `${THEME_FAMILY_COOKIE}=${themeFamily}; path=/; max-age=31536000; samesite=lax`
     setThemeMessage("Theme updated successfully.")
     router.refresh()
   }

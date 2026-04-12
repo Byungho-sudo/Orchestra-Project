@@ -5,9 +5,11 @@ import type { User } from "@supabase/supabase-js"
 import { DashboardNavigationLinks } from "@/components/layout/DashboardSidebar"
 import { Modal } from "@/components/ui/Modal"
 import {
+  DEFAULT_THEME,
   getThemeConfigFromUser,
   type ThemeConfig,
 } from "@/lib/theme"
+import { useInitialTheme } from "@/lib/theme-context"
 import { cn } from "@/lib/ui"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { TopNavBar } from "./TopNavBar"
@@ -40,9 +42,14 @@ export function AppLayout({
     isLoading: isAuthLoading,
     logout: fallbackLogout,
   } = useCurrentUser()
+  const initialTheme = useInitialTheme()
   const [isGlobalMobileNavOpen, setIsGlobalMobileNavOpen] = useState(false)
   const resolvedCurrentUser = currentUser ?? fallbackCurrentUser
-  const resolvedTheme = theme ?? getThemeConfigFromUser(resolvedCurrentUser)
+  const resolvedTheme =
+    theme ??
+    (resolvedCurrentUser
+      ? getThemeConfigFromUser(resolvedCurrentUser)
+      : initialTheme ?? DEFAULT_THEME)
   const resolvedMobileNavTrigger = (
     <button
       type="button"

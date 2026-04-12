@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@/lib/theme-context";
+import {
+  getThemeConfigFromStoredFamily,
+  THEME_FAMILY_COOKIE,
+} from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,17 +23,25 @@ export const metadata: Metadata = {
   description: "Project dashboard with Tailwind CSS",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const themeFamily = cookieStore.get(THEME_FAMILY_COOKIE)?.value;
+  const initialTheme = getThemeConfigFromStoredFamily(themeFamily);
+
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      data-theme-family={initialTheme.family}
+      data-theme-mode={initialTheme.mode}
+    >
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ThemeProvider theme={initialTheme}>{children}</ThemeProvider>
       </body>
     </html>
   );
