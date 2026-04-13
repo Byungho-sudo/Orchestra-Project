@@ -70,7 +70,7 @@ export function ProjectToolbar({
 
           <Button
             onClick={onCreateProject}
-            className="border-transparent bg-[var(--theme-primary)] text-[var(--theme-primary-foreground)] shadow-[0_10px_22px_-16px_var(--theme-primary)] hover:bg-[var(--theme-primary-hover)] focus-visible:ring-[var(--theme-focus-ring)]"
+            className="border-transparent bg-[var(--theme-primary)] text-[var(--theme-primary-foreground)] shadow-[0_10px_22px_-16px_var(--theme-primary)] hover:bg-[var(--theme-primary-hover)] focus-visible:ring-[var(--theme-focus-ring)] sm:ml-2"
           >
             New Project
           </Button>

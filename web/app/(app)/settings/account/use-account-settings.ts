@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import {
+  startThemeTransition,
   resolveThemeFamily,
   THEME_FAMILY_COOKIE,
   type ThemeFamily,
@@ -129,6 +130,7 @@ export function useAccountSettings(user: User | null) {
       return
     }
 
+    startThemeTransition(themeFamily)
     document.cookie = `${THEME_FAMILY_COOKIE}=${themeFamily}; path=/; max-age=31536000; samesite=lax`
     setThemeMessage("Theme updated successfully.")
     router.refresh()

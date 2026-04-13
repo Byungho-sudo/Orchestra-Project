@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react"
 import { AppShell } from "@/components/layout/AppShell"
+import { Button } from "@/components/ui/Button"
+import { Card } from "@/components/ui/Card"
+import { Select } from "@/components/ui/Select"
 import { Modal } from "@/components/ui/Modal"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { TicketForm } from "./TicketForm"
@@ -38,11 +41,14 @@ function TicketCard({
   onStatusChange: (status: TicketStatus) => void
 }) {
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-slate-300 hover:shadow-md">
+    <Card
+      as="article"
+      className="bg-[var(--theme-card)] p-4 transition-[border-color,box-shadow] duration-200 hover:shadow-[var(--color-card-shadow-hover)]"
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold text-[var(--theme-card-foreground)]">
               {ticket.title}
             </h2>
           </div>
@@ -64,41 +70,42 @@ function TicketCard({
           </div>
 
           {ticket.description ? (
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--color-card-muted-foreground)]">
               {ticket.description}
             </p>
           ) : (
-            <p className="mt-3 text-sm text-slate-400">
+            <p className="mt-3 text-sm text-[var(--color-card-muted-foreground)]/75">
               No additional notes yet.
             </p>
           )}
         </div>
 
         <div className="w-full shrink-0 sm:w-52">
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--color-card-muted-foreground)]">
             Status
           </label>
           <div className="flex items-center gap-2">
-            <select
+            <Select
               value={ticket.status}
               onChange={(event) =>
                 onStatusChange(event.target.value as TicketStatus)
               }
               disabled={isUpdating}
-              className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-w-0 flex-1 bg-[var(--color-background)] text-[var(--theme-card-foreground)] shadow-none"
             >
               {ticketStatusOptions.map((statusOption) => (
                 <option key={statusOption.value} value={statusOption.value}>
                   {statusOption.label}
                 </option>
               ))}
-            </select>
+            </Select>
 
-            <button
-              type="button"
+            <Button
               onClick={onEdit}
               aria-label="Edit ticket"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              variant="secondary"
+              size="icon"
+              className="h-9 w-9 shrink-0 bg-[var(--color-background)] text-[var(--color-card-muted-foreground)] shadow-none"
             >
               <svg
                 aria-hidden="true"
@@ -113,12 +120,12 @@ function TicketCard({
                 <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
                 <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.38 1.08V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.08-.38H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .38-1.08V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.17.38.4.72.6 1 .28.3.67.48 1.08.5H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.5Z" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 flex w-full items-center justify-between gap-3 text-xs font-medium text-slate-500">
+      <div className="mt-3 flex w-full items-center justify-between gap-3 text-xs font-medium text-[var(--color-card-muted-foreground)]">
         <p className="uppercase tracking-wide">
           Added {formatTicketTimestamp(ticket.created_at)}
         </p>
@@ -126,7 +133,7 @@ function TicketCard({
           Created by {ticket.creator_display_name}
         </p>
       </div>
-    </article>
+    </Card>
   )
 }
 
@@ -229,36 +236,33 @@ export default function TicketsPage() {
   return (
     <AppShell title="Tickets" currentUser={currentUser} onLogout={logout}>
       <main className="space-y-6">
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+        <Card as="section" padding="lg">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-card-muted-foreground)]">
             Tickets
           </p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">
+          <h1 className="mt-2 text-3xl font-bold text-[var(--theme-card-foreground)]">
             Capture bugs, ideas, polish, and cleanup work
           </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
+          <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--color-card-muted-foreground)]">
             Keep Orchestra improvements in one lightweight queue so you can log
             them quickly from desktop or phone without breaking flow.
           </p>
-        </section>
+        </Card>
 
         <section className="grid items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
           <div className="self-start">
-            <div
-              id="quick-capture"
-              ref={quickCaptureRef}
-              className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
+            <div id="quick-capture" ref={quickCaptureRef} className="scroll-mt-24">
+              <Card as="div" padding="md">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-card-muted-foreground)]">
                     Quick Capture
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                  <h2 className="mt-2 text-xl font-semibold text-[var(--theme-card-foreground)]">
                     Add ticket
                   </h2>
                 </div>
-                <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <div className="rounded-full border border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-status-neutral)]">
                   Status: Inbox
                 </div>
               </div>
@@ -271,18 +275,19 @@ export default function TicketsPage() {
                 onChange={setDraft}
                 onSubmit={() => void createTicket()}
               />
+              </Card>
             </div>
 
           </div>
 
           <div className="space-y-4">
-            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <Card as="section" padding="md">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-card-muted-foreground)]">
                     Queue
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-900">
+                  <h2 className="mt-2 text-xl font-semibold text-[var(--theme-card-foreground)]">
                     {tickets.length} {tickets.length === 1 ? "ticket" : "tickets"}
                   </h2>
                 </div>
@@ -295,51 +300,56 @@ export default function TicketsPage() {
                         : countsByStatus[option.value]
 
                     return (
-                      <button
+                      <Button
                         key={option.value}
-                        type="button"
                         onClick={() => setStatusFilter(option.value)}
-                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                        variant="secondary"
+                        className={`min-h-0 rounded-full px-3 py-1.5 text-sm font-medium shadow-none ${
                           isActive
-                            ? "border-indigo-200 bg-indigo-50 text-indigo-700"
-                            : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
+                            ? "border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
+                            : "border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-card-muted-foreground)] hover:bg-[var(--color-surface-elevated)]"
                         }`}
                       >
                         {option.label} ({count})
-                      </button>
+                      </Button>
                     )
                   })}
                 </div>
               </div>
-            </section>
+            </Card>
 
             {isLoading || isAuthLoading ? (
-              <section className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+              <Card
+                as="section"
+                padding="lg"
+                className="text-sm text-[var(--color-card-muted-foreground)]"
+              >
                 Loading tickets...
-              </section>
+              </Card>
             ) : statusFilter === "all" ? (
               <div className="space-y-5">
                 {groupedTickets.map((group) => (
-                  <section
+                  <Card
+                    as="section"
                     key={group.status}
-                    className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                    padding="md"
                   >
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
                       aria-expanded={expandedStatusGroups.has(group.status)}
                       onClick={() => toggleStatusGroup(group.status)}
-                      className="flex w-full items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                      className="flex w-full items-center justify-between gap-3 px-0 py-0 text-left text-[var(--theme-card-foreground)] hover:bg-transparent"
                     >
-                      <span className="min-w-0 text-lg font-semibold text-slate-900">
+                      <span className="min-w-0 text-lg font-semibold text-[var(--theme-card-foreground)]">
                         {group.label}
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <span className="rounded-full border border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-status-neutral)]">
                           {group.tickets.length}
                         </span>
                         <span
                           aria-hidden="true"
-                          className={`text-base text-slate-500 transition-transform ${
+                          className={`text-base text-[var(--color-card-muted-foreground)] transition-transform ${
                             expandedStatusGroups.has(group.status)
                               ? "rotate-90"
                               : "rotate-0"
@@ -348,11 +358,11 @@ export default function TicketsPage() {
                           &gt;
                         </span>
                       </span>
-                    </button>
+                    </Button>
 
                     {expandedStatusGroups.has(group.status) ? (
                       group.tickets.length === 0 ? (
-                        <p className="mt-4 text-sm text-slate-500">
+                        <p className="mt-4 text-sm text-[var(--color-card-muted-foreground)]">
                           No tickets in {group.label.toLowerCase()}.
                         </p>
                       ) : (
@@ -371,13 +381,17 @@ export default function TicketsPage() {
                         </div>
                       )
                     ) : null}
-                  </section>
+                  </Card>
                 ))}
               </div>
             ) : filteredTickets.length === 0 ? (
-              <section className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+              <Card
+                as="section"
+                padding="lg"
+                className="text-sm text-[var(--color-card-muted-foreground)]"
+              >
                 No tickets in {getTicketStatusLabel(statusFilter)} yet.
-              </section>
+              </Card>
             ) : (
               <section className="space-y-3">
                 {filteredTickets.map((ticket) => (
@@ -407,10 +421,10 @@ export default function TicketsPage() {
           >
             {({ requestClose }) => (
               <>
-                <h2 className="text-xl font-semibold text-slate-900">
+                <h2 className="text-xl font-semibold text-[var(--theme-card-foreground)]">
                   Edit Ticket
                 </h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-[var(--color-card-muted-foreground)]">
                   Update the ticket details and save your changes.
                 </p>
 
@@ -434,14 +448,14 @@ export default function TicketsPage() {
               <div className="hidden md:block" />
               <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
                 <div className="flex justify-center">
-                  <button
-                    type="button"
+                  <Button
                     onClick={scrollToQuickCapture}
                     aria-label="Back to Ticket Form"
-                    className="pointer-events-auto rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-lg transition hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                    variant="secondary"
+                    className="pointer-events-auto rounded-full border-[var(--color-accent-border)] bg-[var(--theme-card)] text-[var(--color-accent)] shadow-lg hover:bg-[var(--color-accent-soft)]"
                   >
                     Back to Ticket Form
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

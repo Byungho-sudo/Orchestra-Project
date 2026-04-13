@@ -95,27 +95,27 @@ export function isTicketStatus(value: string): value is TicketStatus {
 export function getTicketTypeBadgeClassName(type: TicketType) {
   switch (type) {
     case "bug":
-      return "border-rose-200 bg-rose-50 text-rose-700"
+      return "border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-soft)] text-[var(--color-status-danger)]"
     case "feature":
-      return "border-indigo-200 bg-indigo-50 text-indigo-700"
+      return "border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]"
     case "improvement":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700"
+      return "border-[var(--color-status-success-border)] bg-[var(--color-status-success-soft)] text-[var(--color-status-success)]"
     case "refactor":
-      return "border-amber-200 bg-amber-50 text-amber-700"
+      return "border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-soft)] text-[var(--color-status-warning)]"
     default:
-      return "border-slate-200 bg-slate-50 text-slate-700"
+      return "border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] text-[var(--color-status-neutral)]"
   }
 }
 
 export function getTicketPriorityBadgeClassName(priority: TicketPriority) {
   switch (priority) {
     case "high":
-      return "border-rose-200 bg-rose-50 text-rose-700"
+      return "border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-soft)] text-[var(--color-status-danger)]"
     case "medium":
-      return "border-amber-200 bg-amber-50 text-amber-700"
+      return "border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-soft)] text-[var(--color-status-warning)]"
     case "low":
-      return "border-slate-200 bg-slate-50 text-slate-700"
+      return "border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] text-[var(--color-status-neutral)]"
     default:
-      return "border-slate-200 bg-slate-50 text-slate-700"
+      return "border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] text-[var(--color-status-neutral)]"
   }
 }

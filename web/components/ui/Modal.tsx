@@ -9,7 +9,7 @@ export function Modal({
   hasUnsavedChanges = false,
   isDismissDisabled = false,
   overlayClassName = "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4",
-  panelClassName = "w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-lg)]",
+  panelClassName = "w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--color-card-border)] bg-[var(--theme-card)] p-6 shadow-[var(--shadow-lg)]",
   onClose,
 }: {
   children: (controls: { requestClose: () => void }) => ReactNode
@@ -93,13 +93,13 @@ export function Modal({
     >
       {isDiscardConfirmOpen ? (
         <div
-          className="w-full max-w-sm rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-6 shadow-[var(--shadow-lg)]"
+          className="w-full max-w-sm rounded-[var(--radius-lg)] border border-[var(--color-card-border)] bg-[var(--theme-card)] p-6 shadow-[var(--shadow-lg)]"
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+          <h3 className="text-lg font-semibold text-[var(--theme-card-foreground)]">
             Discard changes?
           </h3>
-          <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+          <p className="mt-2 text-sm text-[var(--color-card-muted-foreground)]">
             You have unsaved changes. Discard them?
           </p>
 

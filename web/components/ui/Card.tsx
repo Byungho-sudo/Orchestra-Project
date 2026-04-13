@@ -23,7 +23,7 @@ export function Card({
   return (
     <Component
       className={cn(
-        "rounded-[var(--radius-lg)] border border-[var(--color-card-border)] bg-[var(--color-surface-elevated)] shadow-[var(--color-card-shadow)]",
+        "rounded-[var(--radius-lg)] border border-[var(--color-card-border)] bg-[var(--theme-card)] shadow-[var(--color-card-shadow)]",
         paddingClassNames[padding],
         className
       )}

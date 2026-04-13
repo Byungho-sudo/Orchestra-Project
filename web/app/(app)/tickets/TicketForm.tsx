@@ -1,5 +1,9 @@
 "use client"
 
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { Textarea } from "@/components/ui/Textarea"
 import {
   ticketPriorityOptions,
   ticketStatusOptions,
@@ -36,10 +40,10 @@ export function TicketForm({
   return (
     <div className="mt-5 space-y-4">
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
+        <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
           Title
         </label>
-        <input
+        <Input
           type="text"
           value={draft.title}
           onChange={(event) =>
@@ -49,15 +53,15 @@ export function TicketForm({
             })
           }
           placeholder="Short summary of the issue or idea"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+          className="shadow-none"
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
+        <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
           Description
         </label>
-        <textarea
+        <Textarea
           rows={4}
           value={draft.description}
           onChange={(event) =>
@@ -67,16 +71,16 @@ export function TicketForm({
             })
           }
           placeholder="Add the context while it's fresh."
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+          className="min-h-28 resize-y shadow-none"
         />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
             Type
           </label>
-          <select
+          <Select
             value={draft.type}
             onChange={(event) =>
               onChange({
@@ -84,21 +88,21 @@ export function TicketForm({
                 type: event.target.value as TicketDraft["type"],
               })
             }
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+            className="shadow-none"
           >
             {ticketTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
             Priority
           </label>
-          <select
+          <Select
             value={draft.priority}
             onChange={(event) =>
               onChange({
@@ -106,23 +110,23 @@ export function TicketForm({
                 priority: event.target.value as TicketDraft["priority"],
               })
             }
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+            className="shadow-none"
           >
             {ticketPriorityOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
       {mode === "edit" ? (
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
             Status
           </label>
-          <select
+          <Select
             value={draft.status}
             onChange={(event) =>
               onChange({
@@ -130,40 +134,43 @@ export function TicketForm({
                 status: event.target.value as TicketDraft["status"],
               })
             }
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+            className="shadow-none"
           >
             {ticketStatusOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       ) : null}
 
-      {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="text-sm font-medium text-[var(--color-status-danger)]">
+          {error}
+        </p>
+      ) : null}
 
       <div className={mode === "edit" ? "flex justify-end gap-2" : undefined}>
         {onCancel ? (
-          <button
-            type="button"
+          <Button
             onClick={onCancel}
             disabled={isSubmitting}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            variant="secondary"
+            className="shadow-none"
           >
             Cancel
-          </button>
+          </Button>
         ) : null}
-        <button
-          type="button"
+        <Button
           onClick={onSubmit}
           disabled={isSubmitting}
-          className={`inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`${
             mode === "create" ? "w-full" : ""
           }`}
         >
           {submitLabel}
-        </button>
+        </Button>
       </div>
     </div>
   )

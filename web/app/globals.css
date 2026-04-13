@@ -381,6 +381,17 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-changing,
+  html.theme-changing *,
+  html.theme-changing *::before,
+  html.theme-changing *::after {
+    transition-duration: 240ms !important;
+    transition-property: background-color, color, border-color, fill, stroke !important;
+    transition-timing-function: ease !important;
+  }
+}
+
 @media (max-width: 767px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
   textarea,
