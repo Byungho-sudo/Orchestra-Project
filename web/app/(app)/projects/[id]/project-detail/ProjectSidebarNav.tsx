@@ -248,7 +248,7 @@ export function ProjectSidebarNav({
                   {isDragShell && (
                     <div
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
+                      className="pointer-events-none absolute inset-0 rounded-xl border border-dashed border-[var(--color-accent-border)] bg-[var(--color-accent-soft)]"
                     />
                   )}
                   <Link
@@ -267,7 +267,7 @@ export function ProjectSidebarNav({
                         ? "pointer-events-none opacity-0"
                         : activeDragSurface === "module" &&
                             draggedModuleId === item.moduleId
-                          ? "border-indigo-200 bg-indigo-50/95 font-medium text-indigo-900 shadow-sm ring-1 ring-indigo-100"
+                          ? "border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] font-medium text-[var(--theme-nav-active-foreground)] shadow-[var(--color-card-shadow)]"
                         : ""
                     } ${itemIndex > 0 ? "mt-2" : ""}`}
                   >
@@ -298,7 +298,7 @@ export function ProjectSidebarNav({
                 transition: "none",
               }}
             >
-              <div className="block rounded-xl border border-indigo-200 bg-indigo-50/95 px-3 py-3 text-sm font-medium text-indigo-900 shadow-md ring-1 ring-indigo-100 opacity-90">
+              <div className="block rounded-xl border border-[var(--color-accent-border)] bg-[var(--color-accent-soft)] px-3 py-3 text-sm font-medium text-[var(--theme-nav-active-foreground)] shadow-[var(--color-card-shadow)] opacity-90">
                 {draggedSortableItem.label}
               </div>
             </div>
@@ -309,7 +309,7 @@ export function ProjectSidebarNav({
           <SidebarItem
             disabled={isAddDisabled}
             onClick={onAddModule}
-            className="flex h-11 w-full items-center justify-center border-dashed text-lg font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-11 w-full items-center justify-center border-dashed text-lg font-medium text-[var(--theme-nav-muted)] hover:border-[var(--theme-nav-hover-border)] hover:text-[var(--theme-nav-hover-foreground)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             +
           </SidebarItem>

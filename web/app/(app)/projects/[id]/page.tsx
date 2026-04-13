@@ -31,23 +31,23 @@ export default async function ProjectDetailPage({
         <div className="mx-auto max-w-3xl">
           <Link
             href="/projects"
-            className="mb-6 inline-block text-sm font-medium text-indigo-600 hover:underline"
+            className="mb-6 inline-block text-sm font-medium text-[var(--color-accent)] hover:underline"
           >
             Back to projects
           </Link>
 
-          <div className="rounded-2xl border border-red-200 bg-white p-8 shadow-sm">
-            <h1 className="text-2xl font-bold text-red-600">
+          <div className="rounded-2xl border border-[var(--color-status-danger-border)] bg-[var(--theme-card)] p-8 shadow-[var(--color-card-shadow)]">
+            <h1 className="text-2xl font-bold text-[var(--color-status-danger)]">
               Failed to load project
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-[var(--color-card-muted-foreground)]">
               Something went wrong while fetching this project from the database.
             </p>
 
             <div className="mt-6">
               <Link
                 href="/projects"
-                className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                className="inline-flex rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-sm font-medium text-[var(--theme-primary-foreground)] hover:bg-[var(--theme-primary-hover)]"
               >
                 Return to projects
               </Link>
@@ -64,23 +64,23 @@ export default async function ProjectDetailPage({
         <div className="mx-auto max-w-3xl">
           <Link
             href="/projects"
-            className="mb-6 inline-block text-sm font-medium text-indigo-600 hover:underline"
+            className="mb-6 inline-block text-sm font-medium text-[var(--color-accent)] hover:underline"
           >
             Back to projects
           </Link>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h1 className="text-2xl font-bold text-slate-900">
+          <div className="rounded-2xl border border-[var(--color-card-border)] bg-[var(--theme-card)] p-8 shadow-[var(--color-card-shadow)]">
+            <h1 className="text-2xl font-bold text-[var(--theme-card-foreground)]">
               Project not found
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-[var(--color-card-muted-foreground)]">
               This project does not exist or may have been deleted.
             </p>
 
             <div className="mt-6">
               <Link
                 href="/projects"
-                className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                className="inline-flex rounded-lg bg-[var(--theme-primary)] px-4 py-2 text-sm font-medium text-[var(--theme-primary-foreground)] hover:bg-[var(--theme-primary-hover)]"
               >
                 Return to projects
               </Link>

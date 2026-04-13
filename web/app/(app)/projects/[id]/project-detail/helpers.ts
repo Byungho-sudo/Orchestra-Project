@@ -18,11 +18,11 @@ export type TaskDueStatus =
   | "no_deadline"
 
 export const detailCardClassName =
-  "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
+  "rounded-xl border border-[var(--color-card-border)] bg-[var(--theme-card)] p-8 shadow-[var(--color-card-shadow)]"
 export const sectionCardClassName =
-  "rounded-xl border border-slate-300 bg-slate-50 p-8 shadow-sm"
+  "rounded-xl border border-[var(--color-card-border)] bg-[var(--theme-card)] p-8 shadow-[var(--color-card-shadow)]"
 export const fieldCardClassName =
-  "rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(15,23,42,0.03)]"
+  "rounded-xl border border-[var(--color-card-border)] bg-[var(--color-background)] p-4 shadow-[var(--color-card-shadow)]"
 export const taskDeleteUndoDurationMs = 8000
 export const projectSectionAnchorOffsetPx = 24
 export const projectModuleStackGapClassName = "space-y-8"
@@ -184,13 +184,15 @@ export function getTaskStatusBadge(task: ProjectTask) {
   if (dueStatus === "no_deadline") {
     return {
       label: "No deadline",
-      className: "bg-slate-100 text-slate-600",
+      className:
+        "border border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] text-[var(--color-status-neutral)]",
     }
   }
 
   return {
     label: `Due ${dueDateLabel}`,
-    className: "bg-slate-100 text-slate-600",
+    className:
+      "border border-[var(--color-status-upcoming-border)] bg-[var(--color-status-upcoming-soft)] text-[var(--color-status-upcoming)]",
   }
 }
 
@@ -269,7 +271,7 @@ export function getTaskSaveStateLabel(taskSaveState: TaskSaveState) {
 export function getTaskSaveStateClassName(taskSaveState: TaskSaveState) {
   if (taskSaveState === "error") return "text-red-600"
   if (taskSaveState === "saved") return "text-emerald-600"
-  return "text-slate-500"
+  return "text-[var(--color-card-muted-foreground)]"
 }
 
 export function normalizeProgressInputValue(value: string) {

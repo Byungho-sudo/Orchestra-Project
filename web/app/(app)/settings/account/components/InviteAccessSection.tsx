@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { Button } from "@/components/ui/Button"
+import { Card } from "@/components/ui/Card"
+import { Input } from "@/components/ui/Input"
 import { useInviteAccess } from "../hooks/use-invite-access"
 
 const existingInvitesStorageKey = "orchestra-invite-access-existing-invites-open"
@@ -83,18 +86,18 @@ export function InviteAccessSection() {
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-      <h2 className="text-xl font-semibold text-slate-900">Invite Access</h2>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
+    <Card as="section" padding="lg">
+      <h2 className="text-xl font-semibold text-[var(--theme-card-foreground)]">Invite Access</h2>
+      <p className="mt-3 text-sm leading-6 text-[var(--color-card-muted-foreground)]">
         Create and manage guest invite codes.
       </p>
 
       <div className="mt-6 grid gap-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
             Display Name
           </label>
-          <input
+          <Input
             type="text"
             value={draft.label}
             onChange={(event) =>
@@ -104,10 +107,10 @@ export function InviteAccessSection() {
               }))
             }
             placeholder="Enter display name for this guest"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+            className="shadow-none"
           />
           {displayNameError ? (
-            <p className="mt-2 text-sm font-medium text-red-600">
+            <p className="mt-2 text-sm font-medium text-[var(--color-status-danger)]">
               {displayNameError}
             </p>
           ) : null}
@@ -115,10 +118,10 @@ export function InviteAccessSection() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
               Max Uses
             </label>
-            <input
+            <Input
               type="number"
               min={1}
               value={draft.maxUses}
@@ -129,15 +132,15 @@ export function InviteAccessSection() {
                 }))
               }
               placeholder="Unlimited if empty"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+              className="shadow-none"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
               Expires At
             </label>
-            <input
+            <Input
               type={isExpiresAtFocused || draft.expiresAt ? "datetime-local" : "text"}
               value={draft.expiresAt}
               onChange={(event) =>
@@ -149,61 +152,65 @@ export function InviteAccessSection() {
               onFocus={() => setIsExpiresAtFocused(true)}
               onBlur={() => setIsExpiresAtFocused(false)}
               placeholder="Does not expire if left empty"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+              className="shadow-none"
             />
           </div>
         </div>
       </div>
 
       {error ? (
-        <p className="mt-4 text-sm font-medium text-red-600">{error}</p>
+        <p className="mt-4 text-sm font-medium text-[var(--color-status-danger)]">
+          {error}
+        </p>
       ) : null}
 
       <div className="mt-6 flex justify-end">
-        <button
+        <Button
           type="button"
           onClick={() => void createInviteCode()}
           disabled={isCreating || !draft.label.trim()}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isCreating ? "Creating..." : "Create Invite Code"}
-        </button>
+        </Button>
       </div>
 
       {recentInviteCodeResult ? (
-        <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-sm font-semibold text-emerald-900">
+        <div className="mt-6 rounded-lg border border-[var(--color-status-success-border)] bg-[var(--color-status-success-soft)] p-4">
+          <p className="text-sm font-semibold text-[var(--color-status-success)]">
             {recentInviteCodeResult.heading}
           </p>
-          <p className="mt-2 text-sm text-emerald-800">
+          <p className="mt-2 text-sm text-[var(--color-status-success)]">
             {recentInviteCodeResult.contextLabel}
           </p>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <code className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm">
+            <code className="rounded-md bg-[var(--theme-card)] px-3 py-2 text-sm font-semibold text-[var(--theme-card-foreground)] shadow-[var(--color-card-shadow)]">
               {recentInviteCodeResult.rawCode}
             </code>
-            <button
+            <Button
               type="button"
               onClick={() => void handleCopyRawCode()}
-              className="rounded-md border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+              variant="secondary"
+              className="border-[var(--color-status-success-border)] bg-[var(--theme-card)] text-[var(--color-status-success)] hover:bg-[var(--color-status-success-soft)]"
             >
               {copyState === "copied" ? "Copied" : "Copy"}
-            </button>
+            </Button>
           </div>
-          <p className="mt-3 text-sm text-emerald-800">
+          <p className="mt-3 text-sm text-[var(--color-status-success)]">
             Copy this now. It will not be shown again.
           </p>
         </div>
       ) : null}
 
-      <div className="mt-8 border-t border-slate-200 pt-6">
+      <div className="mt-8 border-t border-[var(--color-card-separator)] pt-6">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold text-slate-900">Existing Invites</h3>
-          <button
+          <h3 className="text-lg font-semibold text-[var(--theme-card-foreground)]">Existing Invites</h3>
+          <Button
             type="button"
+            variant="secondary"
+            size="icon"
             aria-expanded={isExistingInvitesOpen}
             onClick={toggleExistingInvites}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-700 transition hover:bg-slate-50"
+            className="h-9 w-9"
           >
             <span
               aria-hidden="true"
@@ -213,72 +220,76 @@ export function InviteAccessSection() {
             >
               &gt;
             </span>
-          </button>
+          </Button>
         </div>
 
         {isExistingInvitesOpen ? (
           isLoading ? (
-            <p className="mt-4 text-sm text-slate-500">Loading invite codes...</p>
+            <p className="mt-4 text-sm text-[var(--color-card-muted-foreground)]">Loading invite codes...</p>
           ) : sortedInviteCodes.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-4 text-sm text-[var(--color-card-muted-foreground)]">
               No invite codes created yet.
             </p>
           ) : (
             <div className="mt-4 space-y-3">
               {sortedInviteCodes.map((inviteCode) => (
-                <article
+                <Card
+                  as="article"
+                  padding="sm"
                   key={inviteCode.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                  className="bg-[var(--color-background)] shadow-none"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-2 text-sm text-slate-700">
+                    <div className="space-y-2 text-sm text-[var(--color-card-muted-foreground)]">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-slate-900">
+                        <p className="font-semibold text-[var(--theme-card-foreground)]">
                           {inviteCode.guest_display_name?.trim() ||
                             inviteCode.label?.trim()}
                         </p>
                         <span
                           className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
                             inviteCode.is_active
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-slate-200 text-slate-600"
+                              ? "border border-[var(--color-status-success-border)] bg-[var(--color-status-success-soft)] text-[var(--color-status-success)]"
+                              : "border border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] text-[var(--color-status-neutral)]"
                           }`}
                         >
                           {inviteCode.is_active ? "Active" : "Inactive"}
                         </span>
                       </div>
                       <p>
-                        <span className="font-medium text-slate-900">Uses:</span>{" "}
+                        <span className="font-medium text-[var(--theme-card-foreground)]">Uses:</span>{" "}
                         {inviteCode.use_count}
                         {inviteCode.max_uses !== null
                           ? ` / ${inviteCode.max_uses}`
                           : " / Unlimited"}
                       </p>
                       <p>
-                        <span className="font-medium text-slate-900">Created:</span>{" "}
+                        <span className="font-medium text-[var(--theme-card-foreground)]">Created:</span>{" "}
                         {formatInviteTimestamp(inviteCode.created_at)}
                       </p>
                       <p>
-                        <span className="font-medium text-slate-900">Expires:</span>{" "}
+                        <span className="font-medium text-[var(--theme-card-foreground)]">Expires:</span>{" "}
                         {formatInviteTimestamp(inviteCode.expires_at)}
                       </p>
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
                       {inviteCode.guest_display_name ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="secondary"
                           onClick={() => void regenerateGuestAccessCode(inviteCode.id)}
                           disabled={isRegeneratingId === inviteCode.id}
-                          className="rounded-md border border-indigo-200 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                          className="border-[var(--color-accent-border)] text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)]"
                         >
                           {isRegeneratingId === inviteCode.id
                             ? "Generating..."
                             : "Generate New Access Code"}
-                        </button>
+                        </Button>
                       ) : null}
-                      <button
+                      <Button
                         type="button"
+                        variant="secondary"
                         onClick={() =>
                           void updateInviteCodeActivity(
                             inviteCode.id,
@@ -286,7 +297,7 @@ export function InviteAccessSection() {
                           )
                         }
                         disabled={updatingInviteId === inviteCode.id}
-                        className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                        className="shadow-none"
                       >
                         {updatingInviteId === inviteCode.id
                           ? inviteCode.is_active
@@ -295,15 +306,15 @@ export function InviteAccessSection() {
                           : inviteCode.is_active
                             ? "Deactivate"
                             : "Reactivate"}
-                      </button>
+                      </Button>
                     </div>
                   </div>
-                </article>
+                </Card>
               ))}
             </div>
           )
         ) : null}
       </div>
-    </section>
+    </Card>
   )
 }

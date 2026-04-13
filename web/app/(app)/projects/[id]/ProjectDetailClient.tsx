@@ -595,7 +595,7 @@ export default function ProjectDetailClient({
         currentUser={currentUser}
         mobileProjectNavigation={({ requestClose }) => (
           <div className="mt-2">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="px-3 text-xs font-semibold uppercase tracking-wide text-[var(--theme-nav-muted)]">
               Current Project
             </p>
             <div className="mt-2 space-y-1.5">
@@ -615,8 +615,8 @@ export default function ProjectDetailClient({
                       }}
                       className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                         isActive
-                          ? "bg-indigo-50 text-indigo-700"
-                          : "text-slate-700 hover:bg-white hover:text-slate-900"
+                          ? "bg-[var(--theme-nav-active)] text-[var(--theme-nav-active-foreground)]"
+                          : "text-[var(--theme-nav-muted)] hover:bg-[var(--theme-nav-hover)] hover:text-[var(--theme-nav-hover-foreground)]"
                       }`}
                     >
                       {item.label}

@@ -17,19 +17,21 @@ function SummaryMetric({
 }) {
   return (
     <div
-      className={`rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.03)] ${
-        emphasis === "secondary" ? "bg-slate-50/70" : ""
+      className={`rounded-xl border border-[var(--color-card-border)] bg-[var(--theme-card)] px-4 py-3 shadow-[var(--color-card-shadow)] ${
+        emphasis === "secondary" ? "bg-[var(--color-background)]" : ""
       }`}
     >
       <p
         className={`text-xs font-semibold uppercase tracking-[0.16em] ${
-          emphasis === "secondary" ? "text-slate-400" : "text-slate-500"
+          emphasis === "secondary"
+            ? "text-[var(--color-text-muted)]"
+            : "text-[var(--color-card-muted-foreground)]"
         }`}
       >
         {label}
       </p>
       <p
-        className={`mt-2 font-semibold text-slate-900 ${
+        className={`mt-2 font-semibold text-[var(--theme-card-foreground)] ${
           emphasis === "secondary" ? "text-base" : "text-lg"
         }`}
       >
@@ -90,10 +92,10 @@ export function ProjectHealthSummary({
     <section className={`${detailCardClassName} mt-5`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-card-muted-foreground)]">
             Project Health
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <p className="mt-2 text-sm leading-6 text-[var(--color-card-muted-foreground)]">
             Default view answers whether the project looks healthy. Details below
             explain why.
           </p>
@@ -118,7 +120,7 @@ export function ProjectHealthSummary({
                   setIsEditingSummary(false)
                 }}
                 disabled={isUpdatingSummary}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg border border-[var(--color-card-border)] px-3 py-2 text-sm font-medium text-[var(--theme-card-foreground)] hover:bg-[var(--color-background)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -126,19 +128,19 @@ export function ProjectHealthSummary({
                 type="button"
                 onClick={() => void handleSaveSummaryFields()}
                 disabled={isUpdatingSummary}
-                className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg bg-[var(--theme-primary)] px-3 py-2 text-sm font-medium text-[var(--theme-primary-foreground)] hover:bg-[var(--theme-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isUpdatingSummary ? "Saving..." : "Save"}
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={() => setIsEditingSummary(true)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Edit Health
-            </button>
+              <button
+                type="button"
+                onClick={() => setIsEditingSummary(true)}
+                className="rounded-lg border border-[var(--color-card-border)] px-3 py-2 text-sm font-medium text-[var(--theme-card-foreground)] hover:bg-[var(--color-background)]"
+              >
+                Edit Health
+              </button>
           )}
         </div>
       </div>
@@ -151,8 +153,8 @@ export function ProjectHealthSummary({
       )}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.03)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <div className="rounded-xl border border-[var(--color-card-border)] bg-[var(--theme-card)] px-4 py-3 shadow-[var(--color-card-shadow)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-card-muted-foreground)]">
             Project Status
           </p>
           {isEditingSummary ? (
@@ -161,7 +163,7 @@ export function ProjectHealthSummary({
               onChange={(event) =>
                 setDraftStatus(event.target.value as ProjectStatus)
               }
-              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+              className="mt-2 w-full rounded-lg border border-[var(--color-card-border)] bg-[var(--theme-input)] px-3 py-2 text-sm text-[var(--theme-card-foreground)] outline-none focus:border-[var(--color-focus-ring)]"
             >
               <option value="not_started">Not Started</option>
               <option value="in_progress">In Progress</option>
@@ -170,14 +172,14 @@ export function ProjectHealthSummary({
               <option value="cancelled">Cancelled</option>
             </select>
           ) : (
-            <p className="mt-2 text-lg font-semibold text-slate-900">
+            <p className="mt-2 text-lg font-semibold text-[var(--theme-card-foreground)]">
               {humanizeProjectValue(summary.status)}
             </p>
           )}
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.03)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <div className="rounded-xl border border-[var(--color-card-border)] bg-[var(--theme-card)] px-4 py-3 shadow-[var(--color-card-shadow)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-card-muted-foreground)]">
             Health
           </p>
           {isEditingSummary ? (
@@ -186,14 +188,14 @@ export function ProjectHealthSummary({
               onChange={(event) =>
                 setDraftHealth(event.target.value as ProjectHealth)
               }
-              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+              className="mt-2 w-full rounded-lg border border-[var(--color-card-border)] bg-[var(--theme-input)] px-3 py-2 text-sm text-[var(--theme-card-foreground)] outline-none focus:border-[var(--color-focus-ring)]"
             >
               <option value="on_track">On Track</option>
               <option value="at_risk">At Risk</option>
               <option value="off_track">Off Track</option>
             </select>
           ) : (
-            <p className="mt-2 text-lg font-semibold text-slate-900">
+            <p className="mt-2 text-lg font-semibold text-[var(--theme-card-foreground)]">
               {humanizeProjectValue(summary.health)}
             </p>
           )}
@@ -215,7 +217,7 @@ export function ProjectHealthSummary({
         <button
           type="button"
           onClick={() => setIsExpanded((current) => !current)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-[var(--color-card-muted-foreground)] hover:text-[var(--theme-card-foreground)]"
         >
           <span aria-hidden="true" className="text-base leading-none">
             {isExpanded ? "▾" : "▸"}
@@ -225,8 +227,8 @@ export function ProjectHealthSummary({
       </div>
 
       {isExpanded && (
-        <div className="mt-4 border-t border-slate-200 pt-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <div className="mt-4 border-t border-[var(--color-card-separator)] pt-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
             Execution Details
           </p>
 

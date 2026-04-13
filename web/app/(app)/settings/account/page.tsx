@@ -3,6 +3,10 @@
 import { Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AppLayout } from "@/components/layout/AppLayout"
+import { Button } from "@/components/ui/Button"
+import { Card } from "@/components/ui/Card"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
 import { useCurrentUser } from "@/lib/use-current-user"
 import { InviteAccessSection } from "./components/InviteAccessSection"
 import { useAccountSettings } from "./use-account-settings"
@@ -108,188 +112,193 @@ function AccountSettingsPageContent() {
       onLogout={logout}
     >
       <main className="mx-auto max-w-3xl space-y-6">
-        <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+        <Card as="section" padding="lg">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-card-muted-foreground)]">
             Account Settings
           </p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">
+          <h1 className="mt-2 text-3xl font-bold text-[var(--theme-card-foreground)]">
             Manage your account
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-[var(--color-card-muted-foreground)]">
             Update your profile, email, and core security settings.
           </p>
-        </section>
+        </Card>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Profile</h2>
+        <Card as="section" padding="lg">
+          <h2 className="text-xl font-semibold text-[var(--theme-card-foreground)]">Profile</h2>
           <div className="mt-6 grid gap-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
                 Current Email
               </label>
-              <input
+              <Input
                 type="email"
                 value={currentUser?.email ?? ""}
                 disabled
-                className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+                className="bg-[var(--color-background)] text-[var(--color-card-muted-foreground)] shadow-none"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
                 Display Name
               </label>
-              <input
+              <Input
                 type="text"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 placeholder="How your name should appear"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+                className="shadow-none"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
                 Change Email
               </label>
-              <input
+              <Input
                 type="email"
                 value={newEmail}
                 onChange={(event) => setNewEmail(event.target.value)}
                 placeholder="Enter a new email address"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+                className="shadow-none"
               />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-[var(--color-card-muted-foreground)]">
                 We will send a confirmation link to complete the email change.
               </p>
             </div>
           </div>
 
           {profileError && (
-            <p className="mt-4 text-sm font-medium text-red-600">{profileError}</p>
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-danger)]">
+              {profileError}
+            </p>
           )}
           {profileMessage && (
-            <p className="mt-4 text-sm font-medium text-green-700">
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-success)]">
               {profileMessage}
             </p>
           )}
           {emailChangeConfirmed && (
-            <p className="mt-4 text-sm font-medium text-green-700">
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-success)]">
               Your email change was confirmed successfully.
             </p>
           )}
           {emailError && (
-            <p className="mt-4 text-sm font-medium text-red-600">{emailError}</p>
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-danger)]">
+              {emailError}
+            </p>
           )}
           {emailMessage && (
-            <p className="mt-4 text-sm font-medium text-green-700">
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-success)]">
               {emailMessage}
             </p>
           )}
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={updateEmail}
               disabled={isLoading || isUpdatingEmail}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="shadow-none"
             >
               {isUpdatingEmail ? "Sending..." : "Update Email"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={saveProfile}
               disabled={isLoading || isSavingProfile}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSavingProfile ? "Saving..." : "Save Profile"}
-            </button>
+            </Button>
           </div>
-        </section>
+        </Card>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Security</h2>
+        <Card as="section" padding="lg">
+          <h2 className="text-xl font-semibold text-[var(--theme-card-foreground)]">Security</h2>
           <div className="mt-6 grid gap-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
                 Current Password
               </label>
-              <input
+              <Input
                 type="password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+                className="shadow-none"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
                 New Password
               </label>
-              <input
+              <Input
                 type="password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+                className="shadow-none"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
                 Confirm New Password
               </label>
-              <input
+              <Input
                 type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+                className="shadow-none"
               />
             </div>
           </div>
 
           {passwordError && (
-            <p className="mt-4 text-sm font-medium text-red-600">{passwordError}</p>
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-danger)]">
+              {passwordError}
+            </p>
           )}
           {passwordMessage && (
-            <p className="mt-4 text-sm font-medium text-green-700">
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-success)]">
               {passwordMessage}
             </p>
           )}
 
           <div className="mt-6 flex justify-end">
-            <button
+            <Button
               type="button"
               onClick={changePassword}
               disabled={isLoading || isChangingPassword}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isChangingPassword ? "Updating..." : "Change Password"}
-            </button>
+            </Button>
           </div>
-        </section>
+        </Card>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Theme</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+        <Card as="section" padding="lg">
+          <h2 className="text-xl font-semibold text-[var(--theme-card-foreground)]">Theme</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-card-muted-foreground)]">
             Choose which theme family the app uses for your account.
           </p>
 
           <div className="mt-6 grid gap-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label className="mb-1 block text-sm font-medium text-[var(--theme-card-foreground)]">
                 Theme Family
               </label>
-              <select
+              <Select
                 value={themeFamily}
                 onChange={(event) =>
                   setThemeFamily(event.target.value as "default" | "terra")
                 }
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-indigo-500 focus:ring-2"
+                className="text-[var(--theme-card-foreground)] shadow-none"
               >
                 <option value="default">default</option>
                 <option value="terra">terra</option>
-              </select>
-              <p className="mt-2 text-xs text-slate-500">
+              </Select>
+              <p className="mt-2 text-xs text-[var(--color-card-muted-foreground)]">
                 Terra currently uses the available dark Terra mode. Terra light is
                 not exposed yet.
               </p>
@@ -297,108 +306,114 @@ function AccountSettingsPageContent() {
           </div>
 
           {themeError && (
-            <p className="mt-4 text-sm font-medium text-red-600">{themeError}</p>
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-danger)]">
+              {themeError}
+            </p>
           )}
           {themeMessage && (
-            <p className="mt-4 text-sm font-medium text-green-700">
+            <p className="mt-4 text-sm font-medium text-[var(--color-status-success)]">
               {themeMessage}
             </p>
           )}
 
           <div className="mt-6 flex justify-end">
-            <button
+            <Button
               type="button"
               onClick={saveTheme}
               disabled={isLoading || isSavingTheme}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSavingTheme ? "Saving..." : "Save Theme"}
-            </button>
+            </Button>
           </div>
-        </section>
+        </Card>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Sessions</h2>
+        <Card as="section" padding="lg">
+          <h2 className="text-xl font-semibold text-[var(--theme-card-foreground)]">Sessions</h2>
           <div className="mt-6 grid gap-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <Card as="div" padding="sm" className="bg-[var(--color-background)] shadow-none">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-card-muted-foreground)]">
                 Current Session
               </p>
-              <div className="mt-3 space-y-2 text-sm text-slate-700">
+              <div className="mt-3 space-y-2 text-sm text-[var(--color-card-muted-foreground)]">
                 <p>
-                  <span className="font-medium text-slate-900">User ID:</span>{" "}
+                  <span className="font-medium text-[var(--theme-card-foreground)]">User ID:</span>{" "}
                   {currentUser?.id ?? "Unavailable"}
                 </p>
                 <p>
-                  <span className="font-medium text-slate-900">Last Sign In:</span>{" "}
+                  <span className="font-medium text-[var(--theme-card-foreground)]">Last Sign In:</span>{" "}
                   {formatIsoDateTime(currentUser?.last_sign_in_at)}
                 </p>
                 <p>
-                  <span className="font-medium text-slate-900">Auth Status:</span>{" "}
+                  <span className="font-medium text-[var(--theme-card-foreground)]">Auth Status:</span>{" "}
                   {currentSession ? "Authenticated" : "No active session"}
                 </p>
                 <p>
-                  <span className="font-medium text-slate-900">Session Expires:</span>{" "}
+                  <span className="font-medium text-[var(--theme-card-foreground)]">Session Expires:</span>{" "}
                   {formatUnixTimestamp(currentSession?.expires_at)}
                 </p>
               </div>
-            </div>
+            </Card>
           </div>
 
           <div className="mt-6 flex justify-end">
-            <button
+            <Button
               type="button"
               onClick={logout}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              variant="secondary"
+              className="shadow-none"
             >
               Sign Out
-            </button>
+            </Button>
           </div>
-        </section>
+        </Card>
 
         <InviteAccessSection />
 
-        <section className="rounded-xl border border-red-200 bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-semibold text-red-700">Danger Zone</h2>
-          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-medium text-red-900">Delete account</p>
-            <p className="mt-2 text-sm leading-6 text-red-800">
+        <Card
+          as="section"
+          padding="lg"
+          className="border-[var(--color-status-danger-border)]"
+        >
+          <h2 className="text-xl font-semibold text-[var(--color-status-danger)]">Danger Zone</h2>
+          <div className="mt-6 rounded-lg border border-[var(--color-status-danger-border)] bg-[var(--color-status-danger-soft)] p-4">
+            <p className="text-sm font-medium text-[var(--color-status-danger)]">Delete account</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--color-status-danger)]">
               This permanently deletes your account and removes access to the
               app. This action cannot be undone.
             </p>
             <div className="mt-4">
-              <label className="mb-1 block text-sm font-medium text-red-900">
+              <label className="mb-1 block text-sm font-medium text-[var(--color-status-danger)]">
                 Type DELETE to confirm
               </label>
-              <input
+              <Input
                 type="text"
                 value={deleteConfirmation}
                 onChange={(event) => setDeleteConfirmation(event.target.value)}
                 placeholder="DELETE"
-                className="w-full rounded-md border border-red-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-red-400 focus:ring-2"
+                className="border-[var(--color-status-danger-border)] bg-[var(--theme-card)] text-[var(--theme-card-foreground)] shadow-none focus:ring-[var(--color-status-danger)]"
               />
             </div>
             {deleteAccountError && (
-              <p className="mt-4 text-sm font-medium text-red-600">
+              <p className="mt-4 text-sm font-medium text-[var(--color-status-danger)]">
                 {deleteAccountError}
               </p>
             )}
             <div className="mt-6 flex justify-end">
-              <button
+              <Button
                 type="button"
+                variant="danger"
                 onClick={handleDeleteAccount}
                 disabled={
                   isLoading ||
                   isDeletingAccount ||
                   deleteConfirmation.trim() !== "DELETE"
                 }
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isDeletingAccount ? "Deleting..." : "Delete Account"}
-              </button>
+              </Button>
             </div>
           </div>
-        </section>
+        </Card>
       </main>
     </AppLayout>
   )
