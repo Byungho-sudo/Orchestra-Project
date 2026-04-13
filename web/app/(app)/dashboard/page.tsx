@@ -66,10 +66,25 @@ export default function DashboardOverviewPage() {
         <section className="space-y-4">
           <SectionHeader
             title="Recent Projects"
+            className={
+              themeFamily === "terra"
+                ? "gap-3 border-b border-[var(--color-shell-border)] pb-3 sm:items-end"
+                : undefined
+            }
+            titleClassName={
+              themeFamily === "terra"
+                ? "text-2xl tracking-[-0.02em] text-[var(--theme-shell-foreground)]"
+                : undefined
+            }
+            actionClassName={themeFamily === "terra" ? "sm:self-end" : undefined}
             action={
               <Link
                 href="/projects"
-                className="text-sm font-medium text-indigo-600 hover:underline"
+                className={
+                  themeFamily === "terra"
+                    ? "text-sm font-medium text-[var(--color-accent)] transition-colors hover:text-[var(--theme-shell-foreground)]"
+                    : "text-sm font-medium text-indigo-600 hover:underline"
+                }
               >
                 View all
               </Link>

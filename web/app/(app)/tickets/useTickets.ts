@@ -41,7 +41,7 @@ export function useTickets() {
     setIsLoading(false)
 
     if (error) {
-      setError("Failed to load tickets. Please refresh and try again.")
+      setError("Failed to load issues. Please refresh and try again.")
       return
     }
 
@@ -81,7 +81,7 @@ export function useTickets() {
     setIsCreating(false)
 
     if (!response.ok || !payload?.ticket) {
-      setError(payload?.message ?? "Failed to create ticket. Please try again.")
+      setError(payload?.message ?? "Failed to create issue. Please try again.")
       return false
     }
 
@@ -113,7 +113,7 @@ export function useTickets() {
       setUpdatingTicketId(null)
 
       if (error || !data) {
-        setError("Failed to update ticket status. Please try again.")
+        setError("Failed to update issue status. Please try again.")
         return
       }
 
@@ -138,17 +138,17 @@ export function useTickets() {
       }
 
       if (!isTicketType(updatedTicket.type)) {
-        setError("Ticket type is invalid.")
+        setError("Issue type is invalid.")
         return false
       }
 
       if (!isTicketPriority(updatedTicket.priority)) {
-        setError("Ticket priority is invalid.")
+        setError("Issue priority is invalid.")
         return false
       }
 
       if (!isTicketStatus(updatedTicket.status)) {
-        setError("Ticket status is invalid.")
+        setError("Issue status is invalid.")
         return false
       }
 
@@ -177,7 +177,7 @@ export function useTickets() {
       setUpdatingTicketId(null)
 
       if (!response.ok || !payload?.ticket) {
-        setError(payload?.message ?? "Failed to update ticket. Please try again.")
+        setError(payload?.message ?? "Failed to update issue. Please try again.")
         return false
       }
 

@@ -13,7 +13,7 @@ const navigationLinks = [
   { href: "/dashboard", label: "Overview" },
   { href: "/projects", label: "Projects" },
   { href: "/team", label: "Team" },
-  { href: "/tickets", label: "Tickets" },
+  { href: "/tickets", label: "Issues" },
 ]
 
 const guestNavigationHrefs = new Set(["/projects", "/tickets"])

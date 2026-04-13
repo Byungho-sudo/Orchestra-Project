@@ -32,7 +32,7 @@ export function TicketForm({
     mode === "create"
       ? isSubmitting
         ? "Saving..."
-        : "Add Ticket"
+        : "Add Issue"
       : isSubmitting
         ? "Saving..."
         : "Save Changes"

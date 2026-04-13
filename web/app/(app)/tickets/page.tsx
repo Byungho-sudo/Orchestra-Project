@@ -102,7 +102,7 @@ function TicketCard({
 
             <Button
               onClick={onEdit}
-              aria-label="Edit ticket"
+              aria-label="Edit issue"
               variant="secondary"
               size="icon"
               className="h-9 w-9 shrink-0 bg-[var(--color-background)] text-[var(--color-card-muted-foreground)] shadow-none"
@@ -234,11 +234,11 @@ export default function TicketsPage() {
   }
 
   return (
-    <AppShell title="Tickets" currentUser={currentUser} onLogout={logout}>
+    <AppShell title="Issues" currentUser={currentUser} onLogout={logout}>
       <main className="space-y-6">
         <Card as="section" padding="lg">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-card-muted-foreground)]">
-            Tickets
+            Issues
           </p>
           <h1 className="mt-2 text-3xl font-bold text-[var(--theme-card-foreground)]">
             Capture bugs, ideas, polish, and cleanup work
@@ -259,7 +259,7 @@ export default function TicketsPage() {
                     Quick Capture
                   </p>
                   <h2 className="mt-2 text-xl font-semibold text-[var(--theme-card-foreground)]">
-                    Add ticket
+                    Add issue
                   </h2>
                 </div>
                 <div className="rounded-full border border-[var(--color-status-neutral-border)] bg-[var(--color-status-neutral-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-status-neutral)]">
@@ -288,7 +288,7 @@ export default function TicketsPage() {
                     Queue
                   </p>
                   <h2 className="mt-2 text-xl font-semibold text-[var(--theme-card-foreground)]">
-                    {tickets.length} {tickets.length === 1 ? "ticket" : "tickets"}
+                    {tickets.length} {tickets.length === 1 ? "issue" : "issues"}
                   </h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -324,7 +324,7 @@ export default function TicketsPage() {
                 padding="lg"
                 className="text-sm text-[var(--color-card-muted-foreground)]"
               >
-                Loading tickets...
+                Loading issues...
               </Card>
             ) : statusFilter === "all" ? (
               <div className="space-y-5">
@@ -363,7 +363,7 @@ export default function TicketsPage() {
                     {expandedStatusGroups.has(group.status) ? (
                       group.tickets.length === 0 ? (
                         <p className="mt-4 text-sm text-[var(--color-card-muted-foreground)]">
-                          No tickets in {group.label.toLowerCase()}.
+                          No issues in {group.label.toLowerCase()}.
                         </p>
                       ) : (
                         <div className="mt-4 space-y-3">
@@ -390,7 +390,7 @@ export default function TicketsPage() {
                 padding="lg"
                 className="text-sm text-[var(--color-card-muted-foreground)]"
               >
-                No tickets in {getTicketStatusLabel(statusFilter)} yet.
+                No issues in {getTicketStatusLabel(statusFilter)} yet.
               </Card>
             ) : (
               <section className="space-y-3">
@@ -422,10 +422,10 @@ export default function TicketsPage() {
             {({ requestClose }) => (
               <>
                 <h2 className="text-xl font-semibold text-[var(--theme-card-foreground)]">
-                  Edit Ticket
+                  Edit Issue
                 </h2>
                 <p className="mt-1 text-sm text-[var(--color-card-muted-foreground)]">
-                  Update the ticket details and save your changes.
+                  Update the issue details and save your changes.
                 </p>
 
                 <TicketForm
@@ -450,11 +450,11 @@ export default function TicketsPage() {
                 <div className="flex justify-center">
                   <Button
                     onClick={scrollToQuickCapture}
-                    aria-label="Back to Ticket Form"
+                    aria-label="Back to Issue Form"
                     variant="secondary"
                     className="pointer-events-auto rounded-full border-[var(--color-accent-border)] bg-[var(--theme-card)] text-[var(--color-accent)] shadow-lg hover:bg-[var(--color-accent-soft)]"
                   >
-                    Back to Ticket Form
+                    Back to Issue Form
                   </Button>
                 </div>
               </div>
