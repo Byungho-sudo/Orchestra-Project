@@ -8,6 +8,10 @@ import {
   ProjectsEmptyState,
   ProjectsNoMatchesState,
 } from "@/features/projects/ProjectsGridStates"
+import {
+  ProjectsCardsGrid,
+  ProjectsPageFrame,
+} from "@/features/projects/ProjectsPageFrame"
 import { ProjectToolbar } from "@/features/projects/ProjectToolbar"
 import { useCreateProjectForm } from "@/features/projects/use-create-project-form"
 import { useProjectsQuery } from "@/features/projects/use-projects-query"
@@ -59,17 +63,19 @@ export function ProjectsGrid({
   }
 
   return (
-    <main className="space-y-4">
-      <ProjectToolbar
-        searchQuery={searchQuery}
-        deadlineFilter={deadlineFilter}
-        sortBy={sortBy}
-        onCreateProject={onOpenCreateProject}
-        onSearchQueryChange={setSearchQuery}
-        onDeadlineFilterChange={setDeadlineFilter}
-        onSortByChange={setSortBy}
-      />
-
+    <ProjectsPageFrame
+      toolbar={
+        <ProjectToolbar
+          searchQuery={searchQuery}
+          deadlineFilter={deadlineFilter}
+          sortBy={sortBy}
+          onCreateProject={onOpenCreateProject}
+          onSearchQueryChange={setSearchQuery}
+          onDeadlineFilterChange={setDeadlineFilter}
+          onSortByChange={setSortBy}
+        />
+      }
+    >
       {errorMessage && (
         <Card className="border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
           {errorMessage}
@@ -85,7 +91,7 @@ export function ProjectsGrid({
       )}
 
       {sortedProjects.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ProjectsCardsGrid>
           {sortedProjects.map((project) => (
             <ProjectCard
               key={project.id}
@@ -94,7 +100,7 @@ export function ProjectsGrid({
               onOpenProject={() => router.push(`/projects/${project.id}`)}
             />
           ))}
-        </div>
+        </ProjectsCardsGrid>
       )}
 
       {isCreateProjectOpen && (
@@ -129,6 +135,6 @@ export function ProjectsGrid({
           onCreateProject={createProjectForm.createProject}
         />
       )}
-    </main>
+    </ProjectsPageFrame>
   )
 }

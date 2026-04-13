@@ -5,6 +5,7 @@ import type { SortOption } from "@/lib/projects"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
+import { ProjectsToolbarFrame } from "@/features/projects/ProjectsToolbarFrame"
 
 export function ProjectToolbar({
   searchQuery,
@@ -24,12 +25,13 @@ export function ProjectToolbar({
   onSortByChange: (value: SortOption) => void
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-[var(--theme-shell-border)] bg-[var(--theme-shell)] p-4 shadow-[var(--color-toolbar-shadow)] sm:flex-row sm:items-center sm:justify-between">
-      <h2 className="text-xl font-semibold tracking-[-0.01em] text-[var(--theme-shell-foreground)]">
-        Project Cards
-      </h2>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center text-sm">
+    <ProjectsToolbarFrame
+      title={
+        <h2 className="text-xl font-semibold tracking-[-0.01em] text-[var(--theme-shell-foreground)]">
+          Project Cards
+        </h2>
+      }
+      primaryControl={
         <Input
           type="text"
           value={searchQuery}
@@ -37,8 +39,9 @@ export function ProjectToolbar({
           placeholder="Search projects..."
           className="border-[var(--theme-shell-border)] bg-[var(--theme-input)] text-[var(--theme-shell-foreground)] shadow-none placeholder:text-[var(--theme-nav-muted)] sm:w-56"
         />
-
-        <div className="flex items-center gap-2">
+      }
+      secondaryControls={
+        <>
           <Select
             value={deadlineFilter}
             onChange={(event) =>
@@ -71,8 +74,8 @@ export function ProjectToolbar({
           >
             New Project
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   )
 }
