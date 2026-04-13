@@ -10,6 +10,7 @@ import {
 } from "react"
 import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/layout/AppLayout"
+import { SidebarItem } from "@/components/layout/Sidebar"
 import type { Project } from "@/lib/projects"
 import { AddModuleModal } from "@/features/project-detail/components/AddModuleModal"
 import { DeleteProjectModal } from "@/features/project-detail/components/DeleteProjectModal"
@@ -594,33 +595,34 @@ export default function ProjectDetailClient({
         title={currentProject.name}
         currentUser={currentUser}
         mobileProjectNavigation={({ requestClose }) => (
-          <div className="mt-2">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wide text-[var(--theme-nav-muted)]">
-              Current Project
-            </p>
-            <div className="mt-2 space-y-1.5">
+          <div className="space-y-2 py-2">
+            <div className="px-3 pb-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--theme-nav-muted)]">
+                Current Project
+              </p>
+              <p className="mt-1 text-sm font-medium text-[var(--theme-nav-foreground)]">
+                {currentProject.name}
+              </p>
+            </div>
+            <div className="space-y-2">
               {[fixedProjectDetailsNavigationItem, ...sortableProjectWorkspaceNavigation].map(
                 (item) => {
                   const isActive = activeSection === item.id
 
                   return (
-                    <button
+                    <SidebarItem
                       key={item.id}
-                      type="button"
+                      isActive={isActive}
                       onClick={() => {
                         requestClose()
                         requestAnimationFrame(() => {
                           handleSelectSection(item.id, { scroll: true })
                         })
                       }}
-                      className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                        isActive
-                          ? "bg-[var(--theme-nav-active)] text-[var(--theme-nav-active-foreground)]"
-                          : "text-[var(--theme-nav-muted)] hover:bg-[var(--theme-nav-hover)] hover:text-[var(--theme-nav-hover-foreground)]"
-                      }`}
+                      className="w-full"
                     >
                       {item.label}
-                    </button>
+                    </SidebarItem>
                   )
                 }
               )}

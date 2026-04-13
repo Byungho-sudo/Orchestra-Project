@@ -1,12 +1,10 @@
 "use client"
 
 import type { ReactNode } from "react"
-import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Sidebar,
   SidebarItem,
-  getSidebarItemClassName,
 } from "@/components/layout/Sidebar"
 import { useAppActor } from "@/lib/auth/use-app-actor"
 import { useCurrentUser } from "@/lib/use-current-user"
@@ -43,16 +41,15 @@ export function DashboardNavigationLinks({
 
         if (link.href === "/projects" && projectNavigationContent) {
           return (
-            <div key={link.href} className={getSidebarItemClassName(isActive)}>
-              <p className="font-medium">{link.label}</p>
-              <div className="mt-3 space-y-2 border-t border-[var(--color-nav-group-border)] pt-3">
-                <Link
-                  href="/projects"
-                  onClick={onNavigate}
-                  className="block rounded-lg px-3 py-2 text-sm text-[var(--color-nav-item-text)] transition-colors hover:bg-[var(--color-nav-item-hover-surface)] hover:text-[var(--color-nav-item-hover-text)]"
-                >
-                  All Projects
-                </Link>
+            <div key={link.href} className="space-y-2">
+              <SidebarItem
+                href={link.href}
+                isActive={isActive}
+                onClick={onNavigate}
+              >
+                {link.label}
+              </SidebarItem>
+              <div className="ml-3 border-l border-[var(--color-nav-group-border)] pl-3">
                 {projectNavigationContent}
               </div>
             </div>
